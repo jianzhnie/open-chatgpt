@@ -8,7 +8,7 @@ import torch
 sys.path.append('../')
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Trainer,
                           TrainingArguments, default_data_collator)
-
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from chatgpt.dataset.summarize_dataset import TLDRDataset
 
 
@@ -21,7 +21,7 @@ def set_seed(seed_val=42):
 
 if __name__ == '__main__':
     output_dir = 'opt-supervised-summarize-checkpoint'
-    train_batch_size = 16
+    train_batch_size = 32
     gradient_accumulation_steps = 1
     learning_rate = 1e-5
     eval_batch_size = 1
@@ -82,8 +82,6 @@ if __name__ == '__main__':
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=eval_batch_size,
         gradient_checkpointing=True,
-        half_precision_backend=True,
-        fp16=True,
         adam_beta1=0.9,
         adam_beta2=0.95,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -92,8 +90,7 @@ if __name__ == '__main__':
         eval_steps=eval_steps,
         save_steps=save_steps,
         load_best_model_at_end=True,
-        logging_steps=50,
-        deepspeed='./ds_config_gptj.json',
+        logging_steps=50
     )
 
     trainer = Trainer(
