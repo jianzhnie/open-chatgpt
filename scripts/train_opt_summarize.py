@@ -8,7 +8,7 @@ import torch
 sys.path.append('../')
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Trainer,
                           TrainingArguments, default_data_collator)
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
 from chatgpt.dataset.summarize_dataset import TLDRDataset
 
 
@@ -90,8 +90,7 @@ if __name__ == '__main__':
         eval_steps=eval_steps,
         save_steps=save_steps,
         load_best_model_at_end=True,
-        logging_steps=50
-    )
+        logging_steps=50)
 
     trainer = Trainer(
         model=model,
