@@ -130,3 +130,5 @@ dmypy.json
 colossalai/
 chatllama/
 data/
+opt-supervised-summarize-checkpoint/
+wandb/

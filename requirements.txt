@@ -1,0 +1,6 @@
+
+accelerate
+deepspeed
+mpi4py
+numpy
+torch
