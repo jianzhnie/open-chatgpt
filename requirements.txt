@@ -1,6 +1,9 @@
 
 accelerate
 deepspeed
+evaluate>=0.4.0
 mpi4py
 numpy
+nltk>=3.8.1
 torch
+rouge-score>=0.1.2

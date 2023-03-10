@@ -42,18 +42,14 @@ if __name__ == '__main__':
 
     # Set up the datasets
     data_path = 'CarperAI/openai_summarize_tldr'
-    train_dataset = TLDRDataset(
-        data_path,
-        tokenizer,
-        'train',
-        max_length=max_input_length,
-    )
-    dev_dataset = TLDRDataset(
-        data_path,
-        tokenizer,
-        'valid',
-        max_length=max_input_length,
-    )
+    train_dataset = TLDRDataset(data_path,
+                                tokenizer,
+                                'train',
+                                max_length=max_input_length)
+    dev_dataset = TLDRDataset(data_path,
+                              tokenizer,
+                              'valid',
+                              max_length=max_input_length)
 
     # Set up the metric
     rouge = evaluate.load('rouge')
