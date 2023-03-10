@@ -8,8 +8,7 @@ from ..base import RewardModel
 
 
 class GPTRM(RewardModel):
-    """
-    GPT Reward model.
+    """GPT Reward model.
 
     Args:
         pretrained (str): Pretrained model name or path.
@@ -18,7 +17,6 @@ class GPTRM(RewardModel):
         lora_rank (int): Rank of the low-rank approximation.
         lora_train_bias (str): LoRA bias training mode.
     """
-
     def __init__(self,
                  pretrained: Optional[str] = None,
                  config: Optional[GPT2Config] = None,

@@ -7,8 +7,7 @@ from .utils import is_rank_0
 
 
 class RewardDataset(Dataset):
-    """
-    Dataset for reward model
+    """Dataset for reward model.
 
     Args:
         dataset: dataset for reward model
@@ -22,26 +21,26 @@ class RewardDataset(Dataset):
         for data in tqdm(dataset, disable=not is_rank_0()):
             prompt = data['prompt']
 
-            chosen = prompt + data['chosen'] + "<|endoftext|>"
+            chosen = prompt + data['chosen'] + '<|endoftext|>'
             chosen_token = tokenizer(chosen,
                                      max_length=max_length,
-                                     padding="max_length",
+                                     padding='max_length',
                                      truncation=True,
-                                     return_tensors="pt")
+                                     return_tensors='pt')
             self.chosen.append({
-                "input_ids": chosen_token['input_ids'],
-                "attention_mask": chosen_token['attention_mask']
+                'input_ids': chosen_token['input_ids'],
+                'attention_mask': chosen_token['attention_mask']
             })
 
-            reject = prompt + data['rejected'] + "<|endoftext|>"
+            reject = prompt + data['rejected'] + '<|endoftext|>'
             reject_token = tokenizer(reject,
                                      max_length=max_length,
-                                     padding="max_length",
+                                     padding='max_length',
                                      truncation=True,
-                                     return_tensors="pt")
+                                     return_tensors='pt')
             self.reject.append({
-                "input_ids": reject_token['input_ids'],
-                "attention_mask": reject_token['attention_mask']
+                'input_ids': reject_token['input_ids'],
+                'attention_mask': reject_token['attention_mask']
             })
 
     def __len__(self):
@@ -49,6 +48,6 @@ class RewardDataset(Dataset):
         return length
 
     def __getitem__(self, idx):
-        return self.chosen[idx]["input_ids"], self.chosen[idx][
-            "attention_mask"], self.reject[idx]["input_ids"], self.reject[idx][
-                "attention_mask"]
+        return self.chosen[idx]['input_ids'], self.chosen[idx][
+            'attention_mask'], self.reject[idx]['input_ids'], self.reject[idx][
+                'attention_mask']

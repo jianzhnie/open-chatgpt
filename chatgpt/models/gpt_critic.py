@@ -6,8 +6,7 @@ from transformers.models.gpt2.modeling_gpt2 import GPT2Model
 
 
 class GPTCritic():
-    """
-    GPT Critic model.
+    """GPT Critic model.
 
     Args:
         pretrained (str): Pretrained model name or path.
