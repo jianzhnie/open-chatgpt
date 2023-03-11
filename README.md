@@ -4,9 +4,9 @@
   <img src="assets/logo.png" width="600"/>
 <div>&nbsp;</div>
 
-[🛠️强化学习](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/) |
-[🛠️RLHF](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/papers/RLHF) |
-
+[🤖 强化学习](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/) |
+[🙆‍♀️ RLHF](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/papers/RLHF) |
+[🙆‍♀️ AI tools](https://jianzhnie.github.io/machine-learning-wiki/#/ai-general/ai-tools) |
 
 </div>
 
