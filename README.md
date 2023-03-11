@@ -16,7 +16,7 @@
   - [Step 1: Train Supervised Fine-Tuning (SFT) Policy Model](#step-1-train-supervised-fine-tuning-sft-policy-model)
   - [Step 2: Train Reward Model (RM)](#step-2-train-reward-model-rm)
   - [Step 3: Optimize the Policy Using Reinforcement Learning](#step-3-optimize-the-policy-using-reinforcement-learning)
-  - [RLHF Dataset preparation](#rlhf-dataset-preparation)
+- [RLHF Dataset preparation](#rlhf-dataset-preparation)
 - [Examples](#examples)
   - [Examples1： Learning to summarize with human feedback](#examples1-learning-to-summarize-with-human-feedback)
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
@@ -36,8 +36,6 @@ If you like the project, please show your support by [leaving a star ⭐](https:
 ## RLHF
 <details><summary>CLICK ME</summary>
 <p>
-
-**ChatGPT** is a conversational AI model based on the GPT-3.5 (Generative Pre-trained Transformer 3.5) architecture and is the brother model of InstructGPT. Although ChatGPT is not open source, we can see its technical framework on OpenAI's [blog](https://openai.com/blog/chatgpt).
 
 ChatGPT continues the technical path of [InstructGPT/GPT3.5](https://arxiv.org/abs/2203.02155) and adds RLHF (Reinforcement Learning from Human Feedback) which enhances the adjustment of the model output by humans and sorts the results with greater understanding.
 
@@ -70,7 +68,7 @@ This stage uses the reward model trained in the second stage and updates the pre
 </p>
 </details>
 
-### RLHF Dataset preparation
+## RLHF Dataset preparation
 
 <details><summary>CLICK ME</summary>
 <p>
