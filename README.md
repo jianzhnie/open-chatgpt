@@ -101,8 +101,6 @@ The dataset consists of 92,858 samples in the training set and 83,797 samples in
 
 To get started, first follow the installation guide below:
 
-python
-
 ```python
 git clone https://github.com/jianzhnie/open-chatgpt
 pip install -r requirements.txt
@@ -113,8 +111,6 @@ pip install -r requirements.txt
 Next, we will fine-tune the OPT model for text summarization on the `TL;DR` dataset.
 
 This is relatively straightforward. Load the dataset, tokenize it, and then train the model. The entire pipeline is built using HuggingFace.
-
-python
 
 ```python
 cd scripts/
@@ -130,8 +126,6 @@ Our reward model is trained on a collected human quality judgement dataset. The 
 We will initialize the reward model from the SFT model and attach a randomly initialized linear head to output a scalar value on top.
 
 Next, we will delve into how the data is input to the model, the loss function, and other issues with the reward model.
-
-python
 
 ```python
 python train_reward_model_opt.py
