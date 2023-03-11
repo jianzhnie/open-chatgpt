@@ -29,9 +29,9 @@
 
 `Open-ChatGPT`  is a open-source library that allows you to train a  hyper-personalized ChatGPT-like ai model using your own data and the least amount of compute possible.
 
-This library is meant to simplify the development of hyper-personalize ChatGPT-like assistants. I have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by huggingface's transformer library. It supports distributed training and offloading, which can fit extremly large models.
+This library is meant to simplify the development of hyper-personalize ChatGPT-like assistants.Its purpose is to give developers peace of mind, by abstracting the efforts required for computational optimization and for the collection of large amounts of data.
 
-Its purpose is to give developers peace of mind, by abstracting the efforts required for computational optimization and for the collection of large amounts of data.
+I have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by huggingface's transformer library. It supports distributed training and offloading, which can fit extremly large models.
 
 If you like the project, please show your support by [leaving a star ⭐](https://github.com/jianzhnie/open-chatgpt/stargazers).
 
@@ -121,7 +121,7 @@ The model is evaluated using the ROUGE score. The best model is selected based o
 
 ### Training the Reward Model
 
-Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries to a reward _r_.
+Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries to a reward r.
 
 We will initialize the reward model from the SFT model and attach a randomly initialized linear head to output a scalar value on top.
 
