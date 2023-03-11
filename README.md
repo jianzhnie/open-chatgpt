@@ -41,7 +41,7 @@ ChatGPT continues the technical path of [InstructGPT/GPT3.5](https://arxiv.org/a
 
 Reinforcement learning from human feedback (RLHF) is a challenging concept as it involves multiple model training processes and different deployment stages. We break down the training process into three core steps:
 
-</div>
+<div align="center">
 <img src="./assets/ChatGPT_Diagram.svg" width="800px"></img>
 
 *<a href="https://openai.com/blog/chatgpt/">official chatgpt blogpost</a>*
