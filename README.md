@@ -21,7 +21,7 @@
   - [Examples1： Learning to summarize with human feedback](#examples1-learning-to-summarize-with-human-feedback)
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
     - [Step2：Training the Reward Model](#step2training-the-reward-model)
-    - [Fine-Tuning the Model using PPO](#fine-tuning-the-model-using-ppo)
+    - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
 
 
 ## Introduction
@@ -121,7 +121,7 @@ Next, we will delve into how the data is input to the model, the loss function, 
 python train_reward_model_opt.py
 ```
 
-#### Fine-Tuning the Model using PPO
+#### Step3: Fine-Tuning the Model using PPO
 
 ```python
 ```
