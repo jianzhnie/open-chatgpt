@@ -1,7 +1,7 @@
 # Open ChatGPT
 
 <div align="center">
-  <img src="assets/logo.png" width="400"/>
+  <img src="assets/logo.png" width="600"/>
 <div>&nbsp;</div>
 
 [🛠️强化学习](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/) |
