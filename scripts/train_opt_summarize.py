@@ -4,11 +4,12 @@ import sys
 import evaluate
 import numpy as np
 import torch
+import nltk
 
 sys.path.append('../')
 from transformers import (AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainer,
-                          TrainingArguments, default_data_collator)
-
+                          Seq2SeqTrainingArguments, DataCollatorForSeq2Seq,
+                          default_data_collator)
 from chatgpt.dataset.summarize_dataset import TLDRDataset
 
 
@@ -51,21 +52,39 @@ if __name__ == '__main__':
                               'valid',
                               max_length=max_input_length)
 
+    data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
+
     # Set up the metric
     rouge = evaluate.load('rouge')
 
     def compute_metrics(eval_preds):
-        labels_ids = eval_preds.label_ids
-        pred_ids = eval_preds.predictions
-        pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-        label_str = tokenizer.batch_decode(labels_ids,
-                                           skip_special_tokens=True)
-        result = rouge.compute(predictions=pred_str,
-                               references=label_str,
+        predictions, labels = eval_preds
+        decoded_preds = tokenizer.batch_decode(predictions,
+                                               skip_special_tokens=True)
+        decoded_labels = tokenizer.batch_decode(labels,
+                                                skip_special_tokens=True)
+        # Rouge expects a newline after each sentence
+        decoded_preds = [
+            "\n".join(nltk.sent_tokenize(pred.strip()))
+            for pred in decoded_preds
+        ]
+        decoded_labels = [
+            "\n".join(nltk.sent_tokenize(label.strip()))
+            for label in decoded_labels
+        ]
+
+        result = rouge.compute(predictions=decoded_preds,
+                               references=decoded_labels,
                                use_stemmer=True)
+        # Extract a few results
+        result = {
+            key: value.mid.fmeasure * 100
+            for key, value in result.items()
+        }
+        # Add mean generated length
         prediction_lens = [
             np.count_nonzero(pred != tokenizer.pad_token_id)
-            for pred in pred_ids
+            for pred in predictions
         ]
         result["gen_len"] = np.mean(prediction_lens)
         return result
@@ -77,7 +96,7 @@ if __name__ == '__main__':
         return logits.argmax(dim=-1)
 
     # Prepare the trainer and start training
-    training_args = TrainingArguments(
+    training_args = Seq2SeqTrainingArguments(
         output_dir=output_dir,
         evaluation_strategy='steps',
         eval_accumulation_steps=1,
@@ -92,13 +111,17 @@ if __name__ == '__main__':
         warmup_steps=100,
         eval_steps=eval_steps,
         save_steps=save_steps,
+        predict_with_generate=True,
         load_best_model_at_end=True,
-        logging_steps=50)
+        logging_steps=50,
+        fp16=True,
+    )
 
     trainer = Seq2SeqTrainer(model=model,
                              args=training_args,
                              train_dataset=train_dataset,
                              eval_dataset=dev_dataset,
+                             tokenizer=tokenizer,
                              compute_metrics=compute_metrics,
                              data_collator=default_data_collator)
     trainer.train()
