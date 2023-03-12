@@ -1,9 +1,40 @@
 import torch
 from torch import nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForSequenceClassification
 
 
 class GPTRewardModel(nn.Module):
+    def __init__(self, model_path):
+        super().__init__()
+        self.reward_model = AutoModelForSequenceClassification.from_pretrained(
+            model_path, num_labels=1)
+
+    def forward(
+        self,
+        input_ids,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        outputs = self.reward_model(input_ids,
+                                    attention_mask=attention_mask,
+                                    token_type_ids=token_type_ids,
+                                    position_ids=position_ids,
+                                    head_mask=head_mask,
+                                    output_attentions=output_attentions,
+                                    output_hidden_states=output_hidden_states,
+                                    return_dict=return_dict)
+
+        return outputs
+
+
+class GPTRewardModel_(nn.Module):
     def __init__(self, model_path):
         super().__init__()
         model = AutoModelForCausalLM.from_pretrained(model_path)
