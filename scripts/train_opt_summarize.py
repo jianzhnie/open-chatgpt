@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 sys.path.append('../')
-from transformers import (AutoModelForCausalLM, AutoTokenizer, Trainer,
+from transformers import (AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainer,
                           TrainingArguments, default_data_collator)
 
 from chatgpt.dataset.summarize_dataset import TLDRDataset
@@ -32,8 +32,8 @@ if __name__ == '__main__':
     random.seed(42)
 
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
-    model = AutoModelForCausalLM.from_pretrained('facebook/opt-125m',
-                                                 use_cache=False)
+    model = AutoModelForSeq2SeqLM.from_pretrained('facebook/opt-125m',
+                                                  use_cache=False)
     tokenizer.pad_token = tokenizer.eos_token
     model.resize_token_embeddings(len(tokenizer))
     tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -60,7 +60,14 @@ if __name__ == '__main__':
         pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
         label_str = tokenizer.batch_decode(labels_ids,
                                            skip_special_tokens=True)
-        result = rouge.compute(predictions=pred_str, references=label_str)
+        result = rouge.compute(predictions=pred_str,
+                               references=label_str,
+                               use_stemmer=True)
+        prediction_lens = [
+            np.count_nonzero(pred != tokenizer.pad_token_id)
+            for pred in pred_ids
+        ]
+        result["gen_len"] = np.mean(prediction_lens)
         return result
 
     # Create a preprocessing function to extract out the proper logits from the model output
@@ -88,14 +95,11 @@ if __name__ == '__main__':
         load_best_model_at_end=True,
         logging_steps=50)
 
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=dev_dataset,
-        compute_metrics=compute_metrics,
-        data_collator=default_data_collator,
-        preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-    )
+    trainer = Seq2SeqTrainer(model=model,
+                             args=training_args,
+                             train_dataset=train_dataset,
+                             eval_dataset=dev_dataset,
+                             compute_metrics=compute_metrics,
+                             data_collator=default_data_collator)
     trainer.train()
     trainer.save_model(output_dir)
