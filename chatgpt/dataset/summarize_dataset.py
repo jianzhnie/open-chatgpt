@@ -71,11 +71,12 @@ class TLDRDataset(Dataset):
                                          truncation=True,
                                          max_length=self.max_length,
                                          padding='max_length')
-
-        encodings_labels = self.tokenizer(summary_txt,
-                                          truncation=True,
-                                          max_length=self.max_length,
-                                          padding='max_length')
+        # Setup the tokenizer for targets
+        with self.tokenizer.as_target_tokenizer():
+            encodings_labels = self.tokenizer(summary_txt,
+                                              truncation=True,
+                                              max_length=self.max_length,
+                                              padding='max_length')
 
         encodings_input['labels'] = encodings_labels['input_ids']
         encodings_input['summary_attention_mask'] = encodings_labels[
