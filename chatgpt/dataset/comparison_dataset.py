@@ -1,8 +1,8 @@
 from typing import Dict, List, Tuple
-
 import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
+from datasets import load_dataset
 
 
 class PairwiseDataset(Dataset):
@@ -13,53 +13,71 @@ class PairwiseDataset(Dataset):
         tokenizer: The tokenizer used to encode the input text.
         max_length: Maximum sequence length for the encoded inputs.
     """
-    def __init__(self, pairs: List[Dict[str, str]],
-                 tokenizer: PreTrainedTokenizer, max_length: int):
-        self.positive_input_ids = []
-        self.positive_attn_masks = []
-        self.negative_input_ids = []
-        self.negative_attn_masks = []
+    def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer,
+                 split: str, max_length: int):
 
-        for pair in pairs:
-            positive_example, negative_example = pair['positive'], pair[
-                'negative']
-            positive_encodings_dict = tokenizer(
-                positive_example,
-                truncation=True,
-                max_length=max_length,
-                padding='max_length',
-                return_tensors='pt',
-            )
-            negative_encodings_dict = tokenizer(
-                negative_example,
-                truncation=True,
-                max_length=max_length,
-                padding='max_length',
-                return_tensors='pt',
-            )
-            if not positive_encodings_dict or not negative_encodings_dict:
-                raise ValueError('Empty encoding dictionary.')
-            self.positive_input_ids.append(
-                positive_encodings_dict['input_ids'])
-            self.positive_attn_masks.append(
-                positive_encodings_dict['attention_mask'])
-            self.negative_input_ids.append(
-                negative_encodings_dict['input_ids'])
-            self.negative_attn_masks.append(
-                negative_encodings_dict['attention_mask'])
+        self.pairs = self.create_comparison_dataset(data_path, split)
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
     def __len__(self) -> int:
-        return len(self.positive_input_ids)
+        return len(self.pairs)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        return {
-            'positive_input_ids': torch.tensor(self.positive_input_ids[idx]),
-            'positive_attention_mask':
-            torch.tensor(self.positive_attn_masks[idx]),
-            'negative_input_ids': torch.tensor(self.negative_input_ids[idx]),
-            'negative_attention_mask':
-            torch.tensor(self.negative_attn_masks[idx])
+        if idx < 0 or idx >= len(self.pairs):
+            raise IndexError(
+                f'Index {idx} out of range for TLDRDataset with length {len(self)}'
+            )
+        pair = self.pairs[idx]
+        positive_example, negative_example = pair['chosen'], pair['rejected']
+
+        positive_encodings_dict = self.tokenizer(
+            positive_example,
+            truncation=True,
+            max_length=self.max_length,
+            padding='max_length',
+            return_tensors='pt',
+        )
+        negative_encodings_dict = self.tokenizer(
+            negative_example,
+            truncation=True,
+            max_length=self.max_length,
+            padding='max_length',
+            return_tensors='pt',
+        )
+        encodings_input = {}
+        encodings_input['positive_input_ids'] = positive_encodings_dict[
+            'input_ids']
+        encodings_input['positive_attention_mask'] = positive_encodings_dict[
+            'attention_mask']
+        encodings_input['negative_input_ids'] = negative_encodings_dict[
+            'input_ids']
+        encodings_input['negative_attention_mask'] = negative_encodings_dict[
+            'attention_mask']
+
+        encodings_input = {
+            key: torch.tensor(val)
+            for key, val in encodings_input.items()
         }
+
+        return encodings_input
+
+    def create_comparison_dataset(self, path: str, split: str = "train"):
+        dataset = load_dataset(path, split=split)
+        pairs = []
+        for prompt, chosen_summary, rejected_summary in zip(
+                dataset['prompt'], dataset['chosen'], dataset['rejected']):
+            pair = {}
+            if chosen_summary == rejected_summary:
+                continue
+            if len(chosen_summary.split()) < 5 or len(
+                    rejected_summary.split()) < 5:
+                continue
+
+            pair["chosen"] = prompt + "\n" + chosen_summary
+            pair["rejected"] = prompt + "\n" + rejected_summary
+            pairs.append(pair)
+        return pairs
 
 
 class RewardDataCollator:
