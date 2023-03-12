@@ -31,22 +31,20 @@ class TLDRDataset(Dataset):
     """A PyTorch Dataset for TLDR training data.
 
     Args:
-        train_path (str): Path to the training data.
+        data_path (str): Path to the training data.
         tokenizer (PreTrainedTokenizer): The tokenizer to use.
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
     def __init__(self,
-                 train_path: str,
+                 data_path: str,
                  tokenizer: PreTrainedTokenizer,
                  split: str,
                  max_length: int = 550) -> None:
 
-        dataset = load_dataset(train_path, split=split)
+        dataset = load_dataset(data_path, split=split)
         self.post_list = [(sample['prompt'], sample['label'])
                           for sample in dataset]
-        if 'valid' in train_path:
-            self.post_list = self.post_list[0:2000]
         self.tokenizer = tokenizer
         self.max_length = max_length
 
@@ -68,20 +66,26 @@ class TLDRDataset(Dataset):
                 f'Index {idx} out of range for TLDRDataset with length {len(self)}'
             )
 
-        txt = self.post_list[idx]
-        encodings_dict = self.tokenizer(txt,
-                                        truncation=True,
-                                        max_length=self.max_length,
-                                        padding='max_length')
-        input_ids = torch.tensor(encodings_dict['input_ids'])
-        attn_mask = torch.tensor(encodings_dict['attention_mask'])
-        labels = input_ids.clone()
+        input_txt, summary_txt = self.post_list[idx]
+        encodings_input = self.tokenizer(input_txt,
+                                         truncation=True,
+                                         max_length=self.max_length,
+                                         padding='max_length')
 
-        return {
-            'input_ids': input_ids,
-            'attention_mask': attn_mask,
-            'labels': labels
+        encodings_labels = self.tokenizer(summary_txt,
+                                          truncation=True,
+                                          max_length=self.max_length,
+                                          padding='max_length')
+
+        encodings_input['labels'] = encodings_labels['input_ids']
+        encodings_input['summary_attention_mask'] = encodings_labels[
+            'attention_mask']
+        encodings_input = {
+            key: torch.tensor(val)
+            for key, val in encodings_input.items()
         }
+
+        return encodings_input
 
 
 class ComparisonDataset(Dataset):
