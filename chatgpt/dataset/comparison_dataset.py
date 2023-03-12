@@ -9,7 +9,7 @@ class PairwiseDataset(Dataset):
     """Dataset class for pairwise ranking tasks.
 
     Args:
-        pairs: List of dictionaries containing 'positive' and 'negative' keys.
+        data_path: Path to the dataset.
         tokenizer: The tokenizer used to encode the input text.
         max_length: Maximum sequence length for the encoded inputs.
     """
@@ -29,30 +29,30 @@ class PairwiseDataset(Dataset):
                 f'Index {idx} out of range for TLDRDataset with length {len(self)}'
             )
         pair = self.pairs[idx]
-        positive_example, negative_example = pair['chosen'], pair['rejected']
+        chosen_example, rejected_example = pair['chosen'], pair['rejected']
 
-        positive_encodings_dict = self.tokenizer(
-            positive_example,
+        chosen_encodings_dict = self.tokenizer(
+            chosen_example,
             truncation=True,
             max_length=self.max_length,
             padding='max_length',
             return_tensors='pt',
         )
-        negative_encodings_dict = self.tokenizer(
-            negative_example,
+        rejected_encodings_dict = self.tokenizer(
+            rejected_example,
             truncation=True,
             max_length=self.max_length,
             padding='max_length',
             return_tensors='pt',
         )
         encodings_input = {}
-        encodings_input['positive_input_ids'] = positive_encodings_dict[
+        encodings_input['chosen_input_ids'] = chosen_encodings_dict[
             'input_ids']
-        encodings_input['positive_attention_mask'] = positive_encodings_dict[
+        encodings_input['chosen_attention_mask'] = chosen_encodings_dict[
             'attention_mask']
-        encodings_input['negative_input_ids'] = negative_encodings_dict[
+        encodings_input['rejected_input_ids'] = rejected_encodings_dict[
             'input_ids']
-        encodings_input['negative_attention_mask'] = negative_encodings_dict[
+        encodings_input['rejected_attention_mask'] = rejected_encodings_dict[
             'attention_mask']
 
         encodings_input = {
