@@ -1,7 +1,6 @@
 <div align="center">
   <img src="assets/logo.png" width="800"/>
 <div>&nbsp;</div>
-
 </div>
 
 <div align="center">
@@ -20,7 +19,7 @@
 - [Examples](#examples)
   - [Example1: Learning to summarize with human feedback](#example1-learning-to-summarize-with-human-feedback)
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
-    - [Step2：Training the Reward Model](#step2training-the-reward-model)
+    - [Step2: Training the Reward Model](#step2training-the-reward-model)
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
 
 
@@ -126,7 +125,7 @@ python train_opt_summarize.py
 
 The model is evaluated using the ROUGE score. The best model is selected based on the average ROUGE score on the validation set. This model will be used to initialize the reward model, which will be further fine-tuned using PPO.
 
-#### Step2：Training the Reward Model
+#### Step2: Training the Reward Model
 
 Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries to a reward r.
 
