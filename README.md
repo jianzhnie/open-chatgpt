@@ -19,7 +19,7 @@
 - [Examples](#examples)
   - [Example1: Learning to summarize with human feedback](#example1-learning-to-summarize-with-human-feedback)
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
-    - [Step2: Training the Reward Model](#step2training-the-reward-model)
+    - [Step2: Training the Reward Model](#step2-training-the-reward-model)
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
 
 
@@ -65,8 +65,7 @@ The main objective of this stage is to train a reward model by manually labeled 
 Next, use this ranking result data to train the reward model. For multiple ranking results, pairwise combinations form multiple training data pairs. The RM model accepts an input and provides a score that evaluates the quality of the answer. Thus, for a pair of training data, the parameters are adjusted so that the score for a high-quality answer is higher than that for a low-quality answer.
 
 <div align="center">
-  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/reward-model.png
-" width="500"/>
+  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/reward-model.png" width="500"/>
 </div>
 
 ### Step 3: Optimize the Policy Using Reinforcement Learning
