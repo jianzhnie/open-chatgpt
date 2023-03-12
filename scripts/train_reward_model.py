@@ -1,32 +1,10 @@
 import os
-
-from datasets import load_dataset
-from tqdm import tqdm
+import torch.nn as nn
 from transformers import AutoTokenizer, Trainer, TrainingArguments
-
-from chatgpt.dataset.comparison_dataset import (DataCollatorReward,
-                                                PairwiseDataset)
+import evaluate
+import numpy as np
+from chatgpt.dataset.comparison_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import GPTRewardModel
-
-
-def create_comparison_dataset(path='CarperAI/openai_summarize_comparisons',
-                              split='train'):
-    dataset = load_dataset(path, split=split)
-    pairs = []
-    for sample in tqdm(dataset):
-        pair = {}
-        prompt = sample['prompt']
-        chosen_summary = sample['chosen']
-        rejected_summary = sample['rejected']
-        if chosen_summary == rejected_summary:
-            continue
-        if len(chosen_summary.split()) < 5 or len(
-                rejected_summary.split()) < 5:
-            continue
-        pair['chosen'] = prompt + '\n' + chosen_summary
-        pair['rejected'] = prompt + '\n' + rejected_summary
-        pairs.append(pair)
-    return pairs
 
 
 def compute_metrics(eval_preds):
@@ -39,6 +17,32 @@ def compute_metrics(eval_preds):
     result['accuracy'] = acc
 
     return result
+
+
+# Define the metric that we'll use for validation.
+accuracy = evaluate.load("accuracy")
+
+
+def compute_metrics(eval_pred):
+    predictions, _ = eval_pred
+    # Here, predictions is rewards_j and rewards_k.
+    # We want to see how much of the time rewards_j > rewards_k.
+    predictions = np.argmax(predictions, axis=0)
+    labels = np.zeros(predictions.shape)
+    return accuracy.compute(predictions=predictions, references=labels)
+
+
+class RewardTrainer(Trainer):
+    # Define how to compute the reward loss.
+    def compute_loss(self, model, inputs, return_outputs=False):
+        rewards_j = model(input_ids=inputs["input_ids_j"],
+                          attention_mask=inputs["attention_mask_j"])[0]
+        rewards_k = model(input_ids=inputs["input_ids_k"],
+                          attention_mask=inputs["attention_mask_k"])[0]
+        loss = -nn.functional.logsigmoid(rewards_j - rewards_k).mean()
+        if return_outputs:
+            return loss, {"rewards_j": rewards_j, "rewards_k": rewards_k}
+        return loss
 
 
 if __name__ == '__main__':
@@ -81,24 +85,21 @@ if __name__ == '__main__':
 
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
-    train_pairs = create_comparison_dataset(data_path, 'train')
-    val_pairs = create_comparison_dataset(data_path, 'test')
-
     # Make pairwise datasets for training
     max_length = 550
-    train_dataset = PairwiseDataset(train_pairs,
+    train_dataset = PairwiseDataset(data_path,
                                     tokenizer,
+                                    split='train',
                                     max_length=max_length)
-    val_dataset = PairwiseDataset(val_pairs, tokenizer, max_length=max_length)
+    val_dataset = PairwiseDataset(data_path,
+                                  tokenizer,
+                                  split='valid',
+                                  max_length=max_length)
 
-    # Create the collator to gather batches of pairwise comparisons
-    data_collator = DataCollatorReward()
-
-    Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        compute_metrics=compute_metrics,
-        eval_dataset=val_dataset,
-        data_collator=data_collator,
-    ).train()
+    trainer = RewardTrainer(model=model,
+                            args=training_args,
+                            train_dataset=train_dataset,
+                            compute_metrics=compute_metrics,
+                            eval_dataset=val_dataset,
+                            daata_collator=None)
+    trainer.train()
