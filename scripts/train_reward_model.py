@@ -6,19 +6,6 @@ import numpy as np
 from chatgpt.dataset.comparison_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import GPTRewardModel
 
-
-def compute_metrics(eval_preds):
-    chosen_end_scores = eval_preds.predictions[0]  # chosen scores
-    rejected_end_scores = eval_preds.predictions[1]  # rejected scores
-
-    result = {}
-    acc = sum(
-        chosen_end_scores > rejected_end_scores) / len(rejected_end_scores)
-    result['accuracy'] = acc
-
-    return result
-
-
 # Define the metric that we'll use for validation.
 accuracy = evaluate.load("accuracy")
 
@@ -46,7 +33,7 @@ class RewardTrainer(Trainer):
 
 
 if __name__ == '__main__':
-    tokenizer = AutoTokenizer.from_pretrained('EleutherAI/gpt-j-6B')
+    tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     tokenizer.pad_token = tokenizer.eos_token
 
     if not os.path.exists('rm_checkpoint'):
@@ -56,11 +43,11 @@ if __name__ == '__main__':
         output_dir='rm_checkpoint/',
         num_train_epochs=5,
         logging_steps=10,
-        gradient_accumulation_steps=4,
+        gradient_accumulation_steps=2,
         save_strategy='steps',
         evaluation_strategy='steps',
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
         eval_accumulation_steps=1,
         eval_steps=500,
         save_steps=500,
@@ -74,7 +61,7 @@ if __name__ == '__main__':
     )
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
-    model = GPTRewardModel('CarperAI/openai_summarize_tldr_sft')
+    model = GPTRewardModel(model_path='facebook/opt-125m')
 
     # Freeze the first 70% of the hidden layers of the reward model backbone
     layers = model.transformer.h
