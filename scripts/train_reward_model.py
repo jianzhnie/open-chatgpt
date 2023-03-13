@@ -1,13 +1,15 @@
 import os
-import torch.nn as nn
-from transformers import AutoTokenizer, Trainer, TrainingArguments
+
 import evaluate
 import numpy as np
+from transformers import AutoTokenizer, Trainer, TrainingArguments
+
 from chatgpt.dataset.comparison_dataset import PairwiseDataset
-from chatgpt.rlhf.reward_model import GPTRewardModel
+from chatgpt.rlhf.pairwise_loss import PairwiseLoss
+from chatgpt.rlhf.reward_model import RewardModel
 
 # Define the metric that we'll use for validation.
-accuracy = evaluate.load("accuracy")
+accuracy = evaluate.load('accuracy')
 
 
 def compute_metrics(eval_pred):
@@ -21,20 +23,28 @@ def compute_metrics(eval_pred):
 
 class RewardTrainer(Trainer):
     # Define how to compute the reward loss.
+    loss_fn = PairwiseLoss()
+
     def compute_loss(self, model, inputs, return_outputs=False):
-        rewards_j = model(input_ids=inputs["input_ids_j"],
-                          attention_mask=inputs["attention_mask_j"])[0]
-        rewards_k = model(input_ids=inputs["input_ids_k"],
-                          attention_mask=inputs["attention_mask_k"])[0]
-        loss = -nn.functional.logsigmoid(rewards_j - rewards_k).mean()
+        rewards_choosen = model(input_ids=inputs['chosen_input_ids'],
+                                attention_mask=inputs['chosen_attention_mask'])
+        rewards_rejected = model(
+            input_ids=inputs['rejected_input_ids'],
+            attention_mask=inputs['rejected_attention_mask'])
+
+        loss = loss_fn(rewards_choosen, rewards_rejected)
         if return_outputs:
-            return loss, {"rewards_j": rewards_j, "rewards_k": rewards_k}
+            return loss, {
+                'rewards_choosen': rewards_choosen,
+                'rewards_rejected': rewards_rejected
+            }
         return loss
 
 
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     tokenizer.pad_token = tokenizer.eos_token
+    loss_fn = PairwiseLoss()
 
     if not os.path.exists('rm_checkpoint'):
         os.mkdir('rm_checkpoint')
@@ -61,7 +71,7 @@ if __name__ == '__main__':
     )
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
-    model = GPTRewardModel(model_path='facebook/opt-125m')
+    model = RewardModel(model='opt', pretrained='facebook/opt-125m')
 
     # Freeze the first 70% of the hidden layers of the reward model backbone
     layers = model.transformer.h

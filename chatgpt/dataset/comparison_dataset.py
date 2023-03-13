@@ -74,8 +74,8 @@ class PairwiseDataset(Dataset):
                     rejected_summary.split()) < 5:
                 continue
 
-            pair["chosen"] = prompt + "\n" + chosen_summary
-            pair["rejected"] = prompt + "\n" + rejected_summary
+            pair["chosen"] = prompt + "\n" + chosen_summary + '<|endoftext|>'
+            pair["rejected"] = prompt + "\n" + rejected_summary + '<|endoftext|>'
             pairs.append(pair)
         return pairs
 
