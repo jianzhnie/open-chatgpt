@@ -132,3 +132,6 @@ chatllama/
 data/
 opt-supervised-summarize-checkpoint/
 wandb/
+logs/
+rm_checkpoint/
+assets/

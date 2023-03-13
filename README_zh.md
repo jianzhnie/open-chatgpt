@@ -11,7 +11,7 @@
 </div>
 
 
-##  ChatGPT 
+##  ChatGPT
 OpenAI 推出的 ChatGPT 对话模型掀起了新的 AI 热潮，它面对多种多样的问题对答如流，似乎已经打破了机器和人的边界。这一工作的背后是大型语言模型 (Large Language Model，LLM) 生成领域的新训练范式：RLHF (Reinforcement Learning from Human Feedback) ，即以强化学习方式依据人类反馈优化语言模型。
 
 ## 人类反馈强化学习(RLHF)
@@ -48,11 +48,11 @@ GPT 3.5本身很难理解人类不同类型指令中蕴含的不同意图，也�
 
 另外，可以使用HuggingFace上提供的现有数据集来引导训练。其中高质量的候选数据集包括Anthropic HH RLHF和Stanford Human Preference数据集。
 
-- [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf) 
+- [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)
 
 该数据集包含结构化的问题/回答对和一个带有LLM聊天机器人的选定和被拒绝的回答。
 
-- [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP) 
+- [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP)
 
 该数据集是从选定的“问答”子版面中精选出来的，包含了涵盖广泛的问题/答案对，这些问题是基于最受欢迎的回答而选择的。与HH RLHF不同，这个数据集的目的不是通过选择聊天机器人的理想回答来减少有害性，而是通过加权最有帮助的人类回答来实现这一目的。
 

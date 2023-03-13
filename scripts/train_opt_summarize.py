@@ -2,14 +2,15 @@ import random
 import sys
 
 import evaluate
+import nltk
 import numpy as np
 import torch
-import nltk
 
 sys.path.append('../')
-from transformers import (AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainer,
-                          Seq2SeqTrainingArguments, DataCollatorForSeq2Seq,
-                          default_data_collator)
+from transformers import (AutoModelForSeq2SeqLM, AutoTokenizer,
+                          DataCollatorForSeq2Seq, Seq2SeqTrainer,
+                          Seq2SeqTrainingArguments, default_data_collator)
+
 from chatgpt.dataset.summarize_dataset import TLDRDataset
 
 
@@ -65,11 +66,11 @@ if __name__ == '__main__':
                                                 skip_special_tokens=True)
         # Rouge expects a newline after each sentence
         decoded_preds = [
-            "\n".join(nltk.sent_tokenize(pred.strip()))
+            '\n'.join(nltk.sent_tokenize(pred.strip()))
             for pred in decoded_preds
         ]
         decoded_labels = [
-            "\n".join(nltk.sent_tokenize(label.strip()))
+            '\n'.join(nltk.sent_tokenize(label.strip()))
             for label in decoded_labels
         ]
 
@@ -86,7 +87,7 @@ if __name__ == '__main__':
             np.count_nonzero(pred != tokenizer.pad_token_id)
             for pred in predictions
         ]
-        result["gen_len"] = np.mean(prediction_lens)
+        result['gen_len'] = np.mean(prediction_lens)
         return result
 
     # Create a preprocessing function to extract out the proper logits from the model output
