@@ -75,33 +75,3 @@ class PairwiseDataset(Dataset):
                 'rejected'] = prompt + '\n' + rejected_summary + '<|endoftext|>'
             pairs.append(pair)
         return pairs
-
-
-class RewardDataCollator:
-    """A data collator for binary classification tasks.
-
-    Args:
-        data (list): A list of tuples containing tensors of the same size.
-    Returns:
-        A dictionary containing concatenated input tensors and labels.
-    """
-
-    def __call__(self,
-                 data: List[Tuple[torch.Tensor]]) -> Dict[str, torch.Tensor]:
-        # Check that the input data is a list of tuples containing tensors of the same size
-        if not isinstance(data, list) or len(data) == 0:
-            raise ValueError('Input data must be a non-empty list.')
-
-        # Concatenate the input tensors using default_collate
-        input_ids = torch.cat([x[0] for x in data] + [x[2] for x in data])
-        attention_masks = torch.cat([x[1]
-                                     for x in data] + [x[3] for x in data])
-        labels = torch.cat([torch.zeros(len(data)), torch.ones(len(data))])
-
-        batch = {
-            'input_ids': input_ids,
-            'attention_mask': attention_masks,
-            'labels': labels
-        }
-
-        return batch
