@@ -14,6 +14,7 @@ class PairwiseDataset(Dataset):
         tokenizer: The tokenizer used to encode the input text.
         max_length: Maximum sequence length for the encoded inputs.
     """
+
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer,
                  split: str, max_length: int):
 
@@ -84,6 +85,7 @@ class RewardDataCollator:
     Returns:
         A dictionary containing concatenated input tensors and labels.
     """
+
     def __call__(self,
                  data: List[Tuple[torch.Tensor]]) -> Dict[str, torch.Tensor]:
         # Check that the input data is a list of tuples containing tensors of the same size

@@ -11,13 +11,16 @@ from .pairwise_loss import PairWiseLoss
 
 @dataclass
 class RewardModelOutput(ModelOutput):
-    """Base class for outputs of sentence classification models.
+    """
+    A class representing the output of a reward-based machine learning model.
 
-    Args:
-        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
-            Classification (or regression if config.num_labels==1) loss.
+    Attributes:
+        loss (`Optional[torch.FloatTensor]`, optional): The classification or regression loss of the model.
+        rewards_chosen (`torch.FloatTensor`): The rewards for the chosen actions.
+        rewards_rejected (`torch.FloatTensor`): The rewards for the rejected actions.
     """
 
+    # Define class attributes with type annotations and default values
     loss: Optional[torch.FloatTensor] = None
     rewards_chosen: torch.FloatTensor = None
     rewards_rejected: torch.FloatTensor = None
@@ -30,6 +33,7 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
@@ -55,13 +59,16 @@ class RewardModel(nn.Module):
         rejected_input_ids: torch.LongTensor,
         chosen_attention_mask: Optional[torch.Tensor] = None,
         rejected_attention_mask: Optional[torch.Tensor] = None,
-        return_dict=None,
+        return_dict: bool = True,
     ) -> torch.Tensor:
         """Forward pass of the model.
 
         Args:
-            input_ids (torch.LongTensor): Input tensor of token ids.
-            attention_mask (Optional[torch.Tensor]): Input tensor of attention masks.
+            chosen_input_ids (torch.LongTensor): Tensor of token ids for the chosen sequence.
+            rejected_input_ids (torch.LongTensor): Tensor of token ids for the rejected sequence.
+            chosen_attention_mask (Optional[torch.Tensor]): Tensor of attention masks for the chosen sequence.
+            rejected_attention_mask (Optional[torch.Tensor]): Tensor of attention masks for the rejected sequence.
+            return_dict (Optional[bool]): Whether to return a dictionary of outputs instead of a tuple.
 
         Returns:
             torch.Tensor: Output tensor of value estimates.
@@ -91,7 +98,7 @@ class RewardModel(nn.Module):
         loss = self.loss_fn(rewards_chosen, rewards_rejected)
 
         if not return_dict:
-            output = (loss, ) + rewards_chosen + rewards_rejected
+            output = (loss, rewards_chosen, rewards_rejected)
             return output
 
         return RewardModelOutput(loss=loss,
