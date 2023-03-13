@@ -1,8 +1,9 @@
 from typing import Dict, List, Tuple
+
 import torch
+from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
-from datasets import load_dataset
 
 
 class PairwiseDataset(Dataset):
@@ -31,20 +32,14 @@ class PairwiseDataset(Dataset):
         pair = self.pairs[idx]
         chosen_example, rejected_example = pair['chosen'], pair['rejected']
 
-        chosen_encodings_dict = self.tokenizer(
-            chosen_example,
-            truncation=True,
-            max_length=self.max_length,
-            padding='max_length',
-            return_tensors='pt',
-        )
-        rejected_encodings_dict = self.tokenizer(
-            rejected_example,
-            truncation=True,
-            max_length=self.max_length,
-            padding='max_length',
-            return_tensors='pt',
-        )
+        chosen_encodings_dict = self.tokenizer(chosen_example,
+                                               truncation=True,
+                                               max_length=self.max_length,
+                                               padding='max_length')
+        rejected_encodings_dict = self.tokenizer(rejected_example,
+                                                 truncation=True,
+                                                 max_length=self.max_length,
+                                                 padding='max_length')
         encodings_input = {}
         encodings_input['chosen_input_ids'] = chosen_encodings_dict[
             'input_ids']
@@ -62,7 +57,7 @@ class PairwiseDataset(Dataset):
 
         return encodings_input
 
-    def create_comparison_dataset(self, path: str, split: str = "train"):
+    def create_comparison_dataset(self, path: str, split: str = 'train'):
         dataset = load_dataset(path, split=split)
         pairs = []
         for prompt, chosen_summary, rejected_summary in zip(
@@ -74,8 +69,9 @@ class PairwiseDataset(Dataset):
                     rejected_summary.split()) < 5:
                 continue
 
-            pair["chosen"] = prompt + "\n" + chosen_summary + '<|endoftext|>'
-            pair["rejected"] = prompt + "\n" + rejected_summary + '<|endoftext|>'
+            pair['chosen'] = prompt + '\n' + chosen_summary + '<|endoftext|>'
+            pair[
+                'rejected'] = prompt + '\n' + rejected_summary + '<|endoftext|>'
             pairs.append(pair)
         return pairs
 
