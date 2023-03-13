@@ -14,6 +14,7 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
@@ -30,7 +31,7 @@ class RewardModel(nn.Module):
 
         # Get the model's config and create a value head
         self.config = self.model.config
-        self.value_head = nn.Linear(self.config.n_embd, 1)
+        self.value_head = nn.Linear(self.config.word_embed_proj_dim, 1)
 
     def forward(self,
                 input_ids: torch.LongTensor,

@@ -1,12 +1,13 @@
 import os
-
+import sys
 import evaluate
 import numpy as np
-from transformers import AutoTokenizer, Trainer, TrainingArguments
+from transformers import AutoTokenizer, Trainer, TrainingArguments, default_data_collator
 
+sys.path.append('../')
 from chatgpt.dataset.comparison_dataset import PairwiseDataset
-from chatgpt.rlhf.pairwise_loss import PairwiseLoss
 from chatgpt.rlhf.reward_model import RewardModel
+from chatgpt.rlhf.pairwise_loss import PairWiseLoss
 
 # Define the metric that we'll use for validation.
 accuracy = evaluate.load('accuracy')
@@ -23,9 +24,13 @@ def compute_metrics(eval_pred):
 
 class RewardTrainer(Trainer):
     # Define how to compute the reward loss.
-    loss_fn = PairwiseLoss()
+    loss_fn = PairWiseLoss()
 
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self,
+                     model,
+                     inputs,
+                     loss_fn=loss_fn,
+                     return_outputs=False):
         rewards_choosen = model(input_ids=inputs['chosen_input_ids'],
                                 attention_mask=inputs['chosen_attention_mask'])
         rewards_rejected = model(
@@ -44,7 +49,6 @@ class RewardTrainer(Trainer):
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     tokenizer.pad_token = tokenizer.eos_token
-    loss_fn = PairwiseLoss()
 
     if not os.path.exists('rm_checkpoint'):
         os.mkdir('rm_checkpoint')
@@ -62,24 +66,14 @@ if __name__ == '__main__':
         eval_steps=500,
         save_steps=500,
         warmup_steps=100,
-        logging_dir='./logs',
         fp16=True,
-        bf16=False,
+        logging_dir='./logs',
         learning_rate=1e-5,
-        deepspeed='ds_config_gpt_j.json',
         save_total_limit=1,
     )
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
     model = RewardModel(model='opt', pretrained='facebook/opt-125m')
-
-    # Freeze the first 70% of the hidden layers of the reward model backbone
-    layers = model.transformer.h
-    num_layers = len(layers)
-    num_unfrozen = int(0.3 * num_layers)
-    for layer in layers[:-num_unfrozen]:
-        layer.requires_grad_(False)
-
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
     # Make pairwise datasets for training
@@ -90,7 +84,7 @@ if __name__ == '__main__':
                                     max_length=max_length)
     val_dataset = PairwiseDataset(data_path,
                                   tokenizer,
-                                  split='valid',
+                                  split='valid1',
                                   max_length=max_length)
 
     trainer = RewardTrainer(model=model,
@@ -98,5 +92,5 @@ if __name__ == '__main__':
                             train_dataset=train_dataset,
                             compute_metrics=compute_metrics,
                             eval_dataset=val_dataset,
-                            daata_collator=None)
+                            data_collator=default_data_collator)
     trainer.train()
