@@ -21,6 +21,12 @@
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
     - [Step2: Training the Reward Model](#step2-training-the-reward-model)
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
+- [Installation](#installation)
+- [Support Model](#support-model)
+  - [GPT](#gpt)
+  - [BLOOM](#bloom)
+  - [OPT](#opt)
+- [Support RL Algorithms](#support-rl-algorithms)
 
 
 ## Introduction
@@ -99,7 +105,7 @@ Alternatively, training can be bootstrapped using a pre-existing dataset availab
 | [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf) | This dataset consists of structured question/response pairs with a LLM chatbot that include chosen and rejected responses. |      |
 | [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP) | This dataset is curated from selected "ask" subreddits and contains questions spanning a wide array of question/answer pairs based on the most upvoted responses. |      |
 | [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr) | The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human. |      |
-|                   [Comparisons dataset]()                    | It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred. |      |
+|                   [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons)                    | It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred. |      |
 
 </p>
 </details>
@@ -113,7 +119,7 @@ Alternatively, training can be bootstrapped using a pre-existing dataset availab
 
 #### Step1: Supervised Fine-Tuning (SFT)
 
-Firstly, we will fine-tune the transformer model for text summarization on the `TL;DR` dataset.
+Firstly, we will fine-tune the transformer model for text summarization on the [`TL;DR`](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr) dataset.
 
 This is relatively straightforward. Load the dataset, tokenize it, and then train the model. The entire pipeline is built using HuggingFace.
 
@@ -126,11 +132,13 @@ The model is evaluated using the ROUGE score. The best model is selected based o
 
 #### Step2: Training the Reward Model
 
-Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries.
+Our reward model is trained on a collected human quality judgement dataset [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons), You can download the dataset from huggingface automatically.
 
 We will initialize the reward model from the SFT model and attach a randomly initialized linear head to output a scalar value on top.
 
 Next, we will delve into how the data is input to the model, the loss function, and other issues with the reward model.
+
+Use these code to train your reward model.
 
 ```shell
 cd scripts/
@@ -139,8 +147,42 @@ python train_reward_model.py
 
 #### Step3: Fine-Tuning the Model using PPO
 
+We use [awesome-chatgpt-prompts](https://huggingface.co/datasets/fka/awesome-chatgpt-prompts) as example dataset. It is a small dataset with hundreds of prompts.
+
 ```python
 ```
 
 </p>
 </details>
+
+
+## Installation
+
+```bash
+git clone https://github.com/jianzhnie/open-chatgpt.git
+pip install -r requirements.txt
+```
+
+## Support Model
+
+### GPT
+- [x]  GPT2-S (s)
+- [x]  GPT2-M (m)
+- [x]  GPT2-L (l)
+  ...
+
+### BLOOM
+- [x] [BLOOM-560m](https://huggingface.co/bigscience/bloom-560m)
+- [x] [BLOOM-1b1](https://huggingface.co/bigscience/bloom-1b1)
+  ...
+
+### OPT
+- [x] [OPT-125M](https://huggingface.co/facebook/opt-125m)
+- [x] [OPT-350M](https://huggingface.co/facebook/opt-350m)
+  ...
+
+
+## Support RL Algorithms
+
+- PPO
+- A2C
