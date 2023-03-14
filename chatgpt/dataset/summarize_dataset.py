@@ -15,7 +15,6 @@ class TLDRDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
-
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -59,8 +58,6 @@ class TLDRDataset(Dataset):
                                               padding='max_length')
 
         encodings_input['labels'] = encodings_labels['input_ids']
-        encodings_input['summary_attention_mask'] = encodings_labels[
-            'attention_mask']
         encodings_input = {
             key: torch.tensor(val)
             for key, val in encodings_input.items()
