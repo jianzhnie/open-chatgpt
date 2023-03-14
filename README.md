@@ -12,9 +12,9 @@
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Illustrating  RLHF](#illustrating--rlhf)
-  - [Step 1: Train Supervised Fine-Tuning (SFT) Policy Model](#step-1-train-supervised-fine-tuning-sft-policy-model)
+  - [Step 1: Train Supervised Fine-Tuning (SFT)](#step-1-train-supervised-fine-tuning-sft)
   - [Step 2: Train Reward Model (RM)](#step-2-train-reward-model-rm)
-  - [Step 3: Optimize the Policy Using Reinforcement Learning](#step-3-optimize-the-policy-using-reinforcement-learning)
+  - [Step 3: Optimize the Policy Using Reinforcement Learning(RLHF)](#step-3-optimize-the-policy-using-reinforcement-learningrlhf)
 - [RLHF Dataset preparation](#rlhf-dataset-preparation)
 - [Examples](#examples)
   - [Example1: Learning to summarize with human feedback](#example1-learning-to-summarize-with-human-feedback)
@@ -46,7 +46,7 @@ Reinforcement learning from human feedback (RLHF) is a challenging concept as it
 *<a href="https://openai.com/blog/chatgpt/">official chatgpt blogpost</a>*
 </div>
 
-### Step 1: Train Supervised Fine-Tuning (SFT) Policy Model
+### Step 1: Train Supervised Fine-Tuning (SFT)
 
 GPT 3.5 itself has difficulty in understanding the different intentions implied in various types of human instructions, and it is also difficult to judge whether the generated content is of high quality. To make [GPT 3.5](https://arxiv.org/abs/2203.02155) initially understand the intent of instructions, high-quality answers are given by human annotators for randomly selected questions in the dataset, and the GPT-3.5 model is fine-tuned with these manually labeled data to obtain the SFT model (Supervised Fine-Tuning).
 
@@ -68,7 +68,7 @@ Next, use this ranking result data to train the reward model. For multiple ranki
   <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/reward-model.png" width="500"/>
 </div>
 
-### Step 3: Optimize the Policy Using Reinforcement Learning
+### Step 3: Optimize the Policy Using Reinforcement Learning(RLHF)
 
 Finally, once we have the trained SFT model and reward model (RM), we can use reinforcement learning (RL) to fine-tune the SFT model based on feedback using RM. This step keeps our SFT model aligned with human preferences.
 
@@ -92,7 +92,7 @@ If you want to learn more details about RLHF technology, I strongly recommend re
 
 To successfully train a ChatGPT-like assistant, you need 3 different datasets: `actor_training_data`, `rlhf_training_data` and `reward_training_data`.
 
-Alternatively, training can be bootstrapped using a pre-existing dataset available on HuggingFace.  High quality candidates are namely the Anthropic HH RLHF and the Stanford Human Preference datasets.
+Alternatively, training can be bootstrapped using a pre-existing dataset available on HuggingFace.  High quality candidates are namely the `Anthropic HH RLHF` and the `Stanford Human Preference datasets`, `Reddit TL;DR dataset` and  `Comparisons datasets`.
 
 |                           Dataset                            |                         Description                          |      |
 | :----------------------------------------------------------: | :----------------------------------------------------------: | ---- |
@@ -117,7 +117,7 @@ Firstly, we will fine-tune the transformer model for text summarization on the `
 
 This is relatively straightforward. Load the dataset, tokenize it, and then train the model. The entire pipeline is built using HuggingFace.
 
-```python
+```shell
 cd scripts/
 python train_opt_summarize.py
 ```
@@ -126,14 +126,15 @@ The model is evaluated using the ROUGE score. The best model is selected based o
 
 #### Step2: Training the Reward Model
 
-Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries to a reward r.
+Our reward model is trained on a collected human quality judgement dataset. The model maps given posts and candidate summaries.
 
 We will initialize the reward model from the SFT model and attach a randomly initialized linear head to output a scalar value on top.
 
 Next, we will delve into how the data is input to the model, the loss function, and other issues with the reward model.
 
-```python
-python train_reward_model_opt.py
+```shell
+cd scripts/
+python train_reward_model.py
 ```
 
 #### Step3: Fine-Tuning the Model using PPO
