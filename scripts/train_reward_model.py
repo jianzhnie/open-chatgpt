@@ -8,6 +8,18 @@ sys.path.append('../')
 from chatgpt.dataset.comparison_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import RewardModel
 
+
+def compute_metrics(eval_preds):
+    chosen_reward = eval_preds.predictions[1]  # chosen scores
+    rejected_reward = eval_preds.predictions[2]  # rejected scores
+
+    result = {}
+    acc = sum(chosen_reward > rejected_reward) / len(chosen_reward)
+    result["accuracy"] = acc
+
+    return result
+
+
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     tokenizer.pad_token = tokenizer.eos_token
@@ -19,7 +31,7 @@ if __name__ == '__main__':
         output_dir='rm_checkpoint/',
         num_train_epochs=5,
         logging_steps=10,
-        gradient_accumulation_steps=2,
+        gradient_accumulation_steps=4,
         save_strategy='steps',
         evaluation_strategy='steps',
         per_device_train_batch_size=8,
@@ -29,9 +41,9 @@ if __name__ == '__main__':
         save_steps=500,
         warmup_steps=100,
         fp16=True,
-        logging_dir='./logs',
         learning_rate=1e-5,
-        save_total_limit=1,
+        save_total_limit=5,
+        logging_dir='./logs',
     )
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
@@ -39,15 +51,14 @@ if __name__ == '__main__':
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
     # Make pairwise datasets for training
-    max_length = 550
     train_dataset = PairwiseDataset(data_path,
                                     tokenizer,
                                     split='train',
-                                    max_length=max_length)
+                                    max_length=512)
     val_dataset = PairwiseDataset(data_path,
                                   tokenizer,
                                   split='valid1',
-                                  max_length=max_length)
+                                  max_length=512)
 
     trainer = Trainer(model=model,
                       args=training_args,
