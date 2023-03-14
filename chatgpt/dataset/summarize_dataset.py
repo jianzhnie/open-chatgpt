@@ -20,7 +20,7 @@ class TLDRDataset(Dataset):
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
                  split: str,
-                 max_length: int = 550) -> None:
+                 max_length: int = 512) -> None:
 
         dataset = load_dataset(data_path, split=split)
         self.post_list = [(sample['prompt'], sample['label'])

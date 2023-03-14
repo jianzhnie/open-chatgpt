@@ -50,6 +50,7 @@ class PairwiseDataset(Dataset):
             'input_ids']
         encodings_input['rejected_attention_mask'] = rejected_encodings_dict[
             'attention_mask']
+        encodings_input['labels'] = 1.0
 
         encodings_input = {
             key: torch.tensor(val)
@@ -76,4 +77,4 @@ class PairwiseDataset(Dataset):
                 'rejected'] = "<|startoftext|>" + prompt + '\n' + rejected_summary + '<|endoftext|>'
             pairs.append(pair)
 
-        return pairs[:200]
+        return pairs
