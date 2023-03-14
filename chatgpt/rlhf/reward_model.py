@@ -49,14 +49,12 @@ class RewardModel(nn.Module):
         self.value_head = nn.Linear(self.config.word_embed_proj_dim, 1)
         self.loss_fn = PairWiseLoss()
 
-    def forward(
-        self,
-        chosen_input_ids: torch.LongTensor,
-        rejected_input_ids: torch.LongTensor,
-        chosen_attention_mask: Optional[torch.Tensor] = None,
-        rejected_attention_mask: Optional[torch.Tensor] = None,
-        return_dict=None,
-    ) -> torch.Tensor:
+    def forward(self,
+                chosen_input_ids: torch.LongTensor,
+                rejected_input_ids: torch.LongTensor,
+                chosen_attention_mask: Optional[torch.Tensor] = None,
+                rejected_attention_mask: Optional[torch.Tensor] = None,
+                return_dict=None) -> torch.Tensor:
         """Forward pass of the model.
 
         Args:
