@@ -1,8 +1,8 @@
+import os
 import random
 import sys
-import os
+
 import evaluate
-import nltk
 import numpy as np
 import torch
 

@@ -1,12 +1,11 @@
 import os
 import sys
 
-from transformers import (AutoTokenizer, Trainer, TrainingArguments,
-                          EarlyStoppingCallback, EvalPrediction,
-                          default_data_collator)
+from transformers import (AutoTokenizer, EarlyStoppingCallback, EvalPrediction,
+                          Trainer, TrainingArguments, default_data_collator)
 
 sys.path.append('../')
-from chatgpt.dataset.comparison_dataset import PairwiseDataset
+from chatgpt.dataset.reward_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import RewardModel
 
 
@@ -16,7 +15,7 @@ def compute_metrics(eval_preds: EvalPrediction):
 
     result = {}
     acc = sum(chosen_reward > rejected_reward) / len(chosen_reward)
-    result["accuracy"] = acc
+    result['accuracy'] = acc
 
     return result
 
