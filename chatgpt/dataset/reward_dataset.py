@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import torch
 from datasets import load_dataset
@@ -71,9 +71,9 @@ class PairwiseDataset(Dataset):
                 continue
 
             pair[
-                'chosen'] = "<|startoftext|>" + prompt + '\n' + chosen_summary + '<|endoftext|>'
+                'chosen'] = '<|startoftext|>' + prompt + '\n' + chosen_summary + '<|endoftext|>'
             pair[
-                'rejected'] = "<|startoftext|>" + prompt + '\n' + rejected_summary + '<|endoftext|>'
+                'rejected'] = '<|startoftext|>' + prompt + '\n' + rejected_summary + '<|endoftext|>'
             pairs.append(pair)
 
         return pairs
