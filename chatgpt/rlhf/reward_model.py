@@ -30,29 +30,35 @@ class Pooler(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
+        self.activation = nn.Tanh()
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         # We "pool" the model by simply taking the hidden state corresponding
         # to the first token.
         first_token_tensor = hidden_states[:, 0]
-        pooled_output = self.dense(first_token_tensor)
-        return pooled_output
+        pooled = self.dense(first_token_tensor)
+        pooled = self.activation(pooled)
+        return pooled
 
 
 class MeanPooler(nn.Module):
+    """Applies a mean pooling on the hidden states of the last layer of the transformer model."""
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
+        self.activation = nn.Tanh()
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        # We "pool" the model by simply taking the hidden state corresponding
-        # to the first token.
-        mean_token_tensor = torch.mean(hidden_states)
-        pooled_output = self.dense(mean_token_tensor)
-        return pooled_output
+    def forward(self, hidden_states):
+        """Applies mean pooling on the hidden states of the last layer of the transformer model."""
+        # Calculate the mean of the hidden states of the last layer
+        pooled = hidden_states.mean(dim=1)
+        # Apply a linear layer followed by a tanh activation function
+        pooled = self.dense(pooled)
+        pooled = self.activation(pooled)
+        return pooled
 
 
-class RewardModel(nn.Module):
+class PairedRewardModel(nn.Module):
     """GPT Reward model.
 
     Args:
@@ -130,3 +136,62 @@ class RewardModel(nn.Module):
         return RewardModelOutput(loss=loss,
                                  rewards_chosen=rewards_chosen,
                                  rewards_rejected=rewards_rejected)
+
+
+class RewardModel(nn.Module):
+    """GPT Reward model.
+
+    Args:
+        model (str): Model name: 'opt', 'gpt2' or 'bloom'
+        pretrained (str): Pretrained model name or path.
+    """
+    def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
+        super().__init__()
+        # Instantiate model based on input string
+        if model == 'opt':
+            self.model = OPTModel.from_pretrained(pretrained)
+        elif model == 'gpt2':
+            self.model = GPT2Model.from_pretrained(pretrained)
+        elif model == 'bloom':
+            self.model = BloomModel.from_pretrained(pretrained)
+        else:
+            # If the model string is invalid, raise an error
+            raise ValueError(
+                "Invalid model name. Choose 'opt', 'gpt2' or 'bloom'.")
+
+        # Get the model's config and create a value head
+        self.config = self.model.config
+
+        if model == 'opt':
+            self.config.hidden_size = self.config.word_embed_proj_dim
+        self.pooler = MeanPooler(self.config.hidden_size)
+        self.value_head = nn.Linear(self.config.hidden_size, 1)
+
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        return_dict: Optional[bool] = None,
+    ) -> torch.Tensor:
+        """Forward pass of the model.
+
+        Args:
+            input_ids (torch.LongTensor): Tensor of token ids for the input sequence.
+            attention_mask (Optional[torch.Tensor]): Tensor indicating which tokens are padding tokens.
+            return_dict (Optional[bool]): Whether to return a dictionary of outputs instead of a tensor.
+
+        Returns:
+            torch.Tensor: Output tensor of value estimates.
+        """
+        # If return_dict is not specified, use the default value
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        # Get the model's outputs and extract the last hidden state
+        outputs = self.model(input_ids=input_ids,
+                             attention_mask=attention_mask,
+                             return_dict=return_dict)
+        last_hidden_states = outputs['last_hidden_state']
+
+        # Calculate the values and return the mean value for each sequence
+        pooled_output = self.pooler(last_hidden_states)
+        values = self.value_head(pooled_output)
+        return values
