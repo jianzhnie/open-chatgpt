@@ -6,7 +6,7 @@ from transformers import (AutoTokenizer, EarlyStoppingCallback, EvalPrediction,
 
 sys.path.append('../')
 from chatgpt.dataset.reward_dataset import PairwiseDataset
-from chatgpt.rlhf.reward_model import RewardModel
+from chatgpt.rlhf.reward_model import PairedRewardModel
 
 
 def compute_metrics(eval_preds: EvalPrediction):
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         seed=42)
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
-    model = RewardModel(model='opt', pretrained='facebook/opt-125m')
+    model = PairedRewardModel(model='opt', pretrained='facebook/opt-125m')
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
     # Make pairwise datasets for training
