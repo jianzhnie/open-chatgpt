@@ -11,8 +11,8 @@ from .pairwise_loss import PairWiseLoss
 
 @dataclass
 class RewardModelOutput(ModelOutput):
-    """
-    A class representing the output of a reward-based machine learning model.
+    """A class representing the output of a reward-based machine learning
+    model.
 
     Attributes:
         loss (`Optional[torch.FloatTensor]`, optional): The classification or regression loss of the model.
@@ -26,6 +26,32 @@ class RewardModelOutput(ModelOutput):
     rewards_rejected: torch.FloatTensor = None
 
 
+class Pooler(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.dense = nn.Linear(hidden_size, hidden_size)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token.
+        first_token_tensor = hidden_states[:, 0]
+        pooled_output = self.dense(first_token_tensor)
+        return pooled_output
+
+
+class MeanPooler(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.dense = nn.Linear(hidden_size, hidden_size)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token.
+        mean_token_tensor = torch.mean(hidden_states)
+        pooled_output = self.dense(mean_token_tensor)
+        return pooled_output
+
+
 class RewardModel(nn.Module):
     """GPT Reward model.
 
@@ -33,7 +59,6 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
-
     def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
@@ -86,13 +111,13 @@ class RewardModel(nn.Module):
         rewards_chosen = values_chosen.mean(dim=1).squeeze(1)
 
         # Get the model's outputs and extract the last hidden state
-
         outputs_rejected = self.model(input_ids=rejected_input_ids,
                                       attention_mask=rejected_attention_mask,
                                       return_dict=return_dict)
         last_hidden_states_rejected = outputs_rejected['last_hidden_state']
 
         # Calculate the values and return the mean value for each sequence
+
         values_rejected = self.value_head(last_hidden_states_rejected)[:, :-1]
         rewards_rejected = values_rejected.mean(dim=1).squeeze(1)
 
