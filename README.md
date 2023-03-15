@@ -23,10 +23,6 @@
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
 - [Installation](#installation)
 - [Support Model](#support-model)
-  - [GPT](#gpt)
-  - [BLOOM](#bloom)
-  - [OPT](#opt)
-- [Support RL Algorithms](#support-rl-algorithms)
 
 
 ## Introduction
@@ -165,24 +161,14 @@ pip install -r requirements.txt
 
 ## Support Model
 
-### GPT
-- [x]  GPT2-S (s)
-- [x]  GPT2-M (m)
-- [x]  GPT2-L (l)
-  ...
+<details><summary><b><i> LLM </i></b></summary>
 
-### BLOOM
-- [x] [BLOOM-560m](https://huggingface.co/bigscience/bloom-560m)
-- [x] [BLOOM-1b1](https://huggingface.co/bigscience/bloom-1b1)
-  ...
+We support models that can be run efficiently with a limited amount of compute. These are the models with less than 20B parameters currently supported :
 
-### OPT
-- [x] [OPT-125M](https://huggingface.co/facebook/opt-125m)
-- [x] [OPT-350M](https://huggingface.co/facebook/opt-350m)
-  ...
+- GPTJ: 6B
+- GPTNeoX: 1.3B, 20B
+- OPT: 125M, 359M, 1.3B, 2.7B, 6.7B, 13B
+- BLOOM: 560M, 1.1B, 1.7B, 3B, 7.1B
+- BLOOMZ: 560M, 1.1B, 1.7B, 3B, 7.1B
 
-
-## Support RL Algorithms
-
-- PPO
-- A2C
+</details>
