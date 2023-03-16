@@ -96,12 +96,12 @@ To successfully train a ChatGPT-like assistant, you need 3 different datasets: `
 
 Alternatively, training can be bootstrapped using a pre-existing dataset available on HuggingFace.  High quality candidates are namely the `Anthropic HH RLHF` and the `Stanford Human Preference datasets`, `Reddit TL;DR dataset` and  `Comparisons datasets`.
 
-|                           Dataset                            |                         Description                          |      |
-| :----------------------------------------------------------: | :----------------------------------------------------------: | ---- |
-| [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf) | This dataset consists of structured question/response pairs with a LLM chatbot that include chosen and rejected responses. |      |
-| [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP) | This dataset is curated from selected "ask" subreddits and contains questions spanning a wide array of question/answer pairs based on the most upvoted responses. |      |
-| [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr) | The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human. |      |
-|                   [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons)                    | It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred. |      |
+|                                           Dataset                                            |                                                                            Description                                                                            |     |
+| :------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------: | --- |
+|            [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)            |                    This dataset consists of structured question/response pairs with a LLM chatbot that include chosen and rejected responses.                     |     |
+| [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP)  | This dataset is curated from selected "ask" subreddits and contains questions spanning a wide array of question/answer pairs based on the most upvoted responses. |     |
+|    [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr)    |         The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human.         |     |
+| [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons) |    It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred.    |     |
 
 </p>
 </details>
@@ -121,7 +121,7 @@ This is relatively straightforward. Load the dataset, tokenize it, and then trai
 
 ```shell
 cd scripts/
-python train_opt_summarize.py
+python  train_fintune_summarize.py
 ```
 
 The model is evaluated using the ROUGE score. The best model is selected based on the average ROUGE score on the validation set. This model will be used to initialize the reward model, which will be further fine-tuned using PPO.
