@@ -2,8 +2,10 @@ import torch
 from datasets import load_dataset
 from tqdm import tqdm
 from transformers import AutoTokenizer, pipeline
+import sys
+
+sys.path.append("../../")
 from chatgpt.utils.utils import LengthSampler
-from transformers import AutoModelForCausalLM
 from trl import PPOConfig, PPOTrainer, AutoModelForCausalLMWithValueHead
 
 
@@ -26,7 +28,7 @@ def build_dataset(dataset_name="imdb"):
     # load imdb with datasets
     ds = load_dataset(dataset_name, split="train")
     ds = ds.rename_columns({"text": "review"})
-    ds = ds.filter(lambda x: len(x["review"]) > 200, batched=False)
+    ds = ds.filter(lambda x: len(x["review"]) > 100, batched=False)
     return ds
 
 
@@ -37,17 +39,14 @@ def collator(data):
 def main():
     model_name = "lvwerra/gpt2-imdb"
     # Now let's build the model, the reference model, and the tokenizer.
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    ref_model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     # GPT-2 tokenizer has a pad token, but it is not eos_token by default. We need to set it to eos_token.
     # only for this model.
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.pad_token = tokenizer.eos_token
-    input_size = LengthSampler(input_min_text_length=3,
-                               input_max_text_length=12)
+    input_size = LengthSampler(3, 12)
 
     def tokenize(sample):
         sample["input_ids"] = tokenizer.encode(sample["review"])[:input_size()]
@@ -55,9 +54,9 @@ def main():
         return sample
 
     # We retrieve the dataloader by calling the `build_dataset` function.
-    dataset = build_dataset()
+    ds = build_dataset(dataset_name="imdb")
     ds = ds.map(tokenize, batched=False)
-    ds = ds.set_format(type="torch")
+    ds.set_format(type="torch")
 
     config = PPOConfig()
     # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
@@ -65,7 +64,7 @@ def main():
                              model,
                              ref_model,
                              tokenizer,
-                             dataset=dataset,
+                             dataset=ds,
                              data_collator=collator)
 
     # We then build the sentiment analysis pipeline, passing the model name and the
@@ -123,3 +122,7 @@ def main():
         # Run PPO step
         stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
         ppo_trainer.log_stats(stats, batch, rewards)
+
+
+if __name__ == "__main__":
+    main()
