@@ -111,7 +111,11 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
-    def __init__(self, pretrained: Optional[str] = None, debug: bool = True):
+
+    def __init__(self,
+                 model="opt",
+                 pretrained: Optional[str] = None,
+                 debug: bool = True):
         super().__init__()
 
         # Instantiate tokenizer and model from pretrained checkpoint
@@ -131,7 +135,10 @@ class CriticModel(nn.Module):
         self.config = self.model.config
 
         # Define value head layers to output a scalar value
-        head_hidden_size = self.config.model_head_hidden_size
+        if model == "opt":
+            head_hidden_size = self.config.word_embed_proj_dim
+        else:
+            head_hidden_size = self.config.head_hidden_size
         self.value_head = nn.Sequential(
             nn.Linear(head_hidden_size, head_hidden_size),
             nn.ReLU(),
@@ -197,6 +204,7 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
+
     def __init__(
         self,
         actor: nn.Module,
