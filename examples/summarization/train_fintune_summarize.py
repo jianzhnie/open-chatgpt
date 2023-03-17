@@ -6,7 +6,7 @@ import evaluate
 import numpy as np
 import torch
 
-sys.path.append('../')
+sys.path.append('../../')
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Trainer,
                           TrainingArguments, default_data_collator)
 
@@ -70,7 +70,8 @@ if __name__ == '__main__':
         eval_steps=5,
         save_steps=500,
         warmup_steps=100,
-        learning_rate=1e-5,
+        learning_rate=2e-5,
+        weight_decay=0.001,
         fp16=True,
         fp16_opt_level='02',  # mixed precision mode
         do_train=True,  # Perform training
