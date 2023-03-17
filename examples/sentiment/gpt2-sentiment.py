@@ -61,13 +61,12 @@ def main():
 
     config = PPOConfig()
     # We then build the PPOTrainer, passing the model, the reference model, the tokenizer
-    ppo_trainer = PPOTrainer(
-        config,
-        model,
-        ref_model,
-        tokenizer,
-        dataset=ds,
-        data_collator=collator)
+    ppo_trainer = PPOTrainer(config,
+                             model,
+                             ref_model,
+                             tokenizer,
+                             dataset=ds,
+                             data_collator=collator)
 
     # We then build the sentiment analysis pipeline, passing the model name and the
     # sentiment analysis pipeline arguments. Let's also make sure to set the device
@@ -76,8 +75,9 @@ def main():
     if ppo_trainer.accelerator.num_processes == 1:
         device = 0 if torch.cuda.is_available() else 'cpu'
     # to avoid a `pipeline` bug
-    sentiment_pipe = pipeline(
-        'sentiment-analysis', model='lvwerra/distilbert-imdb', device=device)
+    sentiment_pipe = pipeline('sentiment-analysis',
+                              model='lvwerra/distilbert-imdb',
+                              device=device)
 
     # We then define the arguments to pass to the `generate` function. These arguments
     # are passed to the `generate` function of the PPOTrainer, which is a wrapper around
