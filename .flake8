@@ -1,7 +1,7 @@
 [flake8]
 ignore = E731, E741, W504, W503, E126,E125, E402, E722, F821
 max-line-length = 120
-show-source = False
+show-source = False 
 application-import-names = chatgpt
 exclude =
     .git
