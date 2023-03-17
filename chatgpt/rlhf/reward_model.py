@@ -42,14 +42,16 @@ class Pooler(nn.Module):
 
 
 class MeanPooler(nn.Module):
-    """Applies a mean pooling on the hidden states of the last layer of the transformer model."""
+    """Applies a mean pooling on the hidden states of the last layer of the
+    transformer model."""
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
         self.activation = nn.Tanh()
 
     def forward(self, hidden_states):
-        """Applies mean pooling on the hidden states of the last layer of the transformer model."""
+        """Applies mean pooling on the hidden states of the last layer of the
+        transformer model."""
         # Calculate the mean of the hidden states of the last layer
         pooled = hidden_states.mean(dim=1)
         # Apply a linear layer followed by a tanh activation function
