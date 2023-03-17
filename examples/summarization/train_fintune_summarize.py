@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
     set_seed(42)
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
-    model = AutoModelForCausalLM.from_pretrained('facebook/opt-125m',
-                                                 use_cache=False)
+    model = AutoModelForCausalLM.from_pretrained(
+        'facebook/opt-125m', use_cache=False)
     tokenizer.pad_token = tokenizer.eos_token
     model.resize_token_embeddings(len(tokenizer))
     tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -44,14 +44,15 @@ if __name__ == '__main__':
 
     def compute_metrics(eval_preds):
         predictions, labels = eval_preds
-        decoded_preds = tokenizer.batch_decode(predictions,
-                                               skip_special_tokens=True)
-        decoded_labels = tokenizer.batch_decode(labels,
-                                                skip_special_tokens=True)
+        decoded_preds = tokenizer.batch_decode(
+            predictions, skip_special_tokens=True)
+        decoded_labels = tokenizer.batch_decode(
+            labels, skip_special_tokens=True)
 
-        result = rouge.compute(predictions=decoded_preds,
-                               references=decoded_labels,
-                               use_stemmer=True)
+        result = rouge.compute(
+            predictions=decoded_preds,
+            references=decoded_labels,
+            use_stemmer=True)
         return result
 
     # Create a preprocessing function to extract out the proper logits from the model output
