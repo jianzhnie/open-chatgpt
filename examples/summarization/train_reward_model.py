@@ -56,10 +56,14 @@ if __name__ == '__main__':
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
     # Make pairwise datasets for training
-    train_dataset = PairwiseDataset(
-        data_path, tokenizer, split='train', max_length=512)
-    val_dataset = PairwiseDataset(
-        data_path, tokenizer, split='valid1', max_length=512)
+    train_dataset = PairwiseDataset(data_path,
+                                    tokenizer,
+                                    split='train',
+                                    max_length=512)
+    val_dataset = PairwiseDataset(data_path,
+                                  tokenizer,
+                                  split='valid1',
+                                  max_length=512)
 
     trainer = Trainer(
         model=model,
