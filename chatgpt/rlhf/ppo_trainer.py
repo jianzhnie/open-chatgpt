@@ -1,15 +1,17 @@
 from collections import deque
-from typing import Deque
+from typing import Deque, Optional, Tuple
 
 import torch
 import torch.optim as optim
 from einops import rearrange
 from torch.utils.data import DataLoader
+from torchtyping import TensorType
 
 from chatgpt.buffer.replay_buffer import (ExamplesSampler, ExperienceDataset,
                                           Memory)
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
+from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
 
 
 class RLTrainer:
@@ -265,3 +267,106 @@ class RLTrainer:
                     cnt_learn_iter += 1
 
         print('End RL Training')
+
+    def get_advantages_and_returns(
+        self,
+        values: TensorType['batch_size', 'response_size'],
+        rewards: TensorType['batch_size', 'response_size'],
+        response_length: int,
+        use_whitening: Optional[bool] = True,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Function that computes advantages and returns from rewards and
+        values. Calculated as in the original PPO paper:
+        https://arxiv.org/abs/1707.06347 Note that rewards may include a KL
+        divergence loss term.
+
+        Advantages looks like this:
+        Adv1 =  R1 + γ * λ * R2     + γ^2 * λ^2 * R3       + ...
+              - V1 + γ * (1 - λ) V2 + γ^2 * λ * (1 - λ) V3 + ...
+
+        Returns looks like this:
+        Ret1 =  R1 + γ * λ * R2     + γ^2 * λ^2 * R3       + ...
+                   + γ * (1 - λ) V2 + γ^2 * λ * (1 - λ) V3 + ...
+
+        Args:
+            values: Tensor of shape (batch_size, response_size)
+            rewards: Tensor of shape (batch_size, response_size)
+            response_length: Length of the response sequence
+            use_whitening: Whether to use whitening (ie. normalize advantages) or not
+        """
+        lastgaelam = 0
+        advantages_reversed = []
+        for t in reversed(range(response_length)):
+            nextvalues = values[:, t + 1] if t < response_length - 1 else 0.0
+            delta = rewards[:, t] + self.gamma * nextvalues - values[:, t]
+            lastgaelam = delta + self.gamma * self.lam * lastgaelam
+            advantages_reversed.append(lastgaelam)
+        advantages = torch.stack(advantages_reversed[::-1], dim=1)
+        returns = advantages + values
+        if use_whitening:
+            advantages = whiten(advantages)
+        return advantages.detach(), returns
+
+    def loss(
+        self,
+        logprobs: TensorType['batch_size', 'response_size'],
+        values: TensorType['batch_size', 'response_size'],
+        old_logprobs: TensorType['batch_size', 'response_size'],
+        old_values: TensorType['batch_size', 'response_size'],
+        advantages: TensorType['batch_size', 'response_size'],
+        returns: TensorType['batch_size', 'response_size'],
+        mask: TensorType['batch_size', 'response_size'],
+    ):
+        """PPO objective function.
+        References:
+        - https://stable-baselines.readthedocs.io/en/master/modules/ppo2.html
+        """
+        values_clipped = torch.clamp(
+            values,
+            old_values - self.cliprange_value,
+            old_values + self.cliprange_value,
+        )
+        n = mask.sum()
+
+        vf_loss1 = (values - returns)**2
+        vf_loss2 = (values_clipped - returns)**2
+        vf_loss = 0.5 * torch.sum(torch.max(vf_loss1, vf_loss2) * mask) / n
+        vf_clipfrac = torch.sum((vf_loss2 > vf_loss1).float() * mask) / n
+
+        log_ratio = (logprobs - old_logprobs) * mask
+        ratio = torch.exp(log_ratio)
+        # Unbiased KL-div estimates (`k3`). Ref: http://joschu.net/blog/kl-approx.html
+        with torch.no_grad():
+            approx_kl = torch.mean((ratio - 1) - log_ratio)
+
+        pg_loss1 = -advantages * ratio
+        pg_loss2 = -advantages * torch.clamp(
+            ratio,
+            1.0 - self.cliprange,
+            1.0 + self.cliprange,
+        )
+        pg_loss = torch.sum(torch.max(pg_loss1, pg_loss2) * mask) / n
+        pg_clipfrac = torch.sum((pg_loss2 > pg_loss1).float() * mask) / n
+
+        loss = pg_loss + self.vf_coef * vf_loss
+
+        stats = dict(
+            losses=dict(
+                total_loss=loss.item(),
+                policy_loss=pg_loss.item(),
+                value_loss=vf_loss.item(),
+            ),
+            values=dict(
+                get_tensor_stats(values, mask, n),
+                values_error=torch.sum(((values - returns) * mask)**2) / n,
+                clipfrac=vf_clipfrac,
+            ),
+            old_values=get_tensor_stats(old_values, mask, n),
+            returns=get_tensor_stats(returns, mask, n),
+            policy=dict(approx_kl=approx_kl.item(),
+                        clipfrac=pg_clipfrac.item()),
+            ratio=(ratio * mask).sum() / n,
+            padding_percentage=n / mask.numel(),
+        )
+
+        return loss, flatten_dict(stats)
