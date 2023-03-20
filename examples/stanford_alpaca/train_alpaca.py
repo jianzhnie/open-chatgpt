@@ -149,9 +149,6 @@ class SupervisedDataset(Dataset):
             max_length=self.tokenizer.model_max_length,
             truncation=True)
 
-        input_len = encoding_inputs.input_ids.ne(
-            self.tokenizer.pad_token_id).sum().item()
-
         target_len = encoding_targets.input_ids.ne(
             self.tokenizer.pad_token_id).sum().item()
 
@@ -184,17 +181,6 @@ class DataCollatorForSupervisedDataset(object):
         )
 
 
-def make_supervised_data_module(tokenizer: PreTrainedTokenizer,
-                                data_args) -> Dict:
-    """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = SupervisedDataset(tokenizer=tokenizer,
-                                      data_path=data_args.data_path)
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset,
-                eval_dataset=None,
-                data_collator=data_collator)
-
-
 def train():
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))
@@ -225,12 +211,18 @@ def train():
             "unk_token": DEFAULT_UNK_TOKEN,
         })
 
-    data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              data_args=data_args)
-    trainer = Trainer(model=model,
-                      tokenizer=tokenizer,
-                      args=training_args,
-                      **data_module)
+    train_dataset = SupervisedDataset(tokenizer=tokenizer,
+                                      data_path=data_args.data_path)
+    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
+
+    trainer = Trainer(
+        model=model,
+        tokenizer=tokenizer,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=None,
+        data_collator=data_collator,
+    )
     trainer.train()
     trainer.save_state()
     safe_save_model_for_hf_trainer(trainer=trainer,
