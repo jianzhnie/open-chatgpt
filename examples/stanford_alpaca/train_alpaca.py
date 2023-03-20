@@ -1,15 +1,16 @@
 import copy
-import logging
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence
 import io
 import json
+import logging
+from dataclasses import dataclass, field
+from typing import Dict, Optional, Sequence
+
 import torch
-import transformers
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
-from transformers import Trainer, PreTrainedTokenizer, AutoModelForCausalLM, PreTrainedModel, DataCollator, \
-    TrainingArguments, AutoTokenizer, HfArgumentParser
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          HfArgumentParser, PreTrainedModel,
+                          PreTrainedTokenizer, Trainer, TrainingArguments)
 
 
 def _make_r_io_base(f, mode: str):
@@ -18,7 +19,7 @@ def _make_r_io_base(f, mode: str):
     return f
 
 
-def jload(f, mode="r"):
+def jload(f, mode='r'):
     """Load a .json file into a dictionary."""
     f = _make_r_io_base(f, mode)
     jdict = json.load(f)
@@ -27,32 +28,32 @@ def jload(f, mode="r"):
 
 
 IGNORE_INDEX = -100
-DEFAULT_PAD_TOKEN = "[PAD]"
-DEFAULT_EOS_TOKEN = "</s>"
-DEFAULT_BOS_TOKEN = "</s>"
-DEFAULT_UNK_TOKEN = "</s>"
+DEFAULT_PAD_TOKEN = '[PAD]'
+DEFAULT_EOS_TOKEN = '</s>'
+DEFAULT_BOS_TOKEN = '</s>'
+DEFAULT_UNK_TOKEN = '</s>'
 
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
+    model_name_or_path: Optional[str] = field(default='facebook/opt-125m')
 
 
 @dataclass
 class DataArguments:
     data_path: str = field(default=None,
-                           metadata={"help": "Path to the training data."})
+                           metadata={'help': 'Path to the training data.'})
 
 
 @dataclass
 class TrainingArguments(TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
-    optim: str = field(default="adamw_torch")
+    optim: str = field(default='adamw_torch')
     model_max_length: int = field(
         default=512,
         metadata={
-            "help":
-            "Maximum sequence length. Sequences will be right padded (and possibly truncated)."
+            'help':
+            'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
 
@@ -96,28 +97,28 @@ class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
     PROMPT_DICT = {
-        "prompt_input":
-        ("Below is an instruction that describes a task, paired with an input that provides further context. "
-         "Write a response that appropriately completes the request.\n\n"
-         "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
+        'prompt_input':
+        ('Below is an instruction that describes a task, paired with an input that provides further context. '
+         'Write a response that appropriately completes the request.\n\n'
+         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:'
          ),
-        "prompt_no_input":
-        ("Below is an instruction that describes a task. "
-         "Write a response that appropriately completes the request.\n\n"
-         "### Instruction:\n{instruction}\n\n### Response:"),
+        'prompt_no_input':
+        ('Below is an instruction that describes a task. '
+         'Write a response that appropriately completes the request.\n\n'
+         '### Instruction:\n{instruction}\n\n### Response:'),
     }
     IGNORE_INDEX = -100
 
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
         super(SupervisedDataset, self).__init__()
-        logging.warning("Loading data...")
+        logging.warning('Loading data...')
         list_data_dict = jload(data_path)
 
-        logging.warning("Formatting inputs...")
+        logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
-            "prompt_input"], self.PROMPT_DICT["prompt_no_input"]
+            'prompt_input'], self.PROMPT_DICT['prompt_no_input']
         self.sources = [
-            prompt_input.format_map(example) if example.get("input", "") != ""
+            prompt_input.format_map(example) if example.get('input', '') != ''
             else prompt_no_input.format_map(example)
             for example in list_data_dict
         ]
@@ -135,26 +136,15 @@ class SupervisedDataset(Dataset):
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
         source_txt = self.examples[idx]
-        target_txt = self.targets[idx]
         encoding_inputs = self.tokenizer(
             source_txt,
-            return_tensors="pt",
-            padding="longest",
-            max_length=self.tokenizer.model_max_length,
-            truncation=True)
-        encoding_targets = self.tokenizer(
-            target_txt,
-            return_tensors="pt",
-            padding="longest",
+            return_tensors='pt',
+            padding='longest',
             max_length=self.tokenizer.model_max_length,
             truncation=True)
 
-        target_len = encoding_targets.input_ids.ne(
-            self.tokenizer.pad_token_id).sum().item()
-
-        input_ids = encoding_inputs["input_ids"]
+        input_ids = encoding_inputs['input_ids']
         labels = copy.deepcopy(input_ids)
-        labels[:target_len] = self.IGNORE_INDEX
 
         return dict(input_ids=input_ids, labels=labels)
 
@@ -167,7 +157,7 @@ class DataCollatorForSupervisedDataset(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         input_ids, labels = tuple([instance[key] for instance in instances]
-                                  for key in ("input_ids", "labels"))
+                                  for key in ('input_ids', 'labels'))
         input_ids = pad_sequence(input_ids,
                                  batch_first=True,
                                  padding_value=self.tokenizer.pad_token_id)
@@ -195,7 +185,7 @@ def train():
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
-        padding_side="right",
+        padding_side='right',
         use_fast=False,
     )
     if tokenizer.pad_token is None:
@@ -204,11 +194,11 @@ def train():
             tokenizer=tokenizer,
             model=model,
         )
-    if "llama" in model_args.model_name_or_path:
+    if 'llama' in model_args.model_name_or_path:
         tokenizer.add_special_tokens({
-            "eos_token": DEFAULT_EOS_TOKEN,
-            "bos_token": DEFAULT_BOS_TOKEN,
-            "unk_token": DEFAULT_UNK_TOKEN,
+            'eos_token': DEFAULT_EOS_TOKEN,
+            'bos_token': DEFAULT_BOS_TOKEN,
+            'unk_token': DEFAULT_UNK_TOKEN,
         })
 
     train_dataset = SupervisedDataset(tokenizer=tokenizer,
@@ -229,5 +219,5 @@ def train():
                                    output_dir=training_args.output_dir)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     train()
