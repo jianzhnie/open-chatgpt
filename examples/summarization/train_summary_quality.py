@@ -1,7 +1,12 @@
+from typing import Any, Dict, Optional, Tuple, Union
+
 import evaluate
 import torch
 from torch import nn
-from transformers import Trainer
+from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
+                          Trainer, TrainingArguments)
+
+from chatgpt.dataset.summarize_dataset import HFSummaryQuality
 
 accuracy = evaluate.load('mse')
 
@@ -52,3 +57,45 @@ class QualityTrainer(Trainer):
             return (loss, None, None)
 
         return (loss, logits, labels)
+
+
+if __name__ == '__mian__':
+    model_name = 'microsoft/deberta-v3-base'
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    train = HFSummaryQuality(split='validation',
+                             tokenizer=tokenizer,
+                             max_length=512)
+    eval = HFSummaryQuality(split='test', tokenizer=tokenizer, max_length=512)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_name, num_labels=len(train.label2idx), problem_type='regression')
+
+    args = TrainingArguments(
+        output_dir=f'{model_name}-finetuned',
+        num_train_epochs=4,
+        warmup_steps=500,
+        scheduler='cosine',
+        learning_rate=1e-5,
+        fp16=True,
+        gradient_checkpointing=False,
+        gradient_accumulation_steps=15,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        weight_decay=0.01,
+        max_grad_norm=2.0,
+        logging_steps=10,
+        save_total_limit=4,
+        evaluation_strategy='steps',
+        eval_steps=200,
+        save_steps=1000,
+        report_to='wandb',
+    )
+
+    trainer = QualityTrainer(
+        model,
+        args,
+        train_dataset=train,
+        eval_dataset=eval,
+        tokenizer=tokenizer,
+        compute_metrics=compute_metrics,
+    )
+    trainer.train()
