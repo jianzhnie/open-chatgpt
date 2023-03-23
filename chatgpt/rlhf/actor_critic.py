@@ -1,18 +1,32 @@
-from typing import Optional, Tuple
 from collections import namedtuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
-from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
 from einops.layers.torch import Rearrange
+from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers.modeling_outputs import ModelOutput
 
 ActionCriticReturn = namedtuple(
     'ActionCriticReturn',
     ['actions', 'action_logits', 'values', 'sequence', 'sequences_mask'])
 
 
+@dataclass
+class CausalLMOutputWithValue(ModelOutput):
+    loss: Optional[torch.FloatTensor] = None
+    logits: Optional[torch.FloatTensor] = None
+    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    cross_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    value: Optional[torch.FloatTensor] = None
+
+
 class ActorModel(nn.Module):
-    """
-    Actor model that generates logits representing the probability distribution over the vocabulary of actions.
+    """Actor model that generates logits representing the probability
+    distribution over the vocabulary of actions.
 
     Args:
         pretrained (str, optional): Pretrained model name or path.
@@ -35,28 +49,49 @@ class ActorModel(nn.Module):
 
         self.debug = debug
 
-    def forward(self, input_ids: torch.Tensor,
-                attention_mask: torch.Tensor) -> torch.Tensor:
-        """
-        Generate logits to have probability distribution over the vocabulary of the actions.
+    def forward(
+        self,
+        input_ids: torch.LongTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        position_ids: Optional[List[torch.FloatTensor]] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = True,
+        return_dict: Optional[bool] = True,
+    ) -> Union[Tuple, ModelOutput]:
+        """Generate logits to have probability distribution over the vocabulary
+        of the actions.
 
         Args:
-            input_ids (torch.Tensor): Sequences of states and actions used to compute token logits for the whole list of sequences.
+            input_ids (torch.Tensor): Sequences of states and actions used to compute token logits
+            for the whole list of sequences.
             attention_mask (torch.Tensor): Mask for the sequences attention.
 
         Returns:
             logits (torch.Tensor): Logits for the actions taken.
         """
-        model_output = self.model(input_ids, attention_mask=attention_mask)
-        # Extract logits from the model output
-        logits = model_output.logits
+        model_output = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
 
         if self.debug:
             print('ActorModel.forward')
-            print('logits shape:', logits.shape)
-            print('logits:', logits)
+            print('logits shape:', model_output.logits.shape)
+            print('logits:', model_output.logits)
 
-        return logits
+        return model_output
 
     @torch.no_grad()
     def generate(self, states: torch.Tensor, state_mask: torch.Tensor,
@@ -111,22 +146,21 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
-
     def __init__(self,
-                 model="opt",
+                 model='opt',
                  pretrained: Optional[str] = None,
                  debug: bool = True):
         super().__init__()
 
         # Instantiate tokenizer and model from pretrained checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained,
-                                                       padding_side="left",
-                                                       truncation_side="left")
+                                                       padding_side='left',
+                                                       truncation_side='left')
         self.model = AutoModel.from_pretrained(pretrained)
 
         # Set EOS token and padding token
         if self.tokenizer.eos_token is None:
-            self.tokenizer.eos_token = "</s>"
+            self.tokenizer.eos_token = '</s>'
             self.tokenizer.eos_token_id = 0
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -135,7 +169,7 @@ class CriticModel(nn.Module):
         self.config = self.model.config
 
         # Define value head layers to output a scalar value
-        if model == "opt":
+        if model == 'opt':
             head_hidden_size = self.config.word_embed_proj_dim
         else:
             head_hidden_size = self.config.head_hidden_size
@@ -143,11 +177,22 @@ class CriticModel(nn.Module):
             nn.Linear(head_hidden_size, head_hidden_size),
             nn.ReLU(),
             nn.Linear(head_hidden_size, 1),
-            Rearrange("... 1 -> ..."),
+            Rearrange('... 1 -> ...'),
         )
 
-    def forward(self, input_ids: torch.Tensor,
-                attention_mask: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_ids: torch.LongTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        position_ids: Optional[List[torch.FloatTensor]] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = True,
+    ) -> Union[Tuple, CausalLMOutputWithValue]:
         """Evaluate the quality of a sequence of tokens.
 
         Args:
@@ -157,20 +202,33 @@ class CriticModel(nn.Module):
         Returns:
             torch.Tensor: Tensor of rewards of shape (batch_size, 1)
         """
-        output = self.model(input_ids,
-                            attention_mask=attention_mask,
-                            return_dict=True)
-        rewards = self.value_head(output.last_hidden_state)
+        output = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        value = self.value_head(output.last_hidden_state)
+
+        if not return_dict:
+            outputs = (outputs.logits, ) + outputs[1:] + (value, )
+            return outputs
 
         # Print debugging information
         if self.debug:
-            print("CriticModel.forward")
-            print("input_ids.shape", input_ids.shape)
-            print("input_ids", input_ids)
-            print("rewards.shape", rewards.shape)
-            print("rewards", rewards)
+            print('CriticModel.forward')
+            print('input_ids.shape', input_ids.shape)
+            print('input_ids', input_ids)
+            print('rewards.shape', value.shape)
+            print('rewards', value)
 
-        return rewards
+        return CausalLMOutputWithValue(**outputs, value=value)
 
     def get_reward(self, input_ids: torch.Tensor,
                    attention_mask: torch.Tensor) -> torch.Tensor:
@@ -183,8 +241,8 @@ class CriticModel(nn.Module):
         Returns:
             torch.Tensor: Tensor of rewards of shape (batch_size,)
         """
-        rewards = self.forward(input_ids, attention_mask)
-        return rewards[:, -1]
+        value = self.forward(input_ids, attention_mask)
+        return value[:, -1]
 
 
 class ActorCritic(nn.Module):
@@ -204,7 +262,6 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
-
     def __init__(
         self,
         actor: nn.Module,
@@ -275,7 +332,6 @@ class ActorCritic(nn.Module):
                 - sequences (torch.Tensor): The sequences generated from the states as
                 [states, actions].
                 - sequences_mask (torch.Tensor): The mask for the generated sequences.
-
         """
         # Generate action sequence.
         actions, sequence = self.actor.generate(states, state_mask)
