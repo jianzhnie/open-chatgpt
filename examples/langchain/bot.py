@@ -89,8 +89,8 @@ template = """You are a teacher in physics for High School student. Given the te
 Human: {question}
 AI:
 """
-prompt_template = PromptTemplate(
-        input_variables=['chat_history', 'question'], template=template)
+prompt_template = PromptTemplate(input_variables=['chat_history', 'question'],
+                                 template=template)
 # Session state storage would be ideal
 if API_O:
     # Create an OpenAI instance
@@ -101,14 +101,14 @@ if API_O:
 
     # Create a ConversationEntityMemory object if not already created
     if 'entity_memory' not in st.session_state:
-        st.session_state.entity_memory = ConversationBufferMemory(memory_key='chat_history')
+        st.session_state.entity_memory = ConversationBufferMemory(
+            memory_key='chat_history')
 
     # Create the ConversationChain object with the specified configuration
-    Conversation = ConversationChain(
-        llm=llm,
-        prompt=prompt_template,
-        verbose=True,
-        memory=st.session_state.entity_memory)
+    Conversation = ConversationChain(llm=llm,
+                                     prompt=prompt_template,
+                                     verbose=True,
+                                     memory=st.session_state.entity_memory)
 else:
     st.sidebar.warning(
         'API key required to try this app.The API key is not stored in any form.'
