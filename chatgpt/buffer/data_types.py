@@ -21,8 +21,7 @@ class BatchElement:
 
 @dataclass
 class PromptElement:
-    """
-    Dataclass for a single prompt, containing its string and tokenized form.
+    """Dataclass for a single prompt, containing its string and tokenized form.
 
     :param text: The prompt text.
     :type text: str
@@ -32,13 +31,12 @@ class PromptElement:
     """
 
     text: str
-    tokens: TensorType["num_tokens"]
+    tokens: TensorType['num_tokens']
 
 
 @dataclass
 class PromptBatch:
-    """
-    Batched PromptElement
+    """Batched PromptElement.
 
     :param text: An iterable of prompt texts.
     :type text: Iterable[str]
@@ -48,7 +46,7 @@ class PromptBatch:
     """
 
     text: Iterable[str]
-    tokens: TensorType["batch_size", "num_tokens"]
+    tokens: TensorType['batch_size', 'num_tokens']
 
 
 @dataclass
