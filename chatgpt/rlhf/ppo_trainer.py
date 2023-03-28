@@ -9,9 +9,12 @@ from torchtyping import TensorType
 
 from chatgpt.buffer.replay_buffer import (ExamplesSampler, ExperienceDataset,
                                           Memory)
+from chatgpt.buffer.rollout import BaseRolloutStore, PPORolloutStorage
+from chatgpt.buffer.prompt_pipeline import PromptPipeline
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
+from chatgpt.buffer.data_types import PromptBatch, PPORLElement
 
 
 class RLTrainer:
@@ -307,7 +310,7 @@ class RLTrainer:
             advantages = whiten(advantages)
         return advantages.detach(), returns
 
-    def loss(
+    def get_loss(
         self,
         logprobs: TensorType['batch_size', 'response_size'],
         values: TensorType['batch_size', 'response_size'],
@@ -370,3 +373,82 @@ class RLTrainer:
         )
 
         return loss, flatten_dict(stats)
+
+    def add_prompt_rollout(self, pipeline: BaseRolloutStore):
+        """Add a prompt pipeline dataloader to a trainer instance for the
+        `make_experience` stage."""
+        prompt_dataloader = pipeline.create_loader(self.chunk_size,
+                                                   shuffle=True)
+        self.prompt_iterator = iter(prompt_dataloader)
+
+    def make_experience(self, num_rollouts: int):
+        """Make experience by interacting with the environment.
+
+        Args:
+            num_rollouts: Number of rollouts to make
+
+        Returns:
+            List of experiences
+        """
+        experiences = []
+        while self.data_rollout.size() < num_rollouts:
+            try:
+                batch: PromptBatch = next(self.prompt_iterator)
+            except StopIteration:
+                self.prompt_iterator = iter(self.prompt_dataloader)
+                batch = next(self.prompt_iterator)
+
+            # Generate samples from the language model (similar to using HuggingFace `generate` method)
+            samples = self.generate(**batch)
+            scores = torch.empty(len(samples))
+            prompt_tensors = batch.input_ids
+            str_samples, str_prompts, str_outputs = self.decode(prompt_tensors, samples)
+
+            # Pad the sample outputs
+            outputs = self.tokenizer(str_outputs).input_ids
+
+            maxsize = max(map(len, outputs))
+            outputs = [
+                F.pad(
+                    output,
+                    (0, maxsize - len(output)),
+                    value=self.tokenizer.pad_token_id,
+                )
+                for output in outputs
+            ]
+            sample_outputs = torch.vstack(outputs).to()
+
+            # store statistics of the initial rollout as reference
+            if self.ref_mean is None:
+                self.ref_mean, self.ref_std = scores.mean(), scores.std()
+            all_scores_mean, all_scores_std = self.running_moments.update(scores)
+
+            if self.config.method.scale_reward == "running":
+                scores /= self.running_moments.std
+            elif self.config.method.scale_reward == "ref":
+                scores /= self.ref_std
+
+            clip_reward = self.config.method.cliprange_reward
+            if clip_reward:
+                scores = torch.clip(scores, -clip_reward, clip_reward)
+
+
+            all_tokens = torch.cat((prompt_tensors.to(device), sample_outputs), dim=1)
+            attention_mask = all_tokens.not_equal(self.tokenizer.pad_token_id).long().to(device)
+            with torch.no_grad():
+                logits, *_, values = self.model(
+                    all_tokens,
+                    attention_mask=attention_mask,
+                )
+                ref_logits = self.ref_model(
+                    all_tokens,
+                    attention_mask=attention_mask,
+                    return_dict=True,
+                ).logits
+                ref_logits = ref_logits.to(device)
+
+            logprobs = logprobs_of_labels(logits[:, :-1, :], all_tokens[:, 1:])
+            ref_logprobs = logprobs_of_labels(ref_logits[:, :-1, :], all_tokens[:, 1:])
+
+
+        return experiences
