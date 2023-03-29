@@ -7,7 +7,7 @@ from langchain.llms import OpenAI  # import OpenAI model
 from langchain.prompts import PromptTemplate  # import PromptTemplate
 
 os.environ[
-    'OPENAI_API_KEY'] = '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'
+    'OPENAI_API_KEY'] = ''
 
 # Set the title of the Streamlit app
 streamlit.title("✅ What's TRUE  : Using LangChain `SimpleSequentialChain`")
