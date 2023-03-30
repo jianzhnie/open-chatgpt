@@ -51,20 +51,17 @@ class TLDRDataset(Dataset):
         encodings_input = self.tokenizer(input_txt,
                                          truncation=True,
                                          max_length=self.max_length,
-                                         padding='max_length')
+                                         padding='max_length',
+                                         return_tensors='pt')
         # Setup the tokenizer for targets
         with self.tokenizer.as_target_tokenizer():
             encodings_labels = self.tokenizer(summary_txt,
                                               truncation=True,
                                               max_length=self.max_length,
-                                              padding='max_length')
+                                              padding='max_length',
+                                              return_tensors='pt')
 
         encodings_input['labels'] = encodings_labels['input_ids']
-        encodings_input = {
-            key: torch.tensor(val)
-            for key, val in encodings_input.items()
-        }
-
         return encodings_input
 
 
