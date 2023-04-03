@@ -22,4 +22,3 @@
 在[Learning to Summarize from Human Feedback](https://arxiv.org/abs/2009.01325) 论文中，奖励模型是根据人类反馈训练的。然后使用奖励模型来训练摘要模型以符合人类偏好。这是为奖励建模而发布的人类反馈数据集。这个数据集有两个部分：comparisons和axis。在这一comparisons部分中，人类注释者被要求从两个摘要中选择最好的。在这一axis部分中，人工注释者根据李克特量表对摘要的质量进行了评分。该comparisons部分只有训练和验证拆分，该axis部分只有测试和验证拆分。
 
 论文中用于训练奖励模型的摘要来自 TL;DR 数据集。其他验证和测试数据来自 TL;DR 数据集、CNN 文章和每日邮报文章。
-

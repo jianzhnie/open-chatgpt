@@ -4,7 +4,8 @@ import sys
 from transformers import (AutoTokenizer, EarlyStoppingCallback, EvalPrediction,
                           Trainer, TrainingArguments, default_data_collator)
 
-sys.path.append('../')
+
+sys.path.append('../../')
 from chatgpt.dataset.reward_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import PairedRewardModel
 
@@ -24,11 +25,11 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     tokenizer.pad_token = tokenizer.eos_token
 
-    if not os.path.exists('rm_checkpoint'):
-        os.mkdir('rm_checkpoint')
+    if not os.path.exists('reward_model_checkpoint'):
+        os.mkdir('reward_model_checkpoint')
 
     training_args = TrainingArguments(
-        output_dir='rm_checkpoint/',
+        output_dir='reward_model_checkpoint/',
         num_train_epochs=10,
         gradient_accumulation_steps=4,
         per_device_train_batch_size=8,
@@ -48,7 +49,7 @@ if __name__ == '__main__':
         save_total_limit=5,
         load_best_model_at_end=True,
         logging_dir='./logs',
-        logging_steps=10,
+        logging_steps=50,
         seed=42)
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
