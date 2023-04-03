@@ -3,8 +3,7 @@ import os
 from langchain import LLMChain, OpenAI, PromptTemplate
 from langchain.chains.conversation.memory import ConversationBufferMemory
 
-os.environ[
-    'OPENAI_API_KEY'] = ''
+os.environ['OPENAI_API_KEY'] = ''
 
 if __name__ == '__main__':
 

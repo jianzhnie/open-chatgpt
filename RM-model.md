@@ -11,14 +11,14 @@ For now we only supports webgpt and summary dataset from OpenAI.
 You can add new huggingface model as you want.
 
 
-## Example1: 
+## Example1:
 Run training procedure
 
 ```bash
-python trainer.py 
+python trainer.py
 ```
 
-## Example2: 
+## Example2:
 Additional axis labeling, this outputs a 4 summary quality evaluation metrics, (score are normalized to 0-1 )
 
 ```bash

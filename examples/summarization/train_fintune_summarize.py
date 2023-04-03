@@ -22,8 +22,8 @@ def set_seed(seed_val=42):
 
 if __name__ == '__main__':
     output_dir = 'fintune-summarize-checkpoint'
-    if not os.path.exists('rm_checkpoint'):
-        os.mkdir('rm_checkpoint')
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
     set_seed(42)
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         gradient_accumulation_steps=4,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
-        eval_steps=5,
+        eval_steps=50,
         save_steps=500,
         warmup_steps=100,
         learning_rate=2e-5,
@@ -82,6 +82,7 @@ if __name__ == '__main__':
         eval_accumulation_steps=1,
         load_best_model_at_end=True,
         gradient_checkpointing=True,
+        half_precision_backend=True,
         logging_steps=50,
         logging_dir='./logs',
     )
