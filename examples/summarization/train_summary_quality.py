@@ -5,7 +5,9 @@ import torch
 from torch import nn
 from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
                           Trainer, TrainingArguments)
+import sys
 
+sys.path.append("../../")
 from chatgpt.dataset.summarize_dataset import HFSummaryQuality
 
 accuracy = evaluate.load('mse')
@@ -18,6 +20,7 @@ def compute_metrics(eval_pred):
 
 
 class QualityTrainer(Trainer):
+
     def __init__(self, ):
         super().__init__()
         self.loss_fct = nn.L1Loss()
@@ -59,8 +62,8 @@ class QualityTrainer(Trainer):
         return (loss, logits, labels)
 
 
-if __name__ == '__mian__':
-    model_name = 'microsoft/deberta-v3-base'
+if __name__ == '__main__':
+    model_name = 'facebook/opt-125m'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     train = HFSummaryQuality(split='validation',
                              tokenizer=tokenizer,
@@ -73,7 +76,6 @@ if __name__ == '__mian__':
         output_dir=f'{model_name}-finetuned',
         num_train_epochs=4,
         warmup_steps=500,
-        scheduler='cosine',
         learning_rate=1e-5,
         fp16=True,
         gradient_checkpointing=False,
