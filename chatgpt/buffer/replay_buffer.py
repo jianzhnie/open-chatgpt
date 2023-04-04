@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
+from chatgpt.buffer.utils import (BufferItem, make_experience_batch,
+                                  split_experience_batch)
 from chatgpt.rlhf.actor_critic import ActorModel
 from chatgpt.utils.modeling import compute_reward
 
@@ -151,3 +153,40 @@ class ExperienceMaker(ABC):
 
         return Experience(sequences, action_log_probs, value, reward,
                           advantage, attention_mask, action_mask)
+
+
+class ReplayBuffer(ABC):
+    def __init__(self, maex_len: int = 10000, device='cpu') -> None:
+        super().__init__()
+
+    @torch.no_grad()
+    def append(self, experience: Experience) -> None:
+        if self.cpu_offload:
+            experience.to_device(torch.device('cpu'))
+        items = split_experience_batch(experience)
+        self.items.extend(items)
+        if self.limit > 0:
+            samples_to_remove = len(self.items) - self.limit
+            if samples_to_remove > 0:
+                self.items = self.items[samples_to_remove:]
+
+    def clear(self) -> None:
+        self.items.clear()
+
+    @torch.no_grad()
+    def sample(self) -> Experience:
+        items = random.sample(self.items, self.sample_batch_size)
+        experience = make_experience_batch(items)
+        if self.cpu_offload:
+            experience.to_device(self.target_device)
+        return experience
+
+    def __len__(self) -> int:
+        return len(self.items)
+
+    def __getitem__(self, idx: int) -> BufferItem:
+        return self.items[idx]
+
+    def collate_fn(self, batch) -> Experience:
+        experience = make_experience_batch(batch)
+        return experience
