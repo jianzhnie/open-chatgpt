@@ -1,10 +1,15 @@
 import json
 import random
+from abc import ABC
 from collections import namedtuple
-from typing import Deque, List, Tuple
+from typing import Deque, List, Optional, Tuple
 
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
+
+from chatgpt.rlhf.actor_critic import ActorModel
+from chatgpt.utils.modeling import compute_reward
 
 # structure to store the data for each experience
 Memory = namedtuple(
@@ -74,3 +79,75 @@ class ExamplesSampler:
             n (int): Number of examples to sample
         """
         return random.sample(self.data, n)
+
+
+class Experience:
+    """Experience is a batch of data. These data should have the the sequence
+    length and number of actions. Left padding for sequences is applied.
+
+    Shapes of each tensor:
+    sequences: (B, S)
+    action_log_probs: (B, A)
+    values: (B)
+    reward: (B)
+    advatanges: (B)
+    attention_mask: (B, S)
+    action_mask: (B, A)
+
+    "A" is the number of actions.
+    """
+    sequences: torch.Tensor
+    action_log_probs: torch.Tensor
+    values: torch.Tensor
+    reward: torch.Tensor
+    advantages: torch.Tensor
+    attention_mask: Optional[torch.LongTensor]
+    action_mask: Optional[torch.BoolTensor]
+
+
+class ExperienceMaker(ABC):
+    def __init__(self,
+                 actor: ActorModel,
+                 critic: nn.Module,
+                 reward_model: nn.Module,
+                 initial_model: ActorModel,
+                 kl_coef: float = 0.1) -> None:
+        super().__init__()
+
+        self.actor = actor
+        self.critic = critic
+        self.reward_model = reward_model
+        self.initial_model = initial_model
+        self.kl_coef = kl_coef
+
+    @torch.no_grad()
+    def make_experience(self, input_ids: torch.Tensor,
+                        **generate_kwargs) -> Experience:
+
+        self.actor.eval()
+        self.critic.eval()
+        self.initial_model.eval()
+        self.reward_model.eval()
+
+        sequences, attention_mask, action_mask = self.actor.generate(
+            input_ids, return_action_mask=True, **generate_kwargs)
+        num_actions = action_mask.size(1)
+
+        action_log_probs = self.actor(sequences, num_actions, attention_mask)
+        base_action_log_probs = self.initial_model(sequences, num_actions,
+                                                   attention_mask)
+        value = self.critic(sequences, action_mask, attention_mask)
+        r = self.reward_model(sequences, attention_mask)
+        reward = compute_reward(r,
+                                self.kl_coef,
+                                action_log_probs,
+                                base_action_log_probs,
+                                action_mask=action_mask)
+
+        advantage = reward - value
+        # TODO(ver217): maybe normalize adv
+        if advantage.ndim == 1:
+            advantage = advantage.unsqueeze(-1)
+
+        return Experience(sequences, action_log_probs, value, reward,
+                          advantage, attention_mask, action_mask)
