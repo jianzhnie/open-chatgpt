@@ -144,7 +144,7 @@ class PPOTrainer(Trainer):
         self,
         actor: ActorModel,
         critic: CriticModel,
-        reward_model: nn.Module,
+        reward_model: RewardModel,
         initial_model: ActorModel,
         actor_optim: Optimizer,
         critic_optim: Optimizer,
@@ -229,7 +229,7 @@ class PPOTrainer(Trainer):
                                           experience.values,
                                           experience.reward,
                                           action_mask=experience.action_mask)
-        
+
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
