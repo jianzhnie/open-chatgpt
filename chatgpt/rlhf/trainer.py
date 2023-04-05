@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 import torch.nn as nn
 import tqdm
 from torch import Tensor
 from torch.optim import Optimizer
-from torch.utils.data import DistributedSampler
 
 from chatgpt.buffer.replay_buffer import (Experience, ExperienceMaker,
                                           ReplayBuffer)
@@ -37,7 +36,6 @@ class Trainer(ABC):
         replay_buffer: ReplayBuffer,
         experience_batch_size: int = 8,
         max_epochs: int = 1,
-        tokenizer: Optional[Callable[[Any], dict]] = None,
         sample_replay_buffer: bool = False,
         dataloader_pin_memory: bool = True,
         callbacks: List[Callback] = [],
@@ -49,7 +47,6 @@ class Trainer(ABC):
         self.replay_buffer = replay_buffer
         self.experience_batch_size = experience_batch_size
         self.max_epochs = max_epochs
-        self.tokenizer = tokenizer
         self.generate_kwargs = generate_kwargs
         self.sample_replay_buffer = sample_replay_buffer
         self.dataloader_pin_memory = dataloader_pin_memory
@@ -144,7 +141,7 @@ class PPOTrainer(Trainer):
         self,
         actor: ActorModel,
         critic: CriticModel,
-        reward_model: nn.Module,
+        reward_model: RewardModel,
         initial_model: ActorModel,
         actor_optim: Optimizer,
         critic_optim: Optimizer,
@@ -157,7 +154,6 @@ class PPOTrainer(Trainer):
         value_clip: float = 0.4,
         experience_batch_size: int = 8,
         max_epochs: int = 1,
-        tokenizer: Optional[Callable[[Any], dict]] = None,
         sample_replay_buffer: bool = False,
         dataloader_pin_memory: bool = True,
         callbacks: List[Callback] = [],
@@ -172,7 +168,6 @@ class PPOTrainer(Trainer):
             replay_buffer,
             experience_batch_size,
             max_epochs,
-            tokenizer,
             sample_replay_buffer,
             dataloader_pin_memory,
             callbacks,
@@ -229,7 +224,7 @@ class PPOTrainer(Trainer):
                                           experience.values,
                                           experience.reward,
                                           action_mask=experience.action_mask)
-        
+
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
