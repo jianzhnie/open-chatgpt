@@ -156,17 +156,21 @@ class ExperienceMaker(ABC):
 
 
 class ReplayBuffer(ABC):
-    def __init__(self, maex_len: int = 10000, device='cpu') -> None:
+    def __init__(self,
+                 max_len: int = 10000,
+                 sample_batch_size: int = 8,
+                 device='cpu') -> None:
         super().__init__()
+        self.max_len = max_len
+        self.sample_batch_size = sample_batch_size
+        self.device = device
 
     @torch.no_grad()
     def append(self, experience: Experience) -> None:
-        if self.cpu_offload:
-            experience.to_device(torch.device('cpu'))
         items = split_experience_batch(experience)
         self.items.extend(items)
-        if self.limit > 0:
-            samples_to_remove = len(self.items) - self.limit
+        if self.max_len > 0:
+            samples_to_remove = len(self.items) - self.max_len
             if samples_to_remove > 0:
                 self.items = self.items[samples_to_remove:]
 
@@ -177,8 +181,6 @@ class ReplayBuffer(ABC):
     def sample(self) -> Experience:
         items = random.sample(self.items, self.sample_batch_size)
         experience = make_experience_batch(items)
-        if self.cpu_offload:
-            experience.to_device(self.target_device)
         return experience
 
     def __len__(self) -> int:
