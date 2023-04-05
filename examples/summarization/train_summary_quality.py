@@ -1,3 +1,4 @@
+import sys
 from typing import Any, Dict, Optional, Tuple, Union
 
 import evaluate
@@ -5,9 +6,8 @@ import torch
 from torch import nn
 from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
                           Trainer, TrainingArguments)
-import sys
 
-sys.path.append("../../")
+sys.path.append('../../')
 from chatgpt.dataset.summarize_dataset import HFSummaryQuality
 
 accuracy = evaluate.load('mse')
@@ -20,7 +20,6 @@ def compute_metrics(eval_pred):
 
 
 class QualityTrainer(Trainer):
-
     def __init__(self, ):
         super().__init__()
         self.loss_fct = nn.L1Loss()
