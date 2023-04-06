@@ -10,7 +10,7 @@ We leave the following for a quick overview of the fine-tuning process and what 
 
 
 1. Train SFT:
-   
+
     ```bash
     python train_fintune_summarize.py
     ```
