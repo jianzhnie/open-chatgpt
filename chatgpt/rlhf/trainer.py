@@ -77,18 +77,17 @@ class Trainer(ABC):
         """
         self.prompt_dataloader = prompt_dataloader
         self._on_fit_start()
-        if num_epochs is None:
-            num_epochs = self.max_epochs
+        num_epochs = self.max_epochs
         for episode in range(num_episodes):
+            self._on_episode_start(episode)
             for epoch in range(num_epochs):
-                self._on_episode_start(epoch)
                 for batch in tqdm(prompt_dataloader):
                     self._on_make_experience_start()
                     experience = self._make_experience(batch)
                     self._on_make_experience_end(experience)
                     self.replay_buffer.append(experience)
-                self._on_episode_end(epoch)
-            self._on_fit_end()
+            self._on_episode_end(episode)
+        self._on_fit_end()
 
     # TODO(ver217): maybe simplify these code using context
     def _on_fit_start(self) -> None:
