@@ -36,8 +36,6 @@ class Trainer(ABC):
         replay_buffer: ReplayBuffer,
         experience_batch_size: int = 8,
         max_epochs: int = 1,
-        sample_replay_buffer: bool = False,
-        dataloader_pin_memory: bool = True,
         callbacks: List[Callback] = [],
         **generate_kwargs,
     ) -> None:
@@ -48,8 +46,6 @@ class Trainer(ABC):
         self.experience_batch_size = experience_batch_size
         self.max_epochs = max_epochs
         self.generate_kwargs = generate_kwargs
-        self.sample_replay_buffer = sample_replay_buffer
-        self.dataloader_pin_memory = dataloader_pin_memory
         self.callbacks = callbacks
 
     @abstractmethod
@@ -154,8 +150,6 @@ class PPOTrainer(Trainer):
         value_clip: float = 0.4,
         experience_batch_size: int = 8,
         max_epochs: int = 1,
-        sample_replay_buffer: bool = False,
-        dataloader_pin_memory: bool = True,
         callbacks: List[Callback] = [],
         **generate_kwargs,
     ) -> None:
@@ -168,8 +162,6 @@ class PPOTrainer(Trainer):
             replay_buffer,
             experience_batch_size,
             max_epochs,
-            sample_replay_buffer,
-            dataloader_pin_memory,
             callbacks,
             **generate_kwargs,
         )
