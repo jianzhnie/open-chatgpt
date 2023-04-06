@@ -1,13 +1,11 @@
 
 accelerate
-deepspeed
 evaluate>=0.4.0
-mpi4py
 nltk>=3.8.1
 numpy
 rouge-score>=0.1.2
 sentencepiece
-tokenizers==0.12.1
+tokenizers
 torch
 transformers>=4.26.1
 wandb
