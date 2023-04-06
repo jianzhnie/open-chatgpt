@@ -2,13 +2,14 @@ import json
 import random
 from abc import ABC
 from collections import namedtuple
-from typing import Deque, List, Optional, Tuple
+from typing import Deque, List, Tuple
 
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-from chatgpt.buffer.utils import (BufferItem, make_experience_batch,
+from chatgpt.buffer.utils import (BufferItem, Experience,
+                                  make_experience_batch,
                                   split_experience_batch)
 from chatgpt.rlhf.actor_critic import ActorModel
 from chatgpt.utils.modeling import compute_reward
@@ -81,30 +82,6 @@ class ExamplesSampler:
             n (int): Number of examples to sample
         """
         return random.sample(self.data, n)
-
-
-class Experience:
-    """Experience is a batch of data. These data should have the the sequence
-    length and number of actions. Left padding for sequences is applied.
-
-    Shapes of each tensor:
-    sequences: (B, S)
-    action_log_probs: (B, A)
-    values: (B)
-    reward: (B)
-    advatanges: (B)
-    attention_mask: (B, S)
-    action_mask: (B, A)
-
-    "A" is the number of actions.
-    """
-    sequences: torch.Tensor
-    action_log_probs: torch.Tensor
-    values: torch.Tensor
-    reward: torch.Tensor
-    advantages: torch.Tensor
-    attention_mask: Optional[torch.LongTensor]
-    action_mask: Optional[torch.BoolTensor]
 
 
 class ExperienceMaker(ABC):

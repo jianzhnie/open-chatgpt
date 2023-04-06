@@ -1,10 +1,8 @@
 import os
-import sys
 
 from transformers import (AutoTokenizer, EarlyStoppingCallback, EvalPrediction,
                           Trainer, TrainingArguments, default_data_collator)
 
-sys.path.append('../../')
 from chatgpt.dataset.reward_dataset import PairwiseDataset
 from chatgpt.rlhf.reward_model import PairedRewardModel
 

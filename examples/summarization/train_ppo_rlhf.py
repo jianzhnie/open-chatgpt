@@ -41,7 +41,6 @@ def main(args):
         max_epochs=args.max_epochs,
         train_batch_size=args.train_batch_size,
         experience_batch_size=args.experience_batch_size,
-        tokenizer=tokenize_fn,
         max_length=128,
         do_sample=True,
         temperature=1.0,
@@ -50,10 +49,10 @@ def main(args):
         eos_token_id=tokenizer.eos_token_id,
     )
 
-    trainer.fit(prompt_dataloader=prompt_dataloader,
-                num_episodes=args.num_episodes,
-                max_timesteps=args.max_timesteps,
-                update_timesteps=args.update_timesteps)
+    trainer.train(prompt_dataloader=prompt_dataloader,
+                  num_episodes=args.num_episodes,
+                  max_timesteps=args.max_timesteps,
+                  update_timesteps=args.update_timesteps)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 import torch
 from datasets import load_dataset
