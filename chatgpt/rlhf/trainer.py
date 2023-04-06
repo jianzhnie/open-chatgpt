@@ -69,9 +69,9 @@ class Trainer(ABC):
                 self._on_learn_batch_end(metrics, experience)
             self._on_learn_epoch_end(epoch)
 
-    def fit(self,
-            prompt_dataloader,
-            num_episodes: Optional[int] = None) -> None:
+    def train(self,
+              prompt_dataloader,
+              num_episodes: Optional[int] = None) -> None:
         """Train the model.
 
         Args:
