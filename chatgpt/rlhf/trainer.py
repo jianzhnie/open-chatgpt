@@ -30,6 +30,7 @@ class Trainer(ABC):
         callbacks (List[Callback], defaults to []): the callbacks to call during training process
         generate_kwargs (dict, optional): the kwargs to use while model generating
     """
+
     def __init__(
         self,
         experience_maker: ExperienceMaker,
@@ -133,6 +134,7 @@ class Trainer(ABC):
 
 
 class PPOTrainer(Trainer):
+
     def __init__(
         self,
         actor: ActorModel,
@@ -145,7 +147,6 @@ class PPOTrainer(Trainer):
         ptx_coef: float = 0.9,
         train_batch_size: int = 8,
         buffer_limit: int = 0,
-        buffer_cpu_offload: bool = True,
         eps_clip: float = 0.2,
         value_clip: float = 0.4,
         experience_batch_size: int = 8,
@@ -155,8 +156,9 @@ class PPOTrainer(Trainer):
     ) -> None:
         experience_maker = ExperienceMaker(actor, critic, reward_model,
                                            initial_model, kl_coef)
-        replay_buffer = ReplayBuffer(train_batch_size, buffer_limit,
-                                     buffer_cpu_offload)
+        replay_buffer = ReplayBuffer(buffer_limit,
+                                     train_batch_size,
+                                     device='cpu')
         super().__init__(
             experience_maker,
             replay_buffer,

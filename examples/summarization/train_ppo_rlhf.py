@@ -3,7 +3,8 @@ import argparse
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
-
+import sys
+sys.path.append("../../")
 from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
 from chatgpt.rlhf.reward_model import RewardModel
@@ -14,7 +15,7 @@ def main(args):
     pretrained = 'facebook/opt-125m'
     data_path = 'CarperAI/openai_summarize_tldr'
     initial_model = ActorModel(pretrained, debug=True)
-    reward_model = RewardModel(model='opt', pretrained=pretrained, debug=True)
+    reward_model = RewardModel(model='opt', pretrained=pretrained)
     actor_model = ActorModel(pretrained=pretrained, debug=True)
     critic_model = CriticModel(model='opt', pretrained=pretrained, debug=True)
 
@@ -38,9 +39,10 @@ def main(args):
         critic_optim=critic_optim,
         kl_coef=args.kl_coef,
         ptx_coef=args.ptx_coef,
-        max_epochs=args.max_epochs,
         train_batch_size=args.train_batch_size,
+        buffer_limit=args.buffer_limit,
         experience_batch_size=args.experience_batch_size,
+        max_epochs=args.max_epochs,
         max_length=128,
         do_sample=True,
         temperature=1.0,
@@ -50,9 +52,7 @@ def main(args):
     )
 
     trainer.train(prompt_dataloader=prompt_dataloader,
-                  num_episodes=args.num_episodes,
-                  max_timesteps=args.max_timesteps,
-                  update_timesteps=args.update_timesteps)
+                  num_episodes=args.num_episodes)
 
 
 if __name__ == '__main__':
@@ -70,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--update_timesteps', type=int, default=10)
     parser.add_argument('--max_epochs', type=int, default=5)
     parser.add_argument('--train_batch_size', type=int, default=8)
+    parser.add_argument('--buffer_limit', type=int, default=32)
     parser.add_argument('--ptx_batch_size', type=int, default=1)
     parser.add_argument('--experience_batch_size', type=int, default=8)
     parser.add_argument('--kl_coef', type=float, default=0.1)
