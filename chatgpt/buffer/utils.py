@@ -4,7 +4,29 @@ from typing import List, Optional
 import torch
 import torch.nn.functional as F
 
-from chatgpt.buffer.replay_buffer import Experience
+
+class Experience(object):
+    """Experience is a batch of data. These data should have the the sequence
+    length and number of actions. Left padding for sequences is applied.
+
+    Shapes of each tensor:
+    sequences: (B, S)
+    action_log_probs: (B, A)
+    values: (B)
+    reward: (B)
+    advatanges: (B)
+    attention_mask: (B, S)
+    action_mask: (B, A)
+
+    "A" is the number of actions.
+    """
+    sequences: torch.Tensor
+    action_log_probs: torch.Tensor
+    values: torch.Tensor
+    reward: torch.Tensor
+    advantages: torch.Tensor
+    attention_mask: Optional[torch.LongTensor]
+    action_mask: Optional[torch.BoolTensor]
 
 
 @dataclass
