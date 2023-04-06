@@ -51,13 +51,13 @@ class RLTrainer:
         self.device = device
         self.debug = debug
         # initialize agent-critic
-        self.actorcritic = ActorCritic()
-        self.actor_optimizer = optim.Adam(self.actorcritic.actor.parameters(),
+        self.actor_critic = ActorCritic()
+        self.actor_optimizer = optim.Adam(self.actor_critic.actor.parameters(),
                                           lr=actor_lr)
         self.critic_optimizer = optim.Adam(
-            self.actorcritic.critic.parameters(), lr=critic_lr)
+            self.actor_critic.critic.parameters(), lr=critic_lr)
         # initialize reward model
-        self.reward = RewardModel()
+        self.reward_model = RewardModel()
         # initialize examples sampler
         self.example_sampler = ExamplesSampler()
         # eps
@@ -69,7 +69,7 @@ class RLTrainer:
         dataloader = DataLoader(ExperienceDataset(memories, self.device),
                                 batch_size=self.batch_size)
         # train agent-critic
-        self.actorcritic.train()
+        self.actor_critic.train()
         for epoch in range(self.epochs):
             for i, (states, old_actions, sequences, old_values, rewards,
                     old_actions_log_probs,
@@ -94,7 +94,7 @@ class RLTrainer:
                 actions_len = old_actions.shape[-1]
 
                 # get actor critic forward
-                actions_logits, values = self.actorcritic.forward(
+                actions_logits, values = self.actor_critic.forward(
                     sequences, sequences_mask, actions_len)
 
                 # get action log prob
@@ -158,7 +158,7 @@ class RLTrainer:
                 value_loss.backward()
                 self.critic_optimizer.step()
 
-        self.actorcritic.eval()
+        self.actor_critic.eval()
         print('End Learning')
         return policy_loss.item(), value_loss.item(), kl_div_loss.item()
 
@@ -187,7 +187,7 @@ class RLTrainer:
         cnt_learn_iter = 0
 
         # loop over episodes and timesteps
-        self.actorcritic.eval()
+        self.actor_critic.eval()
         for episode in range(self.num_episodes):
             for timestep in range(self.max_timesteps):
                 print(
@@ -198,7 +198,7 @@ class RLTrainer:
                 # sample num_examples examples from  example dataset
                 inputs = self.example_sampler.sample(self.num_examples)
                 # tokenize examples
-                tokenized_inputs = self.actorcritic.actor.tokenizer(
+                tokenized_inputs = self.actor_critic.actor.tokenizer(
                     inputs, padding=True, return_tensors='pt')
                 if self.debug:
                     print('RLTrainer.train()')
@@ -209,7 +209,7 @@ class RLTrainer:
                     self.device)
 
                 (actions, actions_logits, values, sequences,
-                 sequences_mask) = self.actorcritic.generate(
+                 sequences_mask) = self.actor_critic.generate(
                      states, states_mask)
 
                 # from action logits to action log probs
@@ -218,7 +218,7 @@ class RLTrainer:
                 actions_log_probs = torch.log(action_prob + self.eps)
 
                 completions = [
-                    self.actorcritic.actor.tokenizer.decode(action)
+                    self.actor_critic.actor.tokenizer.decode(action)
                     for i, action in enumerate(actions)
                 ]
                 if self.debug:
