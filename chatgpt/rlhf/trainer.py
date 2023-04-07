@@ -55,6 +55,7 @@ class Trainer(ABC):
 
     def _make_experience(
             self, inputs: Union[Tensor, Dict[str, Tensor]]) -> Experience:
+        print("4.6")
         return self.experience_maker.make_experience(inputs)
 
     def learn(self):
@@ -79,11 +80,17 @@ class Trainer(ABC):
         self._on_fit_start()
         num_epochs = self.max_epochs
         for episode in range(num_episodes):
+            print("1")
             self._on_episode_start(episode)
+            print("2")
             for epoch in range(num_epochs):
-                for batch in tqdm(prompt_dataloader):
+                print("3")
+                for batch in prompt_dataloader:
+                    print("4")
                     self._on_make_experience_start()
+                    print("4.5")
                     experience = self._make_experience(batch)
+                    print("5")
                     self._on_make_experience_end(experience)
                     self.replay_buffer.append(experience)
             self._on_episode_end(episode)

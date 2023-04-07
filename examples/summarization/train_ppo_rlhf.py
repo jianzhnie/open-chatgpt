@@ -4,11 +4,13 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 import sys
+
 sys.path.append("../../")
 from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.rlhf.trainer import PPOTrainer
+from chatgpt.rlhf.callbacks import Callback
 
 
 def main(args):
@@ -27,8 +29,11 @@ def main(args):
                                    tokenizer=tokenizer,
                                    split='valid',
                                    max_length=512)
+    print(prompt_dataset)
     prompt_dataloader = DataLoader(prompt_dataset, shuffle=True, batch_size=8)
+    print(prompt_dataloader)
 
+    callbacks = [Callback()]
     # configure trainer
     trainer = PPOTrainer(
         actor=actor_model,
@@ -49,6 +54,7 @@ def main(args):
         top_k=50,
         pad_token_id=tokenizer.pad_token_id,
         eos_token_id=tokenizer.eos_token_id,
+        callbacks=callbacks,
     )
 
     trainer.train(prompt_dataloader=prompt_dataloader,
