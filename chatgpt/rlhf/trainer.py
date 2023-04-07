@@ -29,6 +29,7 @@ class Trainer(ABC):
         callbacks (List[Callback], defaults to []): the callbacks to call during training process
         generate_kwargs (dict, optional): the kwargs to use while model generating
     """
+
     def __init__(
         self,
         experience_maker: ExperienceMaker,
@@ -54,7 +55,8 @@ class Trainer(ABC):
     def _make_experience(
             self, inputs: Union[Tensor, Dict[str, Tensor]]) -> Experience:
         print('4.6')
-        return self.experience_maker.make_experience(inputs)
+        return self.experience_maker.make_experience(**inputs,
+                                                     **self.generate_kwargs)
 
     def learn(self):
         for epoch in range(self.max_epochs):
@@ -138,6 +140,7 @@ class Trainer(ABC):
 
 
 class PPOTrainer(Trainer):
+
     def __init__(
         self,
         actor: ActorModel,

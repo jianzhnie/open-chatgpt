@@ -108,6 +108,7 @@ class ActorModel(nn.Module):
     ) -> Union[Tuple[torch.LongTensor, torch.LongTensor], Tuple[
             torch.LongTensor, torch.LongTensor, torch.BoolTensor]]:
         sequences = generate(self.model, input_ids, **kwargs)
+        print(sequences)
         attention_mask = None
         pad_token_id = kwargs.get('pad_token_id', None)
         if pad_token_id is not None:

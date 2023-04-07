@@ -3,15 +3,9 @@ from typing import Any, Callable, Optional
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-
-try:
-    from transformers.generation_logits_process import (
-        LogitsProcessorList, TemperatureLogitsWarper, TopKLogitsWarper,
-        TopPLogitsWarper)
-except ImportError:
-    from transformers.generation import (LogitsProcessorList,
-                                         TemperatureLogitsWarper,
-                                         TopKLogitsWarper, TopPLogitsWarper)
+from transformers.generation import (LogitsProcessorList,
+                                     TemperatureLogitsWarper, TopKLogitsWarper,
+                                     TopPLogitsWarper)
 
 
 def prepare_logits_processor(
