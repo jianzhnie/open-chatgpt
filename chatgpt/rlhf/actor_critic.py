@@ -94,7 +94,7 @@ class ActorModel(nn.Module):
         return model_output
 
     @torch.no_grad()
-    def generate(self, states: torch.Tensor, state_mask: torch.Tensor,
+    def generate(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
                  temperature, max_sequence_length,
                  max_tokens) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions and sequences=[states, actions] from state (i.e.
@@ -111,27 +111,27 @@ class ActorModel(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]: Tuple of generated actions and full generated sequences.
         """
         # Set maximum length of generation
-        max_generation_possible = max_sequence_length - states.shape[1]
+        max_generation_possible = max_sequence_length - input_ids.shape[1]
         max_completion = min(max_tokens, max_generation_possible)
         if max_completion <= 0:
             raise ValueError(
                 'The maximum completion available is <= 0 the prompt is too long w.r.t the model sequence length'
             )
-        max_length = states.shape[1] + max_completion
+        max_length = input_ids.shape[1] + max_completion
 
         # Generate actions and sequences
         sequences = self.model.generate(
-            input_ids=states,
-            attention_mask=state_mask,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
             temperature=temperature,
             max_length=max_length,
         )
-        actions = sequences[:, states.shape[1]:]
+        actions = sequences[:, input_ids.shape[1]:]
         # Extract generated actions from full sequence
         if self.debug:
             print('ActorModel.generate')
-            print('state', states)
-            print('state shape', states.shape)
+            print('state', input_ids)
+            print('state shape', input_ids.shape)
             print('sequence shape', sequences.shape)
             print('sequence', sequences)
             print('actions shape', actions.shape)
