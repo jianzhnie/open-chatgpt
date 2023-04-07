@@ -4,9 +4,13 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
 from transformers.modeling_outputs import ModelOutput
+
+from chatgpt.models.generation import generate
+from chatgpt.models.utils import log_probs_from_logits
 
 ActionCriticReturn = namedtuple(
     'ActionCriticReturn',
@@ -91,12 +95,45 @@ class ActorModel(nn.Module):
             print('logits shape:', model_output.logits.shape)
             print('logits:', model_output.logits)
 
-        return model_output
+        logits = model_output['logits']
+        log_probs = log_probs_from_logits(logits[:, :-1, :], input_ids[:, 1:])
+        return log_probs
 
     @torch.no_grad()
-    def generate(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
-                 temperature, max_sequence_length,
-                 max_tokens) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate(
+        self,
+        input_ids: torch.Tensor,
+        return_action_mask: bool = True,
+        **kwargs
+    ) -> Union[Tuple[torch.LongTensor, torch.LongTensor], Tuple[
+            torch.LongTensor, torch.LongTensor, torch.BoolTensor]]:
+        sequences = generate(self.model, input_ids, **kwargs)
+        attention_mask = None
+        pad_token_id = kwargs.get('pad_token_id', None)
+        if pad_token_id is not None:
+            attention_mask = sequences.not_equal(pad_token_id).to(
+                dtype=torch.long, device=sequences.device)
+        if not return_action_mask:
+            return sequences, attention_mask, None
+        input_len = input_ids.size(1)
+        eos_token_id = kwargs.get('eos_token_id', None)
+        if eos_token_id is None:
+            action_mask = torch.ones_like(sequences, dtype=torch.bool)
+        else:
+            # left padding may be applied, only mask action
+            action_mask = (sequences[:, input_len:] == eos_token_id).cumsum(
+                dim=-1) == 0
+            action_mask = F.pad(action_mask, (1 + input_len, -1),
+                                value=True)  # include eos token and input
+        action_mask[:, :input_len] = False
+        action_mask = action_mask[:, 1:]
+        return sequences, attention_mask, action_mask[:, -(sequences.size(1) -
+                                                           input_len):]
+
+    @torch.no_grad()
+    def generate_(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
+                  temperature, max_sequence_length, max_tokens,
+                  **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions and sequences=[states, actions] from state (i.e.
         input of the prompt generator model)
 
