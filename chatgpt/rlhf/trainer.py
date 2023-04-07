@@ -19,7 +19,6 @@ class Trainer(ABC):
     """Base class for rlhf trainers.
 
     Args:
-        strategy (Strategy):the strategy to use for training
         experience_maker (ExperienceMaker): the experience maker to use for produce experience to fullfill replay buffer
         replay_buffer (ReplayBuffer): the replay buffer to use for training
         experience_batch_size (int, defaults to 8): the batch size to use for experience generation
