@@ -50,7 +50,8 @@ if __name__ == '__main__':
         seed=42)
 
     # Initialize the reward model from the (supervised) fine-tuned GPT-J
-    model = PairedRewardModel(model='opt', pretrained='facebook/opt-125m')
+    model = PairedRewardModel(model='opt',
+                              pretrained='fintune-summarize-checkpoint/')
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
     # Make pairwise datasets for training

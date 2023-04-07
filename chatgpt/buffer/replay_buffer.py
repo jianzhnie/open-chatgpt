@@ -108,8 +108,9 @@ class ExperienceMaker(ABC):
         self.initial_model.eval()
         self.reward_model.eval()
 
+        print("4.7")
         sequences, attention_mask, action_mask = self.actor.generate(
-            input_ids, return_action_mask=True, **generate_kwargs)
+            input_ids, **generate_kwargs)
         num_actions = action_mask.size(1)
 
         action_log_probs = self.actor(sequences, num_actions, attention_mask)

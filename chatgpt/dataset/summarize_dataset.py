@@ -161,8 +161,7 @@ class HFSummaryQuality(Dataset):
                                  response,
                                  truncation=True,
                                  max_length=self.max_length,
-                                 padding='max_length',
-                                 return_tensors='pt')
+                                 padding='max_length')
 
         # Get the labels for the summary quality on different axes
         labels = np.zeros(len(self.label2idx))

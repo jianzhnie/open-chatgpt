@@ -30,6 +30,7 @@ class Trainer(ABC):
         callbacks (List[Callback], defaults to []): the callbacks to call during training process
         generate_kwargs (dict, optional): the kwargs to use while model generating
     """
+
     def __init__(
         self,
         experience_maker: ExperienceMaker,
@@ -54,6 +55,7 @@ class Trainer(ABC):
 
     def _make_experience(
             self, inputs: Union[Tensor, Dict[str, Tensor]]) -> Experience:
+        print("4.6")
         return self.experience_maker.make_experience(inputs)
 
     def learn(self):
@@ -76,18 +78,23 @@ class Trainer(ABC):
         """
         self.prompt_dataloader = prompt_dataloader
         self._on_fit_start()
-        if num_epochs is None:
-            num_epochs = self.max_epochs
+        num_epochs = self.max_epochs
         for episode in range(num_episodes):
+            print("1")
+            self._on_episode_start(episode)
+            print("2")
             for epoch in range(num_epochs):
-                self._on_episode_start(epoch)
-                for batch in tqdm(prompt_dataloader):
+                print("3")
+                for batch in prompt_dataloader:
+                    print("4")
                     self._on_make_experience_start()
+                    print("4.5")
                     experience = self._make_experience(batch)
+                    print("5")
                     self._on_make_experience_end(experience)
                     self.replay_buffer.append(experience)
-                self._on_episode_end(epoch)
-            self._on_fit_end()
+            self._on_episode_end(episode)
+        self._on_fit_end()
 
     # TODO(ver217): maybe simplify these code using context
     def _on_fit_start(self) -> None:
@@ -133,6 +140,7 @@ class Trainer(ABC):
 
 
 class PPOTrainer(Trainer):
+
     def __init__(
         self,
         actor: ActorModel,
@@ -145,7 +153,6 @@ class PPOTrainer(Trainer):
         ptx_coef: float = 0.9,
         train_batch_size: int = 8,
         buffer_limit: int = 0,
-        buffer_cpu_offload: bool = True,
         eps_clip: float = 0.2,
         value_clip: float = 0.4,
         experience_batch_size: int = 8,
@@ -155,8 +162,9 @@ class PPOTrainer(Trainer):
     ) -> None:
         experience_maker = ExperienceMaker(actor, critic, reward_model,
                                            initial_model, kl_coef)
-        replay_buffer = ReplayBuffer(train_batch_size, buffer_limit,
-                                     buffer_cpu_offload)
+        replay_buffer = ReplayBuffer(buffer_limit,
+                                     train_batch_size,
+                                     device='cpu')
         super().__init__(
             experience_maker,
             replay_buffer,

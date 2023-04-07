@@ -126,8 +126,8 @@ class ActorModel(nn.Module):
             temperature=temperature,
             max_length=max_length,
         )
-        actions = sequences[:, states.shape[
-            1]:]  # Extract generated actions from full sequence
+        actions = sequences[:, states.shape[1]:]
+        # Extract generated actions from full sequence
         if self.debug:
             print('ActorModel.generate')
             print('state', states)
