@@ -30,7 +30,6 @@ class Trainer(ABC):
         callbacks (List[Callback], defaults to []): the callbacks to call during training process
         generate_kwargs (dict, optional): the kwargs to use while model generating
     """
-
     def __init__(
         self,
         experience_maker: ExperienceMaker,
@@ -55,7 +54,7 @@ class Trainer(ABC):
 
     def _make_experience(
             self, inputs: Union[Tensor, Dict[str, Tensor]]) -> Experience:
-        print("4.6")
+        print('4.6')
         return self.experience_maker.make_experience(inputs)
 
     def learn(self):
@@ -80,17 +79,17 @@ class Trainer(ABC):
         self._on_fit_start()
         num_epochs = self.max_epochs
         for episode in range(num_episodes):
-            print("1")
+            print('1')
             self._on_episode_start(episode)
-            print("2")
+            print('2')
             for epoch in range(num_epochs):
-                print("3")
+                print('3')
                 for batch in prompt_dataloader:
-                    print("4")
+                    print('4')
                     self._on_make_experience_start()
-                    print("4.5")
+                    print('4.5')
                     experience = self._make_experience(batch)
-                    print("5")
+                    print('5')
                     self._on_make_experience_end(experience)
                     self.replay_buffer.append(experience)
             self._on_episode_end(episode)
@@ -140,7 +139,6 @@ class Trainer(ABC):
 
 
 class PPOTrainer(Trainer):
-
     def __init__(
         self,
         actor: ActorModel,
@@ -199,14 +197,12 @@ class PPOTrainer(Trainer):
 
         # ptx loss
         if self.ptx_coef != 0:
-            ptx = next(iter(self.pretrain_dataloader))['input_ids'].to(
+            batch = next(iter(self.pretrain_dataloader))
+            ptx = batch['input_ids'].to(torch.cuda.current_device())
+            label = batch['labels'].to(torch.cuda.current_device())[:, 1:]
+            attention_mask = batch['attention_mask'].to(
                 torch.cuda.current_device())
-            label = next(iter(self.pretrain_dataloader))['labels'].to(
-                torch.cuda.current_device())[:, 1:]
-            attention_mask = next(iter(
-                self.pretrain_dataloader))['attention_mask'].to(
-                    torch.cuda.current_device())
-            ptx_log_probs = self.actor.get_base_model()(
+            ptx_log_probs = self.actor(
                 ptx, attention_mask=attention_mask)['logits'][..., :-1, :]
             ptx_loss = self.ptx_loss_fn(
                 ptx_log_probs.view(-1, ptx_log_probs.size(-1)), label.view(-1))
