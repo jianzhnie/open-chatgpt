@@ -108,14 +108,12 @@ class ExperienceMaker(ABC):
         self.initial_model.eval()
         self.reward_model.eval()
 
-        print("4.7")
+        print('4.7')
         sequences, attention_mask, action_mask = self.actor.generate(
-            input_ids, **generate_kwargs)
-        num_actions = action_mask.size(1)
+            input_ids, return_action_mask=True, **generate_kwargs)
 
-        action_log_probs = self.actor(sequences, num_actions, attention_mask)
-        base_action_log_probs = self.initial_model(sequences, num_actions,
-                                                   attention_mask)
+        action_log_probs = self.actor(sequences, attention_mask)
+        base_action_log_probs = self.initial_model(sequences, attention_mask)
         value = self.critic(sequences, action_mask, attention_mask)
         r = self.reward_model(sequences, attention_mask)
         reward = compute_reward(r,
