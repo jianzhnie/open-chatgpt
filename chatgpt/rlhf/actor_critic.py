@@ -12,9 +12,17 @@ from transformers.modeling_outputs import ModelOutput
 from chatgpt.models.generation import generate
 from chatgpt.models.utils import log_probs_from_logits
 
-ActionCriticReturn = namedtuple(
-    'ActionCriticReturn',
-    ['actions', 'action_logits', 'values', 'sequence', 'sequences_mask'])
+ActorCriticReturn = namedtuple('ActionCriticReturn', [
+    'actions',
+    'action_logits',
+    'values',
+    'sequences_actor',
+    'sequences_mask_actor',
+    'sequences_critic',
+    'sequences_mask_critic',
+    'action_len_actor',
+    'action_len_critic',
+])
 
 
 @dataclass
@@ -40,8 +48,13 @@ class ActorModel(nn.Module):
         super().__init__()
 
         # Load tokenizer and set special tokens
-        self.tokenizer = AutoTokenizer.from_pretrained(pretrained,
-                                                       padding_side='left')
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            pretrained,
+            padding_side='left',
+            padding=True,
+            truncation=True,
+        )
+        # add eos token if not present
         if self.tokenizer.eos_token is None:
             self.tokenizer.eos_token = '</s>'
             self.tokenizer.eos_token_id = 0
@@ -90,17 +103,15 @@ class ActorModel(nn.Module):
             return_dict=return_dict,
         )
 
+        logits = model_output['logits']
         if self.debug:
             print('ActorModel.forward')
             print('logits shape:', model_output.logits.shape)
             print('logits:', model_output.logits)
-
-        logits = model_output['logits']
-        log_probs = log_probs_from_logits(logits[:, :-1, :], input_ids[:, 1:])
-        return log_probs
+        return logits
 
     @torch.no_grad()
-    def generate(
+    def generate_(
         self,
         input_ids: torch.Tensor,
         return_action_mask: bool = True,
@@ -132,9 +143,10 @@ class ActorModel(nn.Module):
                                                            input_len):]
 
     @torch.no_grad()
-    def generate_(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
-                  temperature, max_sequence_length, max_tokens,
-                  **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
+                 temperature: float, max_sequence_length: int, max_tokens: int,
+                 min_tokens: int,
+                 **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions and sequences=[states, actions] from state (i.e.
         input of the prompt generator model)
 
@@ -151,18 +163,23 @@ class ActorModel(nn.Module):
         # Set maximum length of generation
         max_generation_possible = max_sequence_length - input_ids.shape[1]
         max_completion = min(max_tokens, max_generation_possible)
-        if max_completion <= 0:
+        if max_generation_possible < min_tokens:
             raise ValueError(
-                'The maximum completion available is <= 0 the prompt is too long w.r.t the model sequence length'
-            )
-        max_length = input_ids.shape[1] + max_completion
+                f"The prompt is too long w.r.t the "
+                f"model sequence length \n"
+                f"max_sequence_length={max_sequence_length}\n"
+                f"state_length={input_ids.shape[1]}\n"
+                f"min_tokens={min_tokens}\n"
+                f"max_tokens={max_tokens}\n"
+                f"max_generation_possible={max_generation_possible}\n")
 
         # Generate actions and sequences
         sequences = self.model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
             temperature=temperature,
-            max_length=max_length,
+            max_new_tokens=max_completion,
+            no_repeat_ngram_size=3,
         )
         actions = sequences[:, input_ids.shape[1]:]
         # Extract generated actions from full sequence
@@ -191,17 +208,22 @@ class CriticModel(nn.Module):
         super().__init__()
 
         # Instantiate tokenizer and model from pretrained checkpoint
-        self.tokenizer = AutoTokenizer.from_pretrained(pretrained,
-                                                       padding_side='left',
-                                                       truncation_side='left')
-        self.model = AutoModel.from_pretrained(pretrained)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            pretrained,
+            padding_side='left',
+            truncation=True,
+            padding=True,
+        )
+        self.model = AutoModelForCausalLM.from_pretrained(pretrained)
 
         # Set EOS token and padding token
         if self.tokenizer.eos_token is None:
             self.tokenizer.eos_token = '</s>'
-            self.tokenizer.eos_token_id = 0
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+            self.tokenizer.eos_token_id = 2
+            # add pad token if not present
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
         self.debug = debug
         self.config = self.model.config
@@ -209,6 +231,8 @@ class CriticModel(nn.Module):
         # Define value head layers to output a scalar value
         if model == 'opt':
             head_hidden_size = self.config.word_embed_proj_dim
+        elif model == 'gpt2':
+            head_hidden_size = self.config.n_embd
         else:
             head_hidden_size = self.config.head_hidden_size
         self.value_head = nn.Sequential(
@@ -253,11 +277,6 @@ class CriticModel(nn.Module):
             return_dict=return_dict,
         )
         value = self.value_head(output.last_hidden_state)
-
-        if not return_dict:
-            outputs = (outputs.logits, ) + outputs[1:] + (value, )
-            return outputs
-
         # Print debugging information
         if self.debug:
             print('CriticModel.forward')
@@ -266,10 +285,10 @@ class CriticModel(nn.Module):
             print('rewards.shape', value.shape)
             print('rewards', value)
 
-        return CausalLMOutputWithValue(**outputs, value=value)
+        return value
 
-    def get_reward(self, input_ids: torch.Tensor,
-                   attention_mask: torch.Tensor) -> torch.Tensor:
+    def get_reward(self, output_sequence: torch.Tensor,
+                   output_sequence_mask: torch.Tensor) -> torch.Tensor:
         """Get the reward for a sequence of tokens.
 
         Args:
@@ -279,7 +298,11 @@ class CriticModel(nn.Module):
         Returns:
             torch.Tensor: Tensor of rewards of shape (batch_size,)
         """
-        value = self.forward(input_ids, attention_mask)
+        if output_sequence.shape[1] > self.config.max_sequence_length:
+            raise ValueError(
+                f"Output sequence is too long: {output_sequence.shape[1]}"
+                f" > {self.config.max_sequence_length}")
+        value = self.forward(output_sequence, output_sequence_mask)
         return value[:, -1]
 
 
@@ -302,8 +325,8 @@ class ActorCritic(nn.Module):
     """
     def __init__(
         self,
-        actor: nn.Module,
-        critic: nn.Module,
+        actor: ActorModel,
+        critic: CriticModel,
         debug: bool = False,
     ):
         super().__init__()
@@ -313,9 +336,12 @@ class ActorCritic(nn.Module):
 
     def forward(
         self,
-        sequences: torch.Tensor,
-        sequences_mask: torch.Tensor,
-        action_len: int,
+        sequences_actor: torch.Tensor,
+        sequences_mask_actor: torch.Tensor,
+        sequences_critic: torch.Tensor,
+        sequences_mask_critic: torch.Tensor,
+        action_len_actor: int,
+        action_len_critic: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Given the whole sequences, use the actor forward to get the logits
         for each token in the sequence and the critic forward to get the values
@@ -333,18 +359,26 @@ class ActorCritic(nn.Module):
         """
         # use a single forward on the whole sequence
         # to get pi(y | x) and ignore predicted output
-        actions_logits = self.actor(sequences, sequences_mask)
-        values = self.critic(sequences, sequences_mask)
+        actions_logits = self.actor(sequences_actor, sequences_mask_actor)
+        values = self.critic(sequences_critic, sequences_mask_critic)
 
         # return only logits and values for the actions taken
-        real_actions_logits = actions_logits[:, -action_len:, :]
-        real_values = values[:, -action_len:]
+        real_actions_logits = actions_logits[:, -action_len_actor:, :]
+        real_values = values[:, -action_len_critic:]
 
         if self.debug:
             print('ActorCritic.forward')
-            print('action_len', action_len)
-            print('sequences.shape', sequences.shape)
-            print('sequences', sequences)
+            print('action_len_actor', action_len_actor)
+            print('action_len_critic', action_len_critic)
+            print('sequences_actor.shape', sequences_actor.shape)
+            print('sequences_actor', sequences_actor)
+            print('sequences_mask_actor.shape', sequences_mask_actor.shape)
+            print('sequences_mask_actor', sequences_mask_actor)
+            print('sequences_critic.shape', sequences_critic.shape)
+            print('sequences_critic', sequences_critic)
+            print('sequences_mask_critic.shape', sequences_mask_critic.shape)
+            print('sequences_mask_critic', sequences_mask_critic)
+
             print('real_action_logits.shape', real_actions_logits.shape)
             print('real_action_logits', real_actions_logits)
             print('real_values.shape', real_values.shape)
@@ -353,48 +387,74 @@ class ActorCritic(nn.Module):
         return real_actions_logits, real_values
 
     @torch.no_grad()
-    def generate(self, states: torch.Tensor,
-                 state_mask: torch.Tensor) -> ActionCriticReturn:
-        """Generate actions, action_logits, values, and sequences from states.
+    def generate(
+        self,
+        states_actor: torch.Tensor,
+        state_mask_actor: torch.Tensor,
+        states_critic,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Generate actions, actions_logits, values and sequences from states
 
         Args:
-            states (torch.Tensor): The states of the environment.
-            state_mask (torch.Tensor): The mask for the states of the environment.
+            states_actor (torch.Tensor): States for the actor
+            states_mask_actor (torch.Tensor): Mask for the states for the
+                actor
+            states_critic (torch.Tensor): States for the critic
 
         Returns:
-            ActionCriticReturn: A namedtuple containing the following fields:
-                - actions (torch.Tensor): The generated actions.
-                - actions_logits (torch.Tensor): The logits for the generated actions.
-                - values (torch.Tensor): The values generated by the critic model
-                for the actions generated by the actor.
-                - sequences (torch.Tensor): The sequences generated from the states as
-                [states, actions].
-                - sequences_mask (torch.Tensor): The mask for the generated sequences.
+            actions (torch.Tensor): Actions generated from the states
+            actions_logits (torch.Tensor): Logits for the actions generated
+                from the states (i.e. pi(y | x))
+            values (torch.Tensor): Values generated by the critic model
+                for the actions generated by the actor (i.e. V(x))
+            sequences (torch.Tensor): Sequences generated from the states
+                as [states, actions]
         """
-        # Generate action sequence.
-        actions, sequence = self.actor.generate(states, state_mask)
+        # Generate action sequence from actor.
+        actions, sequences_actor = self.actor.generate(states_actor,
+                                                       state_mask_actor)
 
         # Get the mask for the generated sequence.
-        sequences_mask = sequence != self.actor.tokenizer.pad_token_id
-        sequences_mask = sequences_mask.to(sequence.device).long().detach()
+        sequences_mask_actor = sequences_actor != self.actor.tokenizer.pad_token_id
+        sequences_mask_actor = sequences_mask_actor.to(
+            sequences_actor.device).long().detach()
 
         # Get the length of the generated actions.
-        action_len = actions.shape[1]
+        action_len_actor = actions.shape[1]
+
+        sequences_critic = sequences_actor
+        sequences_mask_critic = sequences_mask_actor
+        action_len_critic = action_len_actor
 
         # Generate action logits and values.
-        actions_logits, values = self.forward(sequence, sequences_mask,
-                                              action_len)
+        actions_logits, values = self.forward(
+            sequences_actor,
+            sequences_mask_actor,
+            sequences_critic,
+            sequences_mask_critic,
+            action_len_actor,
+            action_len_critic,
+        )
 
         if self.debug:
             print('ActorCritic.generate')
             print('actions shape', actions.shape)
             print('actions', actions)
-            print('sequence shape', sequence.shape)
-            print('sequence', sequence)
+            print('sequence shape', sequences_actor.shape)
+            print('sequence', sequences_actor)
             print('actions_logits shape', actions_logits.shape)
             print('actions_logits', actions_logits)
             print('values shape', values.shape)
             print('values', values)
 
-        return ActionCriticReturn(actions, actions_logits, values, sequence,
-                                  sequences_mask)
+        return ActorCriticReturn(
+            actions,
+            actions_logits,
+            values,
+            sequences_actor,
+            sequences_mask_actor,
+            sequences_critic,
+            sequences_mask_critic,
+            action_len_actor,
+            action_len_critic,
+        )
