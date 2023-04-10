@@ -1,16 +1,16 @@
 import argparse
+import sys
 
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
-import sys
 
-sys.path.append("../../")
+sys.path.append('../../')
 from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
+from chatgpt.rlhf.callbacks import Callback
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.rlhf.trainer import PPOTrainer
-from chatgpt.rlhf.callbacks import Callback
 
 
 def main(args):
@@ -42,8 +42,8 @@ def main(args):
         initial_model=initial_model,
         actor_optim=actor_optim,
         critic_optim=critic_optim,
-        kl_coef=args.kl_coef,
-        ptx_coef=args.ptx_coef,
+        # kl_coef=args.kl_coef,
+        # ptx_coef=args.ptx_coef,
         train_batch_size=args.train_batch_size,
         buffer_limit=args.buffer_limit,
         experience_batch_size=args.experience_batch_size,

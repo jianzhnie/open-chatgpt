@@ -50,6 +50,7 @@ class RLTrainer:
         self.critic_eps_clip = critic_eps_clip
         self.device = device
         self.debug = debug
+
         # initialize agent-critic
         self.actor_critic = ActorCritic()
         self.actor_optimizer = optim.Adam(self.actor_critic.actor.parameters(),
@@ -64,6 +65,11 @@ class RLTrainer:
         self.eps = 1e-8
 
     def learn(self, memories: Deque[Memory]) -> None:
+        """Train the agent-critic model using RL:
+        - for each batch of episodes, compute action logits and values
+        - then compare action logits probs with memories one and values with
+            rewards to compute the PPO loss and update the actor-critic model
+        """
         print('Start to Learn...')
         # create dataset from memories
         dataloader = DataLoader(ExperienceDataset(memories, self.device),
@@ -71,31 +77,50 @@ class RLTrainer:
         # train agent-critic
         self.actor_critic.train()
         for epoch in range(self.epochs):
-            for i, (states, old_actions, sequences, old_values, rewards,
+            for i, batch in enumerate(dataloader):
+                (
+                    states_actor,
+                    old_actions,
+                    old_values,
+                    rewards,
                     old_actions_log_probs,
-                    sequences_mask) in enumerate(dataloader):
+                    sequences_actor,
+                    sequences_mask_actor,
+                    sequences_critic,
+                    sequences_mask_critic,
+                    action_len_actor,
+                    action_len_critic,
+                ) = [tensor.to(self.device) for tensor in batch]
 
                 if self.debug:
-                    print('RLTrainer.learn()')
-                    print('memory states shapes are: ')
-                    print('states shape', states.shape)
-                    print('old_actions shape', old_actions.shape)
-                    print('sequences shape', sequences.shape)
-                    print('old_values shape', old_values.shape)
-                    print('rewards shape', rewards.shape)
-                    print(
-                        'old_actions_log_probs shape',
-                        old_actions_log_probs.shape,
-                    )
-                # reshaping rewards to match [b, s] shape
-                rewards = rearrange(rewards, 'b -> b 1')
+                    print(f"#########################################"
+                          f" batch from memories {k} \n "
+                          f"#########################################"
+                          f"states_actor {states_actor.shape} \n"
+                          f"old_actions {old_actions.shape} \n"
+                          f"old_values {old_values.shape} \n"
+                          f"rewards {rewards.shape} \n"
+                          f"old_actions_log_probs "
+                          f"{old_actions_log_probs.shape}\n"
+                          f"sequences_actor {sequences_actor.shape} \n"
+                          f"sequences_mask_actor "
+                          f"{sequences_mask_actor.shape} \n"
+                          f"sequences_critic {sequences_critic.shape} \n"
+                          f"sequences_mask_critic "
+                          f"{sequences_mask_critic.shape} \n"
+                          f"action_len_actor {action_len_actor} \n"
+                          f"action_len_critic {action_len_critic} \n"
+                          f"#########################################")
 
-                # get actions len
-                actions_len = old_actions.shape[-1]
-
-                # get actor critic forward
+                # get actor critic new probabilities and values
                 actions_logits, values = self.actor_critic.forward(
-                    sequences, sequences_mask, actions_len)
+                    sequences_actor,
+                    sequences_mask_actor,
+                    sequences_critic,
+                    sequences_mask_critic,
+                    action_len_actor.item(),
+                    action_len_critic.item(),
+                )
 
                 # get action log prob
                 actions_prob = (torch.softmax(actions_logits,
@@ -110,12 +135,11 @@ class RLTrainer:
                     (actions_prob *
                      (old_actions_log_probs - actions_log_prob)).sum(
                          dim=-1).mean())
-
                 # compute PPO Loss -- Whan dimensions are different
                 # (especially the values and the probs are
                 #  multiplied directly with the reward)
                 ratios = (actions_log_prob - old_actions_log_probs).exp()
-                advantages = rewards - old_values
+                advantages = rewards - old_values[:, -1]
                 # normalize advantages
                 advantages = (advantages - advantages.mean(dim=-1)) / (
                     advantages.std() + self.eps)
