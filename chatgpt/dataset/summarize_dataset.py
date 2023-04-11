@@ -148,8 +148,9 @@ class HFSummaryQuality(Dataset):
 
         Returns:
             A tuple containing:
-                - A dictionary with the keys "input_ids", "attention_mask", and "labels". The values associated with each
-                key are PyTorch tensors representing the encoded context, response, and labels, respectively.
+                - A dictionary with the keys "input_ids", "attention_mask", and "labels".
+                The values associated with each key are PyTorch tensors representing the encoded context,
+                    response, and labels, respectively.
                 - A NumPy array containing the labels for the summary quality on different axes.
         """
         # Get the context and response for the given index
