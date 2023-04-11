@@ -46,7 +46,7 @@ train()
 """  # noqa W291
 
 
-class RLTrainer:
+class PPOTrainer:
     def __init__(
         self,
         num_episodes: int = 10,

@@ -1,24 +1,3 @@
-"""
-    author: theblackcat102
-
-    Dataset output format from __getitem__
-
-     - question / prompt : string
-
-     - answers / rows : list of tuple pair. The first element in the tuple pair must be the positive pair (rank higher than the second element)
-
-    A list of rank based dataset for training using rank loss
-
-    Some nice features to have
-
-    [] support additional negative samples generated from other models.
-
-        For example we can use galactica-125m to generate a TLDR and assume it was
-        inferior than the human preference one
-
-
-"""
-
 # code reference: https://github.com/LAION-AI/Open-Assistant/blob/main/model/reward/instructor/rank_datasets.py
 
 import os
