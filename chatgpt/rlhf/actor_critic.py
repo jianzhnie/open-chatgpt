@@ -82,9 +82,23 @@ class ActorModel(nn.Module):
         of the actions.
 
         Args:
-            input_ids (torch.Tensor): Sequences of states and actions used to compute token logits
-            for the whole list of sequences.
+            input_ids (torch.LongTensor): Sequences of states and actions used to compute token logits
+                for the whole list of sequences.
             attention_mask (torch.Tensor): Mask for the sequences attention.
+            past_key_values (Optional[List[torch.FloatTensor]]): List of torch.FloatTensor of length n_layers,
+                with shape (2, batch_size, num_heads, sequence_length, embed_size_per_head) representing the
+                previous generated hidden-states that can be used to speed up decoding.
+            position_ids (Optional[List[torch.FloatTensor]]): List of torch.FloatTensor of length n_layers with
+                shape (batch_size, sequence_length) representing the position of each token in the sequence.
+            head_mask (Optional[torch.Tensor]): Mask to nullify selected heads of the self-attention modules.
+            inputs_embeds (Optional[torch.FloatTensor]): Embedded inputs of shape (batch_size, sequence_length,
+                hidden_size).
+            use_cache (Optional[bool]): Whether or not the model should return the past key/value states to speed up
+                decoding.
+            output_attentions (Optional[bool]): Whether or not to return the attentions tensors of all attention
+                layers.
+            output_hidden_states (Optional[bool]): Whether or not to return all hidden-states of the model.
+            return_dict (Optional[bool]): Whether or not to return a ModelOutput instead of a plain tuple.
 
         Returns:
             logits (torch.Tensor): Logits for the actions taken.
@@ -390,7 +404,7 @@ class ActorCritic(nn.Module):
         self,
         states_actor: torch.Tensor,
         state_mask_actor: torch.Tensor,
-        states_critic,
+        states_critic: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions, actions_logits, values and sequences from states.
 

@@ -2,17 +2,48 @@ from collections import deque
 from typing import Deque, Optional, Tuple
 
 import torch
-import torch.optim as optim
+from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from chatgpt.buffer.data_types import PromptBatch
 from chatgpt.buffer.replay_buffer import (ExamplesSampler, ExperienceDataset,
                                           Memory)
 from chatgpt.buffer.rollout import BaseRolloutStore
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
+
+"""
+train()
+┌─────────────────────────────┐
+│                             │◄─────────────────────────┐
+│                             │                          │
+│      ┌─────────────┐        │                          │
+│      │ user input  │        │                          │ learn()
+│      └─────┬───────┘        │             ┌────────────┴─────────────┐
+│            │                │             │                          │
+│            │                │             │       ┌────────┐         │
+│            │                │             │   ┌───│ Update │──┐      │
+│            │                │             │   │   └────▲───┘  │      │
+│   ┌────────▼────────────┐   │             │   │        │      │      │
+│   │  Actor (LLM Model)  │   │             │   │     ┌──┴───┐  │      │
+│   └────────┬────────────┘   │             │   │     │ PPO  │  │      │
+│            │                │             │   │     └▲────▲┘  │      │
+│            │                │             │   │      │    │   │      │
+│            │                │             │   │      │    │   │      │
+│    ┌───────▼──────┐         │             │ ┌─▼──────┴┐ ┌─┴───▼──┐   │
+│    │ Reward Model │         │             │ │  Actor  │ │ Critic │   │
+│    └──────────────┘         │             │ └─────────┘ └────────┘   │
+│                             │             │                          │
+│                             │ x Episodes  └─────────────▲────────────┘
+└───────────────┬─────────────┘                           │   x Epochs
+                │ store N Examples per Timestep           │
+         ┌──────▼──────┐                                  │
+         │             │                                  │
+         │  Memories   ├──────────────────────────────────┘
+         │             │ (update timesteps x N Examples)
+         └─────────────┘
+"""  # noqa W291
 
 
 class RLTrainer:
@@ -51,10 +82,10 @@ class RLTrainer:
 
         # initialize agent-critic
         self.actor_critic = ActorCritic()
-        self.actor_optimizer = optim.Adam(self.actor_critic.actor.parameters(),
-                                          lr=actor_lr)
-        self.critic_optimizer = optim.Adam(
-            self.actor_critic.critic.parameters(), lr=critic_lr)
+        self.actor_optimizer = Adam(self.actor_critic.actor.parameters(),
+                                    lr=actor_lr)
+        self.critic_optimizer = Adam(self.actor_critic.critic.parameters(),
+                                     lr=critic_lr)
         # initialize reward model
         self.reward_model = RewardModel()
         # initialize examples sampler
@@ -71,8 +102,9 @@ class RLTrainer:
         """
         print('Start to Learn...')
         # create dataset from memories
-        dataloader = DataLoader(ExperienceDataset(memories, self.device),
-                                batch_size=self.batch_size)
+        dataset = ExperienceDataset(memories, self.device),
+
+        dataloader = DataLoader(dataset, batch_size=self.batch_size)
         # train agent-critic
         self.actor_critic.train()
         for epoch in range(self.epochs):
@@ -168,6 +200,11 @@ class RLTrainer:
                 loss.backward()
                 self.actor_optimizer.step()
                 # compute value loss
+                # the loss is the distance between the rewards and the values
+                # I want this distance to be small so that values are
+                # representative of the rewards, for this reason i took the
+                # maximum between the two.
+                # The clip is limiting the slew-rate of values_loss_clipped
                 value_loss_clipped = old_values + (values - old_values).clamp(
                     -self.critic_eps_clip, self.critic_eps_clip)
                 value_loss1 = (value_loss_clipped - rewards)**2
@@ -182,6 +219,13 @@ class RLTrainer:
                 value_loss.backward()
                 self.critic_optimizer.step()
 
+                # print iteration info
+                print(
+                    f'Epoch {epoch+1}/{self.epochs}',
+                    f'Step {i+1}/{int(len(dataloader) / self.batch_size)}',
+                    f'Loss {loss.detach().cpu().item():.4f}',
+                    f'Value Loss {value_loss.detach().cpu().item():.4f}',
+                )
         self.actor_critic.eval()
         print('End Learning')
         return policy_loss.item(), value_loss.item(), kl_div_loss.item()
@@ -214,9 +258,12 @@ class RLTrainer:
         self.actor_critic.eval()
         for episode in range(self.num_episodes):
             for timestep in range(self.max_timesteps):
+                # print the iteration info
                 print(
-                    f'Episode: {episode + 1} of {self.num_episodes}, '
-                    f'Timestep: {timestep + 1} of {self.max_timesteps}', )
+                    f'Episode: {episode + 1}/{self.num_episodes}, '
+                    f'Timestep: {timestep + 1}/{self.max_timesteps}',
+                    f'Learning Cnt: {cnt_timesteps + 1}/{self.update_timesteps}',
+                )
                 # counter used to count timesteps into memory
                 cnt_timesteps += 1
                 # sample num_examples examples from  example dataset
@@ -265,7 +312,6 @@ class RLTrainer:
                     reward_mask,
                 )
                 rewards = rewards[:, -action_len_critic:]
-                reward = rewards[:, -1]
 
                 # store memories of the episode / timestep
                 for i in range(states_actor.shape[0]):
@@ -428,77 +474,3 @@ class RLTrainer:
         prompt_dataloader = pipeline.create_loader(self.chunk_size,
                                                    shuffle=True)
         self.prompt_iterator = iter(prompt_dataloader)
-
-    def make_experience(self, num_rollouts: int):
-        """Make experience by interacting with the environment.
-
-        Args:
-            num_rollouts: Number of rollouts to make
-
-        Returns:
-            List of experiences
-        """
-        experiences = []
-        while self.data_rollout.size() < num_rollouts:
-            try:
-                batch: PromptBatch = next(self.prompt_iterator)
-            except StopIteration:
-                self.prompt_iterator = iter(self.prompt_dataloader)
-                batch = next(self.prompt_iterator)
-
-            # Generate samples from the language model (similar to using HuggingFace `generate` method)
-            samples = self.generate(**batch)
-            scores = torch.empty(len(samples))
-            prompt_tensors = batch.input_ids
-            str_samples, str_prompts, str_outputs = self.decode(
-                prompt_tensors, samples)
-
-            # Pad the sample outputs
-            outputs = self.tokenizer(str_outputs).input_ids
-
-            maxsize = max(map(len, outputs))
-            outputs = [
-                F.pad(
-                    output,
-                    (0, maxsize - len(output)),
-                    value=self.tokenizer.pad_token_id,
-                ) for output in outputs
-            ]
-            sample_outputs = torch.vstack(outputs).to()
-
-            # store statistics of the initial rollout as reference
-            if self.ref_mean is None:
-                self.ref_mean, self.ref_std = scores.mean(), scores.std()
-            all_scores_mean, all_scores_std = self.running_moments.update(
-                scores)
-
-            if self.config.method.scale_reward == 'running':
-                scores /= self.running_moments.std
-            elif self.config.method.scale_reward == 'ref':
-                scores /= self.ref_std
-
-            clip_reward = self.config.method.cliprange_reward
-            if clip_reward:
-                scores = torch.clip(scores, -clip_reward, clip_reward)
-
-            all_tokens = torch.cat((prompt_tensors.to(device), sample_outputs),
-                                   dim=1)
-            attention_mask = all_tokens.not_equal(
-                self.tokenizer.pad_token_id).long().to(device)
-            with torch.no_grad():
-                logits, *_, values = self.model(
-                    all_tokens,
-                    attention_mask=attention_mask,
-                )
-                ref_logits = self.ref_model(
-                    all_tokens,
-                    attention_mask=attention_mask,
-                    return_dict=True,
-                ).logits
-                ref_logits = ref_logits.to(device)
-
-            logprobs = logprobs_of_labels(logits[:, :-1, :], all_tokens[:, 1:])
-            ref_logprobs = logprobs_of_labels(ref_logits[:, :-1, :],
-                                              all_tokens[:, 1:])
-
-        return experiences
