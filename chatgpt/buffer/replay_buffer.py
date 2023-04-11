@@ -18,13 +18,17 @@ from chatgpt.utils.modeling import compute_reward
 Memory = namedtuple(
     'Memory',
     [
-        'states',
+        'states_actor',
         'actions',
-        'sequences',
         'values',
         'rewards',
         'actions_log_probs',
-        'sequences_mask',
+        'sequences_actor',
+        'sequences_mask_actor',
+        'sequences_critic',
+        'sequences_mask_critic',
+        'action_len_actor',
+        'action_len_critic',
     ],
 )
 
