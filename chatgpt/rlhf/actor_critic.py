@@ -6,11 +6,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
-from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.modeling_outputs import ModelOutput
 
 from chatgpt.models.generation import generate
-from chatgpt.models.utils import log_probs_from_logits
 
 ActorCriticReturn = namedtuple('ActionCriticReturn', [
     'actions',
@@ -165,13 +164,13 @@ class ActorModel(nn.Module):
         max_completion = min(max_tokens, max_generation_possible)
         if max_generation_possible < min_tokens:
             raise ValueError(
-                f"The prompt is too long w.r.t the "
-                f"model sequence length \n"
-                f"max_sequence_length={max_sequence_length}\n"
-                f"state_length={input_ids.shape[1]}\n"
-                f"min_tokens={min_tokens}\n"
-                f"max_tokens={max_tokens}\n"
-                f"max_generation_possible={max_generation_possible}\n")
+                f'The prompt is too long w.r.t the '
+                f'model sequence length \n'
+                f'max_sequence_length={max_sequence_length}\n'
+                f'state_length={input_ids.shape[1]}\n'
+                f'min_tokens={min_tokens}\n'
+                f'max_tokens={max_tokens}\n'
+                f'max_generation_possible={max_generation_possible}\n')
 
         # Generate actions and sequences
         sequences = self.model.generate(
@@ -300,8 +299,8 @@ class CriticModel(nn.Module):
         """
         if output_sequence.shape[1] > self.config.max_sequence_length:
             raise ValueError(
-                f"Output sequence is too long: {output_sequence.shape[1]}"
-                f" > {self.config.max_sequence_length}")
+                f'Output sequence is too long: {output_sequence.shape[1]}'
+                f' > {self.config.max_sequence_length}')
         value = self.forward(output_sequence, output_sequence_mask)
         return value[:, -1]
 
@@ -393,7 +392,7 @@ class ActorCritic(nn.Module):
         state_mask_actor: torch.Tensor,
         states_critic,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Generate actions, actions_logits, values and sequences from states
+        """Generate actions, actions_logits, values and sequences from states.
 
         Args:
             states_actor (torch.Tensor): States for the actor

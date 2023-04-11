@@ -3,15 +3,13 @@ from typing import Deque, Optional, Tuple
 
 import torch
 import torch.optim as optim
-from einops import rearrange
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from chatgpt.buffer.data_types import PPORLElement, PromptBatch
-from chatgpt.buffer.prompt_pipeline import PromptPipeline
+from chatgpt.buffer.data_types import PromptBatch
 from chatgpt.buffer.replay_buffer import (ExamplesSampler, ExperienceDataset,
                                           Memory)
-from chatgpt.buffer.rollout import BaseRolloutStore, PPORolloutStorage
+from chatgpt.buffer.rollout import BaseRolloutStore
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
@@ -66,6 +64,7 @@ class RLTrainer:
 
     def learn(self, memories: Deque[Memory]) -> None:
         """Train the agent-critic model using RL:
+
         - for each batch of episodes, compute action logits and values
         - then compare action logits probs with memories one and values with
             rewards to compute the PPO loss and update the actor-critic model
@@ -93,24 +92,24 @@ class RLTrainer:
                 ) = [tensor.to(self.device) for tensor in batch]
 
                 if self.debug:
-                    print(f"#########################################"
-                          f" batch from memories {k} \n "
-                          f"#########################################"
-                          f"states_actor {states_actor.shape} \n"
-                          f"old_actions {old_actions.shape} \n"
-                          f"old_values {old_values.shape} \n"
-                          f"rewards {rewards.shape} \n"
-                          f"old_actions_log_probs "
-                          f"{old_actions_log_probs.shape}\n"
-                          f"sequences_actor {sequences_actor.shape} \n"
-                          f"sequences_mask_actor "
-                          f"{sequences_mask_actor.shape} \n"
-                          f"sequences_critic {sequences_critic.shape} \n"
-                          f"sequences_mask_critic "
-                          f"{sequences_mask_critic.shape} \n"
-                          f"action_len_actor {action_len_actor} \n"
-                          f"action_len_critic {action_len_critic} \n"
-                          f"#########################################")
+                    print(f'#########################################'
+                          f' batch from memories {i} \n '
+                          f'#########################################'
+                          f'states_actor {states_actor.shape} \n'
+                          f'old_actions {old_actions.shape} \n'
+                          f'old_values {old_values.shape} \n'
+                          f'rewards {rewards.shape} \n'
+                          f'old_actions_log_probs '
+                          f'{old_actions_log_probs.shape}\n'
+                          f'sequences_actor {sequences_actor.shape} \n'
+                          f'sequences_mask_actor '
+                          f'{sequences_mask_actor.shape} \n'
+                          f'sequences_critic {sequences_critic.shape} \n'
+                          f'sequences_mask_critic '
+                          f'{sequences_mask_critic.shape} \n'
+                          f'action_len_actor {action_len_actor} \n'
+                          f'action_len_critic {action_len_critic} \n'
+                          f'#########################################')
 
                 # get actor critic new probabilities and values
                 actions_logits, values = self.actor_critic.forward(
@@ -140,6 +139,7 @@ class RLTrainer:
                 #  multiplied directly with the reward)
                 ratios = (actions_log_prob - old_actions_log_probs).exp()
                 advantages = rewards - old_values[:, -1]
+
                 # normalize advantages
                 advantages = (advantages - advantages.mean(dim=-1)) / (
                     advantages.std() + self.eps)
@@ -221,77 +221,101 @@ class RLTrainer:
                 cnt_timesteps += 1
                 # sample num_examples examples from  example dataset
                 inputs = self.example_sampler.sample(self.num_examples)
-                # tokenize examples
-                tokenized_inputs = self.actor_critic.actor.tokenizer(
-                    inputs, padding=True, return_tensors='pt')
-                if self.debug:
-                    print('RLTrainer.train()')
-                    print('tokenized inputs', tokenized_inputs)
+                # tokenize examples for the actor
+                tok_inputs_act = self.actor_critic.actor.tokenizer(
+                    inputs, padding=True, return_tensors='pt', truncation=True)
+
                 # states are [batch_size, seq_len_of_states]
-                states = tokenized_inputs['input_ids'].to(self.device)
-                states_mask = tokenized_inputs['attention_mask'].to(
+                states_actor = tok_inputs_act['input_ids'].to(self.device)
+                states_mask_actor = tok_inputs_act['attention_mask'].to(
                     self.device)
 
-                (actions, actions_logits, values, sequences,
-                 sequences_mask) = self.actor_critic.generate(
-                     states, states_mask)
+                # tokenize examples for the critic
+                tok_inputs_crt = self.actor_critic.critic.tokenizer(
+                    inputs, padding=True, return_tensors='pt', truncation=True)
+
+                # states are [batch_size, seq_len_of_states]
+                states_critic = tok_inputs_crt['input_ids'].to(self.device)
+
+                # generate sequences of actions and values
+                (
+                    actions,
+                    actions_logits,
+                    values,
+                    sequences_actor,
+                    sequences_mask_actor,
+                    sequences_critic,
+                    sequences_mask_critic,
+                    action_len_actor,
+                    action_len_critic,
+                ) = self.actor_critic.generate(states_actor, states_mask_actor,
+                                               states_critic)
 
                 # from action logits to action log probs
                 action_prob = (torch.softmax(actions_logits,
                                              dim=-1).max(dim=-1).values)
                 actions_log_probs = torch.log(action_prob + self.eps)
 
-                completions = [
-                    self.actor_critic.actor.tokenizer.decode(action)
-                    for i, action in enumerate(actions)
-                ]
-                if self.debug:
-                    print('RLTrainer.train()')
-                    print('completions:')
-                    for i, completion in enumerate(completions):
-                        print(i, completion)
-                        print('')
+                reward_sequence = sequences_actor
+                reward_mask = sequences_mask_actor
 
-                task_responses = []
-                for input, completion in zip(inputs, completions):
-                    task_response = input + '\n' + completion
-                    task_responses.append(task_response)
-                if self.debug:
-                    print('RLTrainer.train()')
-                    print('task_responses:')
-                    for i, task_response in enumerate(task_responses):
-                        print(i, task_response)
-                        print('')
-                tokenized_responses = self.reward.tokenizer(
-                    task_responses, padding=True, return_tensors='pt')
-                rewards = self.reward.get_reward(
-                    tokenized_responses['input_ids'].to(self.device),
-                    tokenized_responses['attention_mask'].to(self.device),
+                # compute rewards
+                rewards = self.reward_model.forward(
+                    reward_sequence,
+                    reward_mask,
                 )
+                rewards = rewards[:, -action_len_critic:]
+                reward = rewards[:, -1]
 
                 # store memories of the episode / timestep
-                for i in range(states.shape[0]):
+                for i in range(states_actor.shape[0]):
                     memories.append(
-                        Memory(*map(lambda x: x.detach().cpu(), (
-                            states[i, :],
-                            actions[i, :],
-                            sequences[i, :],
-                            values[i, :],
-                            rewards[i],
-                            actions_log_probs[i, :],
-                            sequences_mask[i, :],
-                        ))))
+                        Memory(
+                            states_actor[i, :].detach().cpu(),
+                            actions[i, :].detach().cpu(),
+                            values[i, :].detach().cpu(),
+                            rewards[i, :].detach().cpu(),
+                            actions_log_probs[i, :].detach().cpu(),
+                            sequences_actor[i, :].detach().cpu(),
+                            sequences_mask_actor[i, :].detach().cpu(),
+                            sequences_critic[i, :].detach().cpu(),
+                            sequences_mask_critic[i, :].detach().cpu(),
+                            int(action_len_actor),
+                            int(action_len_critic),
+                        ))
+
+                # decode completions to be logged in the conversation log
+                completions = [
+                    self.actor_critic.actor.tokenizer.decode(action)
+                    for action in actions
+                ]
+                # remove pad tokens from completions
+                completions = [
+                    c.replace(self.actor_critic.actor.tokenizer.pad_token, '')
+                    for c in completions
+                ]
+                # remove eos tokens from completions
+                completions = [
+                    c.replace(self.actor_critic.actor.tokenizer.eos_token, '')
+                    for c in completions
+                ]
+                # strange i need to force this?
+                completions = [c.replace('<pad>', '') for c in completions]
 
                 # learn from memories
-                print(
-                    f'Learning counter: {cnt_timesteps} of {self.update_timesteps}'
-                )
                 if (cnt_timesteps % self.update_timesteps
                         == 0) and (cnt_timesteps != 0):
+                    print('len memories', len(memories))
+                    # self.conversation_log.show(cnt_learn_iter)
                     self.learn(memories)
+                    mean_reward = sum([m.rewards[-1]
+                                       for m in memories]) / len(memories)
+                    print(f'Mean Reward: {mean_reward}')
                     memories.clear()
                     cnt_timesteps = 0
                     cnt_learn_iter += 1
+                    # TODO fix log saving in deepspeed multi GPU training
+                    # self.conversation_log.save()
 
         print('End RL Training')
 

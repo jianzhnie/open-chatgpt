@@ -29,7 +29,6 @@ class Trainer(ABC):
         callbacks (List[Callback], defaults to []): the callbacks to call during training process
         generate_kwargs (dict, optional): the kwargs to use while model generating
     """
-
     def __init__(
         self,
         experience_maker: ExperienceMaker,
@@ -140,7 +139,6 @@ class Trainer(ABC):
 
 
 class PPOTrainer(Trainer):
-
     def __init__(
         self,
         actor: ActorModel,
