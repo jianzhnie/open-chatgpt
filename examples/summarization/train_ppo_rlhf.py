@@ -9,8 +9,8 @@ sys.path.append('../../')
 from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
 from chatgpt.rlhf.callbacks import Callback
+from chatgpt.rlhf.ppo_trainer import PPOTrainer
 from chatgpt.rlhf.reward_model import RewardModel
-from chatgpt.rlhf.trainer import PPOTrainer
 
 
 def main(args):
