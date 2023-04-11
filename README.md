@@ -21,8 +21,12 @@
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
     - [Step2: Training the Reward Model](#step2-training-the-reward-model)
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
+  - [Example2: Learning to generate positive sentiment with human feedback](#example2-learning-to-generate-positive-sentiment-with-human-feedback)
+  - [Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange](#example3-stackllama-train-llama-with-rlhf-on-stackexchange)
 - [Installation](#installation)
 - [Support Model](#support-model)
+- [Contributing](#contributing)
+- [License](#license)
 
 
 ## Introduction
@@ -146,10 +150,26 @@ python train_reward_model.py
 We use [awesome-chatgpt-prompts](https://huggingface.co/datasets/fka/awesome-chatgpt-prompts) as example dataset. It is a small dataset with hundreds of prompts.
 
 ```python
+python train_ppo_rlhf.py
 ```
 
 </p>
 </details>
+
+
+### Example2: Learning to generate positive sentiment with human feedback
+
+```shell
+python gpt2-sentiment.py
+```
+
+
+### Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange
+
+
+```shell
+```
+
 
 
 ## Installation
@@ -172,3 +192,13 @@ We support models that can be run efficiently with a limited amount of compute. 
 - BLOOMZ: 560M, 1.1B, 1.7B, 3B, 7.1B
 
 </details>
+
+
+
+## Contributing
+
+Our purpose is to make this repo even better. If you are interested in contributing, please refer to HERE for instructions in contribution.
+
+## License
+
+`Openn-ChatGPT` is released under the Apache 2.0 license.
