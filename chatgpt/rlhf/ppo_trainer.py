@@ -51,8 +51,8 @@ class PPOTrainer:
         self,
         prompt_data_path: str,
         pretrained_model: str = 'facebook/opt-125m',
-        num_episodes: int = 10,
-        ppo_epochs: int = 10,
+        num_episodes: int = 1,
+        ppo_epochs: int = 1,
         batch_size: int = 32,
         actor_lr: float = 1e-4,
         critic_lr: float = 1e-4,
@@ -71,6 +71,7 @@ class PPOTrainer:
         self.beta_s = beta_s
         self.actor_eps_clip = actor_eps_clip
         self.critic_eps_clip = critic_eps_clip
+        self.eps = 1e-8
         self.device = device
         self.debug = debug
 
@@ -235,7 +236,7 @@ class PPOTrainer:
         cnt_timesteps = 0
         cnt_learn_iter = 0
 
-        max_timesteps = len(self.prompt_dataloader) * self.episode
+        max_timesteps = len(self.prompt_dataloader) * self.num_episodes
         update_timesteps = max_timesteps * self.ppo_epochs
         # loop over episodes and timesteps
         self.actor_critic.eval()
@@ -329,7 +330,7 @@ class PPOTrainer:
                 completions = [c.replace('<pad>', '') for c in completions]
 
                 # learn from memories
-                if (cnt_timesteps % self.update_timesteps
+                if (cnt_timesteps % update_timesteps
                         == 0) and (cnt_timesteps != 0):
                     print('len memories', len(memories))
                     # self.conversation_log.show(cnt_learn_iter)

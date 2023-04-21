@@ -4,6 +4,7 @@ import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
+from chatgpt.utils.utils import LengthSampler
 
 
 class TokenizedPromptDataset(Dataset):
@@ -15,6 +16,7 @@ class TokenizedPromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
+
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -65,10 +67,17 @@ class PromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
-    def __init__(self, data_path: str, split: str) -> None:
+
+    def __init__(self,
+                 data_path: str,
+                 split: str,
+                 input_min_text_length: int = 5,
+                 input_max_text_length: int = 20) -> None:
 
         dataset = load_dataset(data_path, split=split)
         self.post_list = [sample['prompt'] for sample in dataset]
+        self.input_size = LengthSampler(input_min_text_length,
+                                        input_max_text_length)
 
     def __len__(self) -> int:
         return len(self.post_list)
@@ -88,6 +97,6 @@ class PromptDataset(Dataset):
                 f'Index {idx} out of range for TLDRDataset with length {len(self)}'
             )
 
-        input_txt = self.post_list[idx]
+        input_txt = self.post_list[idx][:self.input_size()]
 
         return input_txt

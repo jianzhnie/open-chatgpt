@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
 from transformers.modeling_outputs import ModelOutput
 
 ActorCriticReturn = namedtuple('ActionCriticReturn', [
@@ -40,6 +40,7 @@ class ActorModel(nn.Module):
         pretrained (str, optional): Pretrained model name or path.
         debug (bool, optional): Whether to print debug information. Defaults to False.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = False):
         super().__init__()
 
@@ -66,14 +67,6 @@ class ActorModel(nn.Module):
         self,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
-        position_ids: Optional[List[torch.FloatTensor]] = None,
-        head_mask: Optional[torch.Tensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = True,
-        return_dict: Optional[bool] = True,
     ) -> Union[Tuple, ModelOutput]:
         """Generate logits to have probability distribution over the vocabulary
         of the actions.
@@ -103,17 +96,9 @@ class ActorModel(nn.Module):
         model_output = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=past_key_values,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
         )
 
-        logits = model_output['logits']
+        logits = model_output.logits
         if self.debug:
             print('ActorModel.forward')
             print('logits shape:', model_output.logits.shape)
@@ -121,9 +106,13 @@ class ActorModel(nn.Module):
         return logits
 
     @torch.no_grad()
-    def generate(self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
-                 temperature: float, max_sequence_length: int, max_tokens: int,
-                 min_tokens: int,
+    def generate(self,
+                 input_ids: torch.Tensor,
+                 attention_mask: torch.Tensor,
+                 temperature: float = 0.9,
+                 max_sequence_length: int = 128,
+                 max_tokens: int = 128,
+                 min_tokens: int = 1,
                  **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions and sequences=[states, actions] from state (i.e.
         input of the prompt generator model)
@@ -179,6 +168,7 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = True):
         super().__init__()
 
@@ -189,7 +179,7 @@ class CriticModel(nn.Module):
             truncation=True,
             padding=True,
         )
-        self.model = AutoModelForCausalLM.from_pretrained(pretrained)
+        self.model = AutoModel.from_pretrained(pretrained)
 
         # Set EOS token and padding token
         if self.tokenizer.eos_token is None:
@@ -221,14 +211,6 @@ class CriticModel(nn.Module):
         self,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
-        position_ids: Optional[List[torch.FloatTensor]] = None,
-        head_mask: Optional[torch.Tensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        return_dict: Optional[bool] = True,
     ) -> Union[Tuple, CausalLMOutputWithValue]:
         """Evaluate the quality of a sequence of tokens.
 
@@ -242,14 +224,6 @@ class CriticModel(nn.Module):
         output = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=past_key_values,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
         )
         value = self.value_head(output.last_hidden_state)
         # Print debugging information
@@ -298,6 +272,7 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
+
     def __init__(
         self,
         pretrained: Optional[str] = None,
