@@ -162,6 +162,10 @@ class ActorModel(nn.Module):
         actions = sequences[:, input_ids.shape[1]:]
         # Extract generated actions from full sequence
         if self.debug:
+            print(f"input length {input_ids.shape[1]} \n"
+                  f"max sequence length {max_sequence_length} \n"
+                  f"max completion {max_completion} \n"
+                  f"generated sequence {sequences.shape[1]} \n")
             print('ActorModel.generate')
             print('state', input_ids)
             print('state shape', input_ids.shape)
@@ -267,8 +271,8 @@ class CriticModel(nn.Module):
         """Get the reward for a sequence of tokens.
 
         Args:
-            input_ids (torch.Tensor): Tensor of token ids of shape (batch_size, seq_length)
-            attention_mask (torch.Tensor): Mask tensor of shape (batch_size, seq_length)
+            output_sequence (torch.Tensor): Tensor of token ids of shape (batch_size, seq_length)
+            output_sequence_mask (torch.Tensor): Mask tensor of shape (batch_size, seq_length)
 
         Returns:
             torch.Tensor: Tensor of rewards of shape (batch_size,)
@@ -319,13 +323,22 @@ class ActorCritic(nn.Module):
         action_len_critic: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Given the whole sequences, use the actor forward to get the logits
-        for each token in the sequence and the critic forward to get the values
-        for each generation step.
+            for each token in the sequence and the critic forward to get the
+            values for each generation step.
 
         Args:
-            sequences (torch.Tensor): Sequences composed of [states, actions]
-            sequences_mask (torch.Tensor): Mask for the sequences
-            action_len (int): Length of the actions in the sequences
+            sequences_actor (torch.Tensor): Sequences composed of
+                [states, actions] for the actor
+            sequence_mask_actor (torch.Tensor): Mask for the sequences
+                of the actor
+            sequences_critic (torch.Tensor): Sequences composed of
+                [states, actions] for the critic
+            sequences_mask_critic (torch.Tensor): Mask for the sequences
+                of the critic
+            action_len_actor (int): Length of the actions in the sequences
+                for the actor
+            action_len_critic (int): Length of the actions in the sequences
+                for the critic
 
         Returns:
             action_logits (torch.Tensor): Logits for the actions in the
@@ -366,7 +379,6 @@ class ActorCritic(nn.Module):
         self,
         states_actor: torch.Tensor,
         state_mask_actor: torch.Tensor,
-        states_critic: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate actions, actions_logits, values and sequences from states.
 
