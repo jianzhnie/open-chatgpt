@@ -47,6 +47,7 @@ train()
 
 
 class PPOTrainer:
+
     def __init__(
         self,
         prompt_data_path: str,
@@ -77,13 +78,13 @@ class PPOTrainer:
 
         # initialize agent-critic
         self.actor_critic = ActorCritic(pretrained=pretrained_model,
-                                        debug=debug)
+                                        debug=False).to(device)
         self.actor_optimizer = Adam(self.actor_critic.actor.parameters(),
                                     lr=actor_lr)
         self.critic_optimizer = Adam(self.actor_critic.critic.parameters(),
                                      lr=critic_lr)
         # initialize reward model
-        self.reward_model = RewardModel(pretrained=pretrained_model)
+        self.reward_model = RewardModel(pretrained=pretrained_model).to(device)
         # initialize examples sampler
         self.prompt_dataset = PromptDataset(data_path=prompt_data_path,
                                             split='train')
@@ -100,9 +101,9 @@ class PPOTrainer:
         """
         print('Start to Learn...')
         # create dataset from memories
-        dataset = ExperienceDataset(memories, self.device),
+        dataset = ExperienceDataset(memories)
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size)
+        dataloader = DataLoader(dataset, batch_size=8)
         # train agent-critic
         self.actor_critic.train()
         for epoch in range(self.ppo_epochs):
@@ -147,8 +148,8 @@ class PPOTrainer:
                     sequences_mask_actor,
                     sequences_critic,
                     sequences_mask_critic,
-                    action_len_actor.item(),
-                    action_len_critic.item(),
+                    action_len_actor,
+                    action_len_critic,
                 )
 
                 # get action log prob
@@ -243,7 +244,7 @@ class PPOTrainer:
         for episode in range(self.num_episodes):
             for step, inputs in enumerate(self.prompt_dataloader):
                 print(
-                    f'Episode: {episode + 1}/{self.num_episodes}'
+                    f'Episode: {episode + 1}/{self.num_episodes}',
                     f'Step: {cnt_timesteps + 1}/{max_timesteps}',
                     f'Learning Cnt: {cnt_learn_iter + 1}/{update_timesteps}',
                 )
@@ -310,25 +311,6 @@ class PPOTrainer:
                             int(action_len_actor),
                             int(action_len_critic),
                         ))
-
-                # decode completions to be logged in the conversation log
-                completions = [
-                    self.actor_critic.actor.tokenizer.decode(action)
-                    for action in actions
-                ]
-                # remove pad tokens from completions
-                completions = [
-                    c.replace(self.actor_critic.actor.tokenizer.pad_token, '')
-                    for c in completions
-                ]
-                # remove eos tokens from completions
-                completions = [
-                    c.replace(self.actor_critic.actor.tokenizer.eos_token, '')
-                    for c in completions
-                ]
-                # strange i need to force this?
-                completions = [c.replace('<pad>', '') for c in completions]
-
                 # learn from memories
                 if (cnt_timesteps % update_timesteps
                         == 0) and (cnt_timesteps != 0):

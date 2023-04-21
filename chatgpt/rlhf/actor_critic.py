@@ -40,6 +40,7 @@ class ActorModel(nn.Module):
         pretrained (str, optional): Pretrained model name or path.
         debug (bool, optional): Whether to print debug information. Defaults to False.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = False):
         super().__init__()
 
@@ -167,6 +168,7 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = True):
         super().__init__()
 
@@ -270,6 +272,7 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
+
     def __init__(
         self,
         pretrained: Optional[str] = None,
@@ -309,8 +312,8 @@ class ActorCritic(nn.Module):
         values = self.critic(sequences_critic, sequences_mask_critic)
 
         # return only logits and values for the actions taken
-        real_actions_logits = actions_logits[:, -action_len_actor:, :]
-        real_values = values[:, -action_len_critic:]
+        real_actions_logits = actions_logits
+        real_values = values
 
         if self.debug:
             print('ActorCritic.forward')
