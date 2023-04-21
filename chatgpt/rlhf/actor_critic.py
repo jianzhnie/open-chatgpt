@@ -300,13 +300,12 @@ class ActorCritic(nn.Module):
     """
     def __init__(
         self,
-        actor: ActorModel,
-        critic: CriticModel,
+        pretrained: Optional[str] = None,
         debug: bool = False,
     ):
         super().__init__()
-        self.actor = actor
-        self.critic = critic
+        self.actor = ActorModel(pretrained=pretrained, debug=debug)
+        self.critic = CriticModel(pretrained=pretrained, debug=debug)
         self.debug = debug
 
     def forward(
