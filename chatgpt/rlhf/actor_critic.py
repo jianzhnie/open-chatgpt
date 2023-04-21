@@ -1,11 +1,11 @@
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 from einops.layers.torch import Rearrange
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
+from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
 from transformers.modeling_outputs import ModelOutput
 
 ActorCriticReturn = namedtuple('ActionCriticReturn', [
@@ -40,7 +40,6 @@ class ActorModel(nn.Module):
         pretrained (str, optional): Pretrained model name or path.
         debug (bool, optional): Whether to print debug information. Defaults to False.
     """
-
     def __init__(self, pretrained: Optional[str] = None, debug: bool = False):
         super().__init__()
 
@@ -168,7 +167,6 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
-
     def __init__(self, pretrained: Optional[str] = None, debug: bool = True):
         super().__init__()
 
@@ -272,7 +270,6 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
-
     def __init__(
         self,
         pretrained: Optional[str] = None,
