@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 
-class PromptDataset(Dataset):
+class TokenizedPromptDataset(Dataset):
     """A PyTorch Dataset for TLDR training data.
 
     Args:
@@ -54,3 +54,40 @@ class PromptDataset(Dataset):
             for key, val in encodings_input.items()
         }
         return encodings_input
+
+
+class PromptDataset(Dataset):
+    """A PyTorch Dataset for TLDR training data.
+
+    Args:
+        data_path (str): Path to the training data.
+        tokenizer (PreTrainedTokenizer): The tokenizer to use.
+        split (str): The split to use from the training data.
+        max_length (int): The maximum length of the input sequences (default: 550).
+    """
+    def __init__(self, data_path: str, split: str) -> None:
+
+        dataset = load_dataset(data_path, split=split)
+        self.post_list = [sample['prompt'] for sample in dataset]
+
+    def __len__(self) -> int:
+        return len(self.post_list)
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        """Returns a dictionary containing the input_ids, attention_mask, and
+        labels for the given index.
+
+        Args:
+            idx (int): The index of the data sample to retrieve.
+
+        Returns:
+            A dictionary containing the input_ids, attention_mask, and labels.
+        """
+        if idx < 0 or idx >= len(self.post_list):
+            raise IndexError(
+                f'Index {idx} out of range for TLDRDataset with length {len(self)}'
+            )
+
+        input_txt = self.post_list[idx]
+
+        return input_txt
