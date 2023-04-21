@@ -67,14 +67,14 @@ class PairedRewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
-    def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
+    def __init__(self, pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
-        if model == 'opt':
+        if 'opt' in pretrained:
             self.model = OPTModel.from_pretrained(pretrained)
-        elif model == 'gpt2':
+        elif 'gpt2' in pretrained:
             self.model = GPT2Model.from_pretrained(pretrained)
-        elif model == 'bloom':
+        elif 'bloom' in pretrained:
             self.model = BloomModel.from_pretrained(pretrained)
         else:
             # If the model string is invalid, raise an error
@@ -147,14 +147,14 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
-    def __init__(self, model: str = '', pretrained: str = 'openai-gpt'):
+    def __init__(self, pretrained: str = 'opt-125m'):
         super().__init__()
         # Instantiate model based on input string
-        if model == 'opt':
+        if 'opt' in pretrained:
             self.model = OPTModel.from_pretrained(pretrained)
-        elif model == 'gpt2':
+        elif 'gpt2' in pretrained:
             self.model = GPT2Model.from_pretrained(pretrained)
-        elif model == 'bloom':
+        elif 'bloom' in pretrained:
             self.model = BloomModel.from_pretrained(pretrained)
         else:
             # If the model string is invalid, raise an error
@@ -164,7 +164,7 @@ class RewardModel(nn.Module):
         # Get the model's config and create a value head
         self.config = self.model.config
 
-        if model == 'opt':
+        if 'opt' in pretrained:
             self.config.hidden_size = self.config.word_embed_proj_dim
         self.pooler = MeanPooler(self.config.hidden_size)
         self.value_head = nn.Linear(self.config.hidden_size, 1)
