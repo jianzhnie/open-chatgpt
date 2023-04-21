@@ -6,9 +6,9 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from chatgpt.buffer.replay_buffer import (ExamplesSampler, ExperienceDataset,
-                                          Memory)
+from chatgpt.buffer.replay_buffer import ExperienceDataset, Memory
 from chatgpt.buffer.rollout import BaseRolloutStore
+from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
@@ -49,12 +49,10 @@ train()
 class PPOTrainer:
     def __init__(
         self,
-        num_episodes: int = 10,
-        max_timesteps: int = 10,
-        num_examples: int = 10,
-        update_timesteps: int = 10,
-        checkpoint_steps: int = 10,
-        epochs: int = 10,
+        prompt_data_path: str,
+        pretrained_model: str = 'facebook/opt-125m',
+        num_episodes: int = 1,
+        ppo_epochs: int = 1,
         batch_size: int = 32,
         actor_lr: float = 1e-4,
         critic_lr: float = 1e-4,
@@ -66,32 +64,32 @@ class PPOTrainer:
     ) -> None:
 
         self.num_episodes = num_episodes
-        self.max_timesteps = max_timesteps
-        self.num_examples = num_examples
-        self.update_timesteps = update_timesteps
-        self.checkpoint_steps = checkpoint_steps
-        self.epochs = epochs
+        self.ppo_epochs = ppo_epochs
         self.batch_size = batch_size
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
         self.beta_s = beta_s
         self.actor_eps_clip = actor_eps_clip
         self.critic_eps_clip = critic_eps_clip
+        self.eps = 1e-8
         self.device = device
         self.debug = debug
 
         # initialize agent-critic
-        self.actor_critic = ActorCritic()
+        self.actor_critic = ActorCritic(pretrained=pretrained_model,
+                                        debug=debug)
         self.actor_optimizer = Adam(self.actor_critic.actor.parameters(),
                                     lr=actor_lr)
         self.critic_optimizer = Adam(self.actor_critic.critic.parameters(),
                                      lr=critic_lr)
         # initialize reward model
-        self.reward_model = RewardModel()
+        self.reward_model = RewardModel(pretrained=pretrained_model)
         # initialize examples sampler
-        self.example_sampler = ExamplesSampler()
-        # eps
-        self.eps = 1e-8
+        self.prompt_dataset = PromptDataset(data_path=prompt_data_path,
+                                            split='train')
+        self.prompt_dataloader = DataLoader(self.prompt_dataset,
+                                            batch_size=self.batch_size,
+                                            shuffle=True)
 
     def learn(self, memories: Deque[Memory]) -> None:
         """Train the agent-critic model using RL:
@@ -107,7 +105,7 @@ class PPOTrainer:
         dataloader = DataLoader(dataset, batch_size=self.batch_size)
         # train agent-critic
         self.actor_critic.train()
-        for epoch in range(self.epochs):
+        for epoch in range(self.ppo_epochs):
             for i, batch in enumerate(dataloader):
                 (
                     states_actor,
@@ -232,42 +230,25 @@ class PPOTrainer:
 
     def train(self) -> None:
         print('Start RL Training')
-        # check dimensions consistency
-        # at each time step num_examples memories are generated
-        number_of_memories_per_learn_iteration = (self.num_examples *
-                                                  self.update_timesteps)
-        # the number of memories must be a multiple of the batch size
-        assert (
-            number_of_memories_per_learn_iteration % self.batch_size == 0
-        ), 'The number of memories must be a multiple of the batch size'
-        # the total number of timesteps is
-        total_number_of_timesteps = self.num_episodes * self.max_timesteps
-        # the update_timesteps must be a multiple
-        #  of the total number of timesteps
-        assert total_number_of_timesteps % self.update_timesteps == 0, (
-            'The number of timesteps (num_episodes*max_timesteps)'
-            'must be a multiple of the update_timesteps')
-
         # initialize memories
         memories = deque([])
         # initialize counters
         cnt_timesteps = 0
         cnt_learn_iter = 0
 
+        max_timesteps = len(self.prompt_dataloader) * self.num_episodes
+        update_timesteps = max_timesteps * self.ppo_epochs
         # loop over episodes and timesteps
         self.actor_critic.eval()
         for episode in range(self.num_episodes):
-            for timestep in range(self.max_timesteps):
-                # print the iteration info
+            for step, inputs in enumerate(self.prompt_dataloader):
                 print(
-                    f'Episode: {episode + 1}/{self.num_episodes}, '
-                    f'Timestep: {timestep + 1}/{self.max_timesteps}',
-                    f'Learning Cnt: {cnt_timesteps + 1}/{self.update_timesteps}',
+                    f'Episode: {episode + 1}/{self.num_episodes}'
+                    f'Step: {cnt_timesteps + 1}/{max_timesteps}',
+                    f'Learning Cnt: {cnt_learn_iter + 1}/{update_timesteps}',
                 )
                 # counter used to count timesteps into memory
                 cnt_timesteps += 1
-                # sample num_examples examples from  example dataset
-                inputs = self.example_sampler.sample(self.num_examples)
                 # tokenize examples for the actor
                 tok_inputs_act = self.actor_critic.actor.tokenizer(
                     inputs, padding=True, return_tensors='pt', truncation=True)
@@ -349,7 +330,7 @@ class PPOTrainer:
                 completions = [c.replace('<pad>', '') for c in completions]
 
                 # learn from memories
-                if (cnt_timesteps % self.update_timesteps
+                if (cnt_timesteps % update_timesteps
                         == 0) and (cnt_timesteps != 0):
                     print('len memories', len(memories))
                     # self.conversation_log.show(cnt_learn_iter)
@@ -360,8 +341,6 @@ class PPOTrainer:
                     memories.clear()
                     cnt_timesteps = 0
                     cnt_learn_iter += 1
-                    # TODO fix log saving in deepspeed multi GPU training
-                    # self.conversation_log.save()
 
         print('End RL Training')
 
