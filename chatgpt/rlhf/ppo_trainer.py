@@ -5,14 +5,13 @@ import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
-from transformers import AutoTokenizer
-from chatgpt.buffer.replay_buffer import (ExperienceDataset, Memory)
+
+from chatgpt.buffer.replay_buffer import ExperienceDataset, Memory
 from chatgpt.buffer.rollout import BaseRolloutStore
+from chatgpt.dataset.prompt_dataset import PromptDataset
 from chatgpt.rlhf.actor_critic import ActorCritic
 from chatgpt.rlhf.reward_model import RewardModel
 from chatgpt.utils.modeling import flatten_dict, get_tensor_stats, whiten
-from chatgpt.dataset.prompt_dataset import PromptDataset
-
 
 """
 train()
@@ -51,8 +50,7 @@ class PPOTrainer:
     def __init__(
         self,
         prompt_data_path: str,
-        pretrained_model: str = "facebook/opt-125m",
-        tokenizer: str = "facebook/opt-125m",
+        pretrained_model: str = 'facebook/opt-125m',
         num_episodes: int = 10,
         ppo_epochs: int = 10,
         batch_size: int = 32,
@@ -75,8 +73,6 @@ class PPOTrainer:
         self.critic_eps_clip = critic_eps_clip
         self.device = device
         self.debug = debug
-
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
 
         # initialize agent-critic
         self.actor_critic = ActorCritic(pretrained=pretrained_model,
@@ -244,8 +240,7 @@ class PPOTrainer:
         # loop over episodes and timesteps
         self.actor_critic.eval()
         for episode in range(self.num_episodes):
-            for step, inputs in enumerate(self.dataloader):
-                # print the iteration info
+            for step, inputs in enumerate(self.prompt_dataloader):
                 print(
                     f'Episode: {episode + 1}/{self.num_episodes}'
                     f'Step: {cnt_timesteps + 1}/{max_timesteps}',
