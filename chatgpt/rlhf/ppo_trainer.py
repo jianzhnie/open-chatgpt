@@ -63,6 +63,7 @@ class PPOTrainer:
         debug: bool = False,
     ) -> None:
 
+        # Those value can be changed
         self.num_episodes = num_episodes
         self.ppo_epochs = ppo_epochs
         self.batch_size = batch_size
@@ -72,6 +73,12 @@ class PPOTrainer:
         self.actor_eps_clip = actor_eps_clip
         self.critic_eps_clip = critic_eps_clip
         self.eps = 1e-8
+        self.kl_ctl = 0.02
+        self.clip_reward_value = 5
+        self.cliprange = 0.2
+        self.cliprange_value = 0.2
+        self.gamma = 1.0
+        self.lam = 0.95
         self.device = device
         self.debug = debug
 
