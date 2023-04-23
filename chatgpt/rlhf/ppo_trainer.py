@@ -47,7 +47,6 @@ train()
 
 
 class PPOTrainer:
-
     def __init__(
         self,
         prompt_data_path: str,
@@ -326,6 +325,27 @@ class PPOTrainer:
 
         print('End RL Training')
 
+    def compute_rewards(
+        self,
+        prompts,
+        log_probs: TensorType['batch_size', 'response_size'],
+        ref_log_probs: TensorType['batch_size', 'response_size'],
+        reward_score: TensorType['batch_size', 'response_size'],
+        action_mask: TensorType['batch_size', 'response_size'],
+    ):
+
+        kl_divergence_estimate = -self.kl_ctl * (log_probs - ref_log_probs)
+        rewards = kl_divergence_estimate
+        start = prompts.shape[1] - 1
+        ends = start + action_mask[:, start:].sum(1)
+        reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
+                                  self.clip_reward_value)
+        batch_size = log_probs.shape[0]
+        for j in range(batch_size):
+            rewards[j, start:ends[j]][-1] += reward_clip[j]
+
+        return rewards
+
     def get_advantages_and_returns(
         self,
         values: TensorType['batch_size', 'response_size'],
@@ -364,6 +384,44 @@ class PPOTrainer:
         if use_whitening:
             advantages = whiten(advantages)
         return advantages.detach(), returns
+
+    def actor_loss_fn(
+        self,
+        logprobs: TensorType['batch_size', 'response_size'],
+        old_logprobs: TensorType['batch_size', 'response_size'],
+        advantages: TensorType['batch_size', 'response_size'],
+        mask: TensorType['batch_size', 'response_size'],
+    ):
+        # policy gradient loss
+        log_ratio = (logprobs - old_logprobs) * mask
+        ratio = torch.exp(log_ratio)
+        pg_loss1 = -advantages * ratio
+        pg_loss2 = -advantages * torch.clamp(
+            ratio,
+            1.0 - self.cliprange,
+            1.0 + self.cliprange,
+        )
+        pg_loss = torch.sum(torch.max(pg_loss1, pg_loss2) * mask) / mask.sum()
+        return pg_loss
+
+    def critic_loss_fn(
+        self,
+        values: TensorType['batch_size', 'response_size'],
+        old_values: TensorType['batch_size', 'response_size'],
+        returns: TensorType['batch_size', 'response_size'],
+        mask: TensorType['batch_size', 'response_size'],
+    ):
+        # value loss
+        values_clipped = torch.clamp(
+            values,
+            old_values - self.cliprange_value,
+            old_values + self.cliprange_value,
+        )
+        vf_loss1 = (values - returns)**2
+        vf_loss2 = (values_clipped - returns)**2
+        vf_loss = 0.5 * torch.sum(
+            torch.max(vf_loss1, vf_loss2) * mask) / mask.sum()
+        return vf_loss
 
     def get_loss(
         self,
