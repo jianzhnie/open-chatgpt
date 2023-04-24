@@ -13,19 +13,22 @@ def gather_log_probs(logits, labels):
 
 
 class PPOTrainer():
+
     def __init__(self,
                  pretrained: str = None,
                  actor_lr: float = 1e-4,
                  critic_lr: float = 1e-4,
-                 max_answer_seq_len: int = 100):
-        self.actor_model = ActorModel(pretrained=pretrained)
-        self.critic_model = CriticModel(pretrained=pretrained)
-        self.ref_model = ActorModel(pretrained=pretrained)
-        self.reward_model = RewardModel(pretrained=pretrained)
+                 max_answer_seq_len: int = 256,
+                 device: str = 'cpu'):
+        self.actor_model = ActorModel(pretrained=pretrained).to(device)
+        self.critic_model = CriticModel(pretrained=pretrained).to(device)
+        self.ref_model = ActorModel(pretrained=pretrained).to(device)
+        self.reward_model = RewardModel(pretrained=pretrained).to(device)
         self.tokenizer = self.actor_model.tokenizer
         self.max_answer_seq_len = max_answer_seq_len
 
         # Those value can be changed
+        self.device = device
         self.kl_ctl = 0.02
         self.clip_reward_value = 5
         self.cliprange = 0.2
@@ -37,13 +40,13 @@ class PPOTrainer():
                                      lr=critic_lr)
 
     def _generate_sequence(self, prompts):
-
+        prompts = prompts.to(self.device)
         max_min_length = self.max_answer_seq_len + prompts.shape[1]
 
         with torch.no_grad():
-            seq = self.actor_model.generate(prompts,
-                                            max_length=max_min_length,
-                                            min_length=max_min_length)
+            seq = self.actor_model.model.generate(prompts,
+                                                  max_length=max_min_length,
+                                                  min_length=max_min_length)
 
         # Filter out seq with no asnwers (or very short). This happens when users directly \
         # use the pre-training ckpt without supervised finetuning
@@ -55,8 +58,7 @@ class PPOTrainer():
         valid_ans_len = (ans != self.tokenizer.pad_token_id).sum(dim=-1)
         out_seq = []
         for i in range(batch_size):
-            if valid_ans_len[
-                    i] <= 1:  # if the answer is shorter than 1 token, drop it
+            if valid_ans_len[i] <= 1:
                 continue
             else:
                 out_seq.append(seq[i:i + 1])
@@ -73,16 +75,16 @@ class PPOTrainer():
         attention_mask = seq.not_equal(pad_token_id).long()
 
         with torch.no_grad():
-            output = self.actor_model(seq, attention_mask=attention_mask)
-            output_ref = self.ref_model(seq, attention_mask=attention_mask)
-            reward_score = self.reward_model.forward(seq,
-                                                     attention_mask).detach()
-            values = self.critic_model.get_reward(seq, attention_mask).detach()
+            logits = self.actor_model(seq, attention_mask=attention_mask)
+            logits_ref = self.ref_model(seq, attention_mask=attention_mask)
+            reward_score = self.reward_model.forward_value(
+                seq, attention_mask,
+                prompt_length=self.prompt_length)['chosen_end_scores'].detach(
+                )
+            values = self.critic_model.forward_value(
+                seq, attention_mask, return_value_only=True).detach()[:, :-1]
 
-        logits = output.logits
-        logits_ref = output_ref.logits
-
-        return {
+        exp_dict = {
             'prompts': prompts,
             'logprobs': gather_log_probs(logits[:, :-1, :], seq[:, 1:]),
             'ref_logprobs': gather_log_probs(logits_ref[:, :-1, :], seq[:,
@@ -92,6 +94,9 @@ class PPOTrainer():
             'input_ids': seq,
             'attention_mask': attention_mask
         }
+        for key, value in exp_dict.items():
+            print(key, value.shape, value.dtype)
+        return exp_dict
 
     def compute_rewards(self, prompts, log_probs, ref_log_probs, reward_score,
                         action_mask):
