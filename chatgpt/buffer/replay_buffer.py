@@ -32,9 +32,43 @@ Memory = namedtuple(
     ],
 )
 
+DsMemory = namedtuple('ds_memory', [
+    'prompts',
+    'logprobs',
+    'ref_logprobs',
+    'value',
+    'rewards',
+    'input_ids',
+    'attention_mask',
+])
+
+
+class DsExperienceDataset(Dataset):
+    """Dataset to train the actor-critic models."""
+
+    def __init__(self, memories: Deque[Memory]) -> None:
+        super().__init__()
+        self.data = list(memories)
+
+    def __len__(self, ) -> int:
+        return len(self.data)
+
+    def __getitem__(self, idx) -> Tuple:
+        # return the idx-th memory element as a tuple of tensors on the device
+        item = {
+            'prompts': self.data[idx].prompts,
+            'logprobs': self.data[idx].logprobs,
+            'ref_logprobs': self.data[idx].ref_logprobs,
+            'rewards': self.data[idx].rewards,
+            'input_ids': self.data[idx].input_ids,
+            'attention_mask': self.data[idx].attention_mask,
+            'value': self.data[idx].value,
+        }
+        return item
+
 
 class ExperienceDataset(Dataset):
-    """Dataset to train the actor-critic models"""
+    """Dataset to train the actor-critic models."""
 
     def __init__(self, memories: Deque[Memory]) -> None:
         super().__init__()
