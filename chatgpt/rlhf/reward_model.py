@@ -218,19 +218,12 @@ class RewardModel(nn.Module):
     def forward_value(self,
                       input_ids=None,
                       attention_mask=None,
-                      past_key_values=None,
-                      position_ids=None,
-                      head_mask=None,
-                      inputs_embeds=None,
                       return_value_only=False,
                       prompt_length=0,
                       use_cache=False):
 
         outputs = self.model(input_ids,
-                             past_key_values=past_key_values,
                              attention_mask=attention_mask,
-                             head_mask=head_mask,
-                             inputs_embeds=inputs_embeds,
                              use_cache=use_cache)
         hidden_states = outputs[0]
         values = self.value_head(hidden_states).squeeze(-1)
