@@ -41,7 +41,7 @@ class PPOTrainer():
     ):
 
         # Those value can be changed
-        self.num_episode = num_episodes
+        self.num_episodes = num_episodes
         self.ppo_epochs = ppo_epochs
         self.checkpoint_episode = checkpoint_episode
         self.lam = lam
