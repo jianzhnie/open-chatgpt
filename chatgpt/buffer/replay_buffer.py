@@ -51,22 +51,24 @@ class DsExperienceDataset(Dataset):
 
     def __init__(self, memories: Deque[Memory]) -> None:
         super().__init__()
-        self.data = list(memories)
+        self.data = memories
+        print(self.data)
 
     def __len__(self, ) -> int:
-        return len(self.data)
+        return self.data[0].shape[0]
 
     def __getitem__(self, idx) -> Tuple:
         # return the idx-th memory element as a tuple of tensors on the device
-        item = (
-            self.data[idx].prompts,
-            self.data[idx].logprobs,
-            self.data[idx].ref_logprobs,
-            self.data[idx].rewards,
-            self.data[idx].input_ids,
-            self.data[idx].attention_mask,
-            self.data[idx].value,
-        )
+        # item = (
+        #     self.data[idx].prompts,
+        #     self.data[idx].logprobs,
+        #     self.data[idx].ref_logprobs,
+        #     self.data[idx].rewards,
+        #     self.data[idx].input_ids,
+        #     self.data[idx].attention_mask,
+        #     self.data[idx].value,
+        # )
+        item = tuple(map(lambda t: t[idx], self.data))
         return item
 
 

@@ -54,10 +54,12 @@ def main():
             critic_loss, actor_loss = 0, 0
             average_reward = 0
 
+        memories = list(zip(*memories))
         dataset = DsExperienceDataset(memories)
         dataloader = DataLoader(dataset, batch_size=8)
         for ppo_ep in range(args.ppo_epoch):
             for i, exp_data in enumerate(dataloader):
+                print(exp_data)
                 actor_loss, critic_loss = ppo_trainer.train_rlhf(exp_data)
                 critic_loss += actor_loss.item()
                 actor_loss += critic_loss.item()
