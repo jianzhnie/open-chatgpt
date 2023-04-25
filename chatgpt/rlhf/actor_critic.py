@@ -256,6 +256,49 @@ class CriticModel(nn.Module):
         value = self.forward(output_sequence, output_sequence_mask)
         return value[:, -1]
 
+    def forward_value(self,
+                      input_ids=None,
+                      attention_mask=None,
+                      past_key_values=None,
+                      position_ids=None,
+                      head_mask=None,
+                      inputs_embeds=None,
+                      return_value_only=False,
+                      prompt_length=0,
+                      use_cache=False):
+
+        transformer_outputs = self.model(input_ids,
+                                         past_key_values=past_key_values,
+                                         attention_mask=attention_mask,
+                                         head_mask=head_mask,
+                                         inputs_embeds=inputs_embeds,
+                                         use_cache=use_cache)
+        hidden_states = transformer_outputs[0]
+        values = self.value_head(hidden_states).squeeze(-1)
+        if return_value_only:
+            return values
+        else:
+            # [0 0 0 0 prompt, answer, 0 0 0 0 ] for step 3, we have padding at the beginning
+            # [prompt, answer, 0, 0, 0, 0] this is normal
+            assert prompt_length > 1, 'prompt_length must be greater than 1 to help select the end score'
+            bs = values.size(0)
+            seq_len = input_ids.shape[1]
+            chosen_end_scores = [
+            ]  # we use this name for consistency with the original forwad function
+            for i in range(bs):
+                input_id = input_ids[i]
+                value = values[i]
+
+                c_inds = (input_id[prompt_length:] == self.PAD_ID).nonzero()
+                # here we only use the answer part of the sequence so we do not need to care about the padding at the beginning
+                c_ind = c_inds[0].item() + prompt_length if len(
+                    c_inds) > 0 else seq_len
+                chosen_end_scores.append(value[c_ind - 1])
+            return {
+                'values': values,
+                'chosen_end_scores': torch.stack(chosen_end_scores),
+            }
+
 
 class ActorCritic(nn.Module):
     """Actor Critic class stores both the actor and the critic models and it
@@ -322,8 +365,8 @@ class ActorCritic(nn.Module):
         values = self.critic(sequences_critic, sequences_mask_critic)
 
         # return only logits and values for the actions taken
-        real_actions_logits = actions_logits[:, -action_len_actor:, :]
-        real_values = values[:, -action_len_critic:]
+        real_actions_logits = actions_logits
+        real_values = values
 
         if self.debug:
             print('ActorCritic.forward')

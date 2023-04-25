@@ -17,8 +17,8 @@ def main(args):
     trainer = PPOTrainer(
         prompt_data_path=data_path,
         pretrained_model=pretrained,
-        device='cpu',
-        debug=False,
+        device=device,
+        debug=True,
     )
 
     trainer.train()

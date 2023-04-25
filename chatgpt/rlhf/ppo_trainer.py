@@ -63,6 +63,7 @@ class PPOTrainer:
         debug: bool = False,
     ) -> None:
 
+        # Those value can be changed
         self.num_episodes = num_episodes
         self.ppo_epochs = ppo_epochs
         self.batch_size = batch_size
@@ -72,18 +73,24 @@ class PPOTrainer:
         self.actor_eps_clip = actor_eps_clip
         self.critic_eps_clip = critic_eps_clip
         self.eps = 1e-8
+        self.kl_ctl = 0.02
+        self.clip_reward_value = 5
+        self.cliprange = 0.2
+        self.cliprange_value = 0.2
+        self.gamma = 1.0
+        self.lam = 0.95
         self.device = device
         self.debug = debug
 
         # initialize agent-critic
         self.actor_critic = ActorCritic(pretrained=pretrained_model,
-                                        debug=debug)
+                                        debug=False).to(device)
         self.actor_optimizer = Adam(self.actor_critic.actor.parameters(),
                                     lr=actor_lr)
         self.critic_optimizer = Adam(self.actor_critic.critic.parameters(),
                                      lr=critic_lr)
         # initialize reward model
-        self.reward_model = RewardModel(pretrained=pretrained_model)
+        self.reward_model = RewardModel(pretrained=pretrained_model).to(device)
         # initialize examples sampler
         self.prompt_dataset = PromptDataset(data_path=prompt_data_path,
                                             split='train')
@@ -100,9 +107,9 @@ class PPOTrainer:
         """
         print('Start to Learn...')
         # create dataset from memories
-        dataset = ExperienceDataset(memories, self.device),
+        dataset = ExperienceDataset(memories)
 
-        dataloader = DataLoader(dataset, batch_size=self.batch_size)
+        dataloader = DataLoader(dataset, batch_size=8)
         # train agent-critic
         self.actor_critic.train()
         for epoch in range(self.ppo_epochs):
@@ -147,8 +154,8 @@ class PPOTrainer:
                     sequences_mask_actor,
                     sequences_critic,
                     sequences_mask_critic,
-                    action_len_actor.item(),
-                    action_len_critic.item(),
+                    action_len_actor,
+                    action_len_critic,
                 )
 
                 # get action log prob
@@ -243,7 +250,7 @@ class PPOTrainer:
         for episode in range(self.num_episodes):
             for step, inputs in enumerate(self.prompt_dataloader):
                 print(
-                    f'Episode: {episode + 1}/{self.num_episodes}'
+                    f'Episode: {episode + 1}/{self.num_episodes}',
                     f'Step: {cnt_timesteps + 1}/{max_timesteps}',
                     f'Learning Cnt: {cnt_learn_iter + 1}/{update_timesteps}',
                 )
@@ -310,25 +317,6 @@ class PPOTrainer:
                             int(action_len_actor),
                             int(action_len_critic),
                         ))
-
-                # decode completions to be logged in the conversation log
-                completions = [
-                    self.actor_critic.actor.tokenizer.decode(action)
-                    for action in actions
-                ]
-                # remove pad tokens from completions
-                completions = [
-                    c.replace(self.actor_critic.actor.tokenizer.pad_token, '')
-                    for c in completions
-                ]
-                # remove eos tokens from completions
-                completions = [
-                    c.replace(self.actor_critic.actor.tokenizer.eos_token, '')
-                    for c in completions
-                ]
-                # strange i need to force this?
-                completions = [c.replace('<pad>', '') for c in completions]
-
                 # learn from memories
                 if (cnt_timesteps % update_timesteps
                         == 0) and (cnt_timesteps != 0):
@@ -343,6 +331,27 @@ class PPOTrainer:
                     cnt_learn_iter += 1
 
         print('End RL Training')
+
+    def compute_rewards(
+        self,
+        prompts,
+        log_probs: TensorType['batch_size', 'response_size'],
+        ref_log_probs: TensorType['batch_size', 'response_size'],
+        reward_score: TensorType['batch_size', 'response_size'],
+        action_mask: TensorType['batch_size', 'response_size'],
+    ):
+
+        kl_divergence_estimate = -self.kl_ctl * (log_probs - ref_log_probs)
+        rewards = kl_divergence_estimate
+        start = prompts.shape[1] - 1
+        ends = start + action_mask[:, start:].sum(1)
+        reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
+                                  self.clip_reward_value)
+        batch_size = log_probs.shape[0]
+        for j in range(batch_size):
+            rewards[j, start:ends[j]][-1] += reward_clip[j]
+
+        return rewards
 
     def get_advantages_and_returns(
         self,
@@ -382,6 +391,44 @@ class PPOTrainer:
         if use_whitening:
             advantages = whiten(advantages)
         return advantages.detach(), returns
+
+    def actor_loss_fn(
+        self,
+        logprobs: TensorType['batch_size', 'response_size'],
+        old_logprobs: TensorType['batch_size', 'response_size'],
+        advantages: TensorType['batch_size', 'response_size'],
+        mask: TensorType['batch_size', 'response_size'],
+    ):
+        # policy gradient loss
+        log_ratio = (logprobs - old_logprobs) * mask
+        ratio = torch.exp(log_ratio)
+        pg_loss1 = -advantages * ratio
+        pg_loss2 = -advantages * torch.clamp(
+            ratio,
+            1.0 - self.cliprange,
+            1.0 + self.cliprange,
+        )
+        pg_loss = torch.sum(torch.max(pg_loss1, pg_loss2) * mask) / mask.sum()
+        return pg_loss
+
+    def critic_loss_fn(
+        self,
+        values: TensorType['batch_size', 'response_size'],
+        old_values: TensorType['batch_size', 'response_size'],
+        returns: TensorType['batch_size', 'response_size'],
+        mask: TensorType['batch_size', 'response_size'],
+    ):
+        # value loss
+        values_clipped = torch.clamp(
+            values,
+            old_values - self.cliprange_value,
+            old_values + self.cliprange_value,
+        )
+        vf_loss1 = (values - returns)**2
+        vf_loss2 = (values_clipped - returns)**2
+        vf_loss = 0.5 * torch.sum(
+            torch.max(vf_loss1, vf_loss2) * mask) / mask.sum()
+        return vf_loss
 
     def get_loss(
         self,

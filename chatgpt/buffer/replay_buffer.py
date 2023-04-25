@@ -32,13 +32,52 @@ Memory = namedtuple(
     ],
 )
 
+DsMemory = namedtuple(
+    'ds_memory',
+    [
+        'prompts',
+        'logprobs',
+        'ref_logprobs',
+        'value',
+        'rewards',
+        'input_ids',
+        'attention_mask',
+    ],
+)
+
+
+class DsExperienceDataset(Dataset):
+    """Dataset to train the actor-critic models."""
+
+    def __init__(self, memories: Deque[Memory]) -> None:
+        super().__init__()
+        self.data = memories
+        print(self.data)
+
+    def __len__(self, ) -> int:
+        return self.data[0].shape[0]
+
+    def __getitem__(self, idx) -> Tuple:
+        # return the idx-th memory element as a tuple of tensors on the device
+        # item = (
+        #     self.data[idx].prompts,
+        #     self.data[idx].logprobs,
+        #     self.data[idx].ref_logprobs,
+        #     self.data[idx].rewards,
+        #     self.data[idx].input_ids,
+        #     self.data[idx].attention_mask,
+        #     self.data[idx].value,
+        # )
+        item = tuple(map(lambda t: t[idx], self.data))
+        return item
+
 
 class ExperienceDataset(Dataset):
     """Dataset to train the actor-critic models."""
-    def __init__(self, memories: Deque[Memory], device: torch.device) -> None:
+
+    def __init__(self, memories: Deque[Memory]) -> None:
         super().__init__()
         self.data = list(memories)
-        self.device = device
 
     def __len__(self, ) -> int:
         return len(self.data)
@@ -46,49 +85,23 @@ class ExperienceDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         # return the idx-th memory element as a tuple of tensors on the device
         item = (
-            self.data[idx].states.to(self.device),
-            self.data[idx].actions.to(self.device),
-            self.data[idx].sequences.to(self.device),
-            self.data[idx].values.to(self.device),
-            self.data[idx].rewards.to(self.device),
-            self.data[idx].actions_log_probs.to(self.device),
-            self.data[idx].sequences_mask.to(self.device),
+            self.data[idx].states_actor,
+            self.data[idx].actions,
+            self.data[idx].values,
+            self.data[idx].rewards,
+            self.data[idx].actions_log_probs,
+            self.data[idx].sequences_actor,
+            self.data[idx].sequences_mask_actor,
+            self.data[idx].sequences_critic,
+            self.data[idx].sequences_mask_critic,
+            int(self.data[idx].action_len_actor),
+            int(self.data[idx].action_len_critic),
         )
         return item
 
 
-class ExamplesSampler:
-    """Store the prompt to be sampled to generate the examples
-    read a json file with the following format:
-    [
-        {
-            "user_input" : "",
-        } ,
-        ...
-    ]
-    Where:
-        user_input: is the input of the user or directly the input of the user
-            with the memory preappended (i.e. user_input + memory)
-    """
-    def __init__(
-        self,
-        path: str,
-    ) -> None:
-        self.path = path
-        with open(path, 'r') as f:
-            data = json.load(f)
-        self.data = [d['user_input'] for d in data]
-
-    def sample(self, n: int) -> List:
-        """Sample n examples from the data.
-
-        Args:
-            n (int): Number of examples to sample
-        """
-        return random.sample(self.data, n)
-
-
 class ExperienceMaker(ABC):
+
     def __init__(self,
                  actor: ActorModel,
                  critic: nn.Module,
@@ -141,6 +154,7 @@ class ExperienceMaker(ABC):
 
 
 class ReplayBuffer(ABC):
+
     def __init__(self,
                  max_len: int = 10000,
                  sample_batch_size: int = 8,

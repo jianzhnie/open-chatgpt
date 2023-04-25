@@ -1,14 +1,15 @@
 import argparse
-import random
 import sys
 
 from torch.utils.data import DataLoader
 
 sys.path.append('../../')
+from collections import deque
+import torch
 from transformers import AutoTokenizer
 
-from chatgpt.dataset.data_utils import MiniDataset
-from chatgpt.dataset.prompt_dataset import PromptDataset
+from chatgpt.buffer.replay_buffer import DsExperienceDataset, DsMemory
+from chatgpt.dataset.prompt_dataset import TokenizedPromptDataset
 from chatgpt.rlhf.ppo_trainer_deepspeed import PPOTrainer
 
 
@@ -16,13 +17,11 @@ def main():
     pretrained = 'facebook/opt-125m'
     data_path = 'CarperAI/openai_summarize_tldr'
     tokenizer = AutoTokenizer.from_pretrained(pretrained)
-    prompt_dataset = PromptDataset(data_path=data_path,
-                                   tokenizer=tokenizer,
-                                   split='valid',
-                                   max_length=512)
-    print(prompt_dataset)
-    prompt_dataloader = DataLoader(prompt_dataset, shuffle=True, batch_size=8)
-    print(prompt_dataloader)
+    prompt_dataset = TokenizedPromptDataset(data_path=data_path,
+                                            tokenizer=tokenizer,
+                                            split='valid',
+                                            max_length=512)
+    prompt_dataloader = DataLoader(prompt_dataset, shuffle=True, batch_size=32)
     config = {
         'pretrained': 'facebook/opt-125m',
         'num_train_epochs': 10,
@@ -38,34 +37,34 @@ def main():
         'log_dir': 'work_dirs/',
         'logger': 'wandb'
     }
+    device = torch.device(
+        'cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print('Using device: ', device)
 
     args = argparse.Namespace(**config)
-
-    exp_dataset = MiniDataset(args.replay_buffer_size,
-                              args.per_device_mini_train_batch_size)
-    ppo_trainer = PPOTrainer(pretrained=args.pretrained)
+    memories = deque([])
+    ppo_trainer = PPOTrainer(pretrained=args.pretrained, device=device)
     for epoch in range(10):
-        print({epoch + 1} / {args.num_train_epochs})
+        print(epoch, args.num_train_epochs)
         for step, batch_prompt in enumerate(prompt_dataloader):
             out = ppo_trainer.generate_experience(batch_prompt)
-            print(out)
-            exp_dataset = exp_dataset.add(out)
+            memories.append(DsMemory(**out))
+        if memories is not None:
+            inner_iter = 0
+            critic_loss, actor_loss = 0, 0
+            average_reward = 0
 
-            if exp_dataset is not None:
-                inner_iter = 0
-                critic_loss, actor_loss = 0, 0
-                average_reward = 0
-
-                for ppo_ep in range(args.ppo_epoch):
-                    for i, exp_data in enumerate(exp_dataset):
-                        actor_loss, critic_loss = ppo_trainer.train_rlhf(
-                            exp_data)
-                        critic_loss += actor_loss.item()
-                        actor_loss += critic_loss.item()
-                        average_reward += exp_data['rewards'].mean()
-                        inner_iter += 1
-                    random.shuffle(exp_dataset)
-
+        memories = list(zip(*memories))
+        dataset = DsExperienceDataset(memories)
+        dataloader = DataLoader(dataset, batch_size=8)
+        for ppo_ep in range(args.ppo_epoch):
+            for i, exp_data in enumerate(dataloader):
+                print(exp_data)
+                actor_loss, critic_loss = ppo_trainer.train_rlhf(exp_data)
+                critic_loss += actor_loss.item()
+                actor_loss += critic_loss.item()
+                average_reward += exp_data['rewards'].mean()
+                inner_iter += 1
                 print(f'epoch: {epoch}|step: {step}|ppo_ep: {ppo_ep+1}| \
                         act_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
                       )
