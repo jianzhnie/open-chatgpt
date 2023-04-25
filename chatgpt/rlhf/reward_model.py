@@ -28,6 +28,7 @@ class RewardModelOutput(ModelOutput):
 
 
 class Pooler(nn.Module):
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -45,6 +46,7 @@ class Pooler(nn.Module):
 class MeanPooler(nn.Module):
     """Applies a mean pooling on the hidden states of the last layer of the
     transformer model."""
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -68,6 +70,7 @@ class PairedRewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
@@ -148,6 +151,7 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'opt-125m'):
         super().__init__()
 
@@ -185,9 +189,9 @@ class RewardModel(nn.Module):
         self.config = self.model.config
 
         if 'opt' in pretrained:
-            self.config.hidden_size = self.config.word_embed_proj_dim
-        self.pooler = MeanPooler(self.config.hidden_size)
-        self.value_head = nn.Linear(self.config.hidden_size, 1)
+            self.config.n_embd = self.config.word_embed_proj_dim
+        self.pooler = MeanPooler(self.config.n_embd)
+        self.value_head = nn.Linear(self.config.n_embd, 1, bias=False)
         self.PAD_ID = self.tokenizer.pad_token_id
 
     def forward(
@@ -238,6 +242,8 @@ class RewardModel(nn.Module):
                                          use_cache=use_cache)
         hidden_states = transformer_outputs[0]
         values = self.value_head(hidden_states).squeeze(-1)
+        print(input_ids.shape)
+        print("forward_value", values.shape)
         if return_value_only:
             return values
         else:

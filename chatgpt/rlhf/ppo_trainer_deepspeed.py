@@ -105,6 +105,8 @@ class PPOTrainer():
         rewards = kl_divergence_estimate
         start = prompts.shape[1] - 1
         ends = start + action_mask[:, start:].sum(1)
+        # ends = ends.cpu().detach().numpy()[0]
+        # print(ends)
         reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
                                   self.clip_reward_value)
         batch_size = log_probs.shape[0]
@@ -116,14 +118,21 @@ class PPOTrainer():
     def train_rlhf(self, inputs):
         # train the rlhf mode here
         # process the old outputs
-        prompts = inputs['prompts']
-        log_probs = inputs['logprobs']
-        ref_log_probs = inputs['ref_logprobs']
-        reward_score = inputs['rewards']
-        values = inputs['value']
-        attention_mask = inputs['attention_mask']
-        seq = inputs['input_ids']
+        # prompts = inputs['prompts']
+        # log_probs = inputs['logprobs']
+        # ref_log_probs = inputs['ref_logprobs']
+        # reward_score = inputs['rewards']
+        # values = inputs['value']
+        # attention_mask = inputs['attention_mask']
+        # seq = inputs['input_ids']
 
+        (prompts, log_probs, ref_log_probs, reward_score, seq, attention_mask,
+         values) = [tensor.to(self.device) for tensor in inputs]
+
+        for tensor in inputs:
+            print(tensor.shape)
+
+            
         start = prompts.size()[-1] - 1
         action_mask = attention_mask[:, 1:]
 

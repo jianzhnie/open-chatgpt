@@ -17,6 +17,7 @@ class TokenizedPromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
+
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -24,9 +25,10 @@ class TokenizedPromptDataset(Dataset):
                  max_length: int = 512) -> None:
 
         dataset = load_dataset(data_path, split=split)
-        self.post_list = [sample['prompt'] for sample in dataset]
+        self.post_list = [sample['prompt'] for sample in dataset][:64]
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.input_size = LengthSampler(5, 20)
 
     def __len__(self) -> int:
         return len(self.post_list)
@@ -46,7 +48,7 @@ class TokenizedPromptDataset(Dataset):
                 f'Index {idx} out of range for TLDRDataset with length {len(self)}'
             )
 
-        input_txt = self.post_list[idx]
+        input_txt = self.post_list[idx][:self.input_size()]
         encodings_input = self.tokenizer(input_txt,
                                          truncation=True,
                                          max_length=self.max_length,
@@ -55,7 +57,7 @@ class TokenizedPromptDataset(Dataset):
             key: torch.tensor(val)
             for key, val in encodings_input.items()
         }
-        return encodings_input
+        return encodings_input['input_ids']
 
 
 class PromptDataset(Dataset):
@@ -67,6 +69,7 @@ class PromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
+
     def __init__(self,
                  data_path: str,
                  split: str,

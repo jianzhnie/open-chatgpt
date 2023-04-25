@@ -32,15 +32,18 @@ Memory = namedtuple(
     ],
 )
 
-DsMemory = namedtuple('ds_memory', [
-    'prompts',
-    'logprobs',
-    'ref_logprobs',
-    'value',
-    'rewards',
-    'input_ids',
-    'attention_mask',
-])
+DsMemory = namedtuple(
+    'ds_memory',
+    [
+        'prompts',
+        'logprobs',
+        'ref_logprobs',
+        'value',
+        'rewards',
+        'input_ids',
+        'attention_mask',
+    ],
+)
 
 
 class DsExperienceDataset(Dataset):
@@ -55,15 +58,15 @@ class DsExperienceDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple:
         # return the idx-th memory element as a tuple of tensors on the device
-        item = {
-            'prompts': self.data[idx].prompts,
-            'logprobs': self.data[idx].logprobs,
-            'ref_logprobs': self.data[idx].ref_logprobs,
-            'rewards': self.data[idx].rewards,
-            'input_ids': self.data[idx].input_ids,
-            'attention_mask': self.data[idx].attention_mask,
-            'value': self.data[idx].value,
-        }
+        item = (
+            self.data[idx].prompts,
+            self.data[idx].logprobs,
+            self.data[idx].ref_logprobs,
+            self.data[idx].rewards,
+            self.data[idx].input_ids,
+            self.data[idx].attention_mask,
+            self.data[idx].value,
+        )
         return item
 
 
