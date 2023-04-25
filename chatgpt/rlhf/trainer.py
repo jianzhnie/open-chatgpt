@@ -22,7 +22,7 @@ class PPOTrainer():
         self,
         prompt_dataset: Dataset = None,
         pretrained: str = None,
-        num_episode: int = 10,
+        num_episodes: int = 10,
         ppo_epochs: int = 1,
         batch_size: int = 32,
         actor_lr: float = 1e-4,
@@ -33,6 +33,7 @@ class PPOTrainer():
         cliprange_value: float = 0.2,
         gamma: float = 1.0,
         lam: float = 0.95,
+        checkpoint_episode: int = 1,
         max_answer_seq_len: int = 256,
         work_dirs: str = 'work_dirs',
         debug: bool = False,
@@ -40,8 +41,9 @@ class PPOTrainer():
     ):
 
         # Those value can be changed
-        self.num_episode = num_episode
+        self.num_episode = num_episodes
         self.ppo_epochs = ppo_epochs
+        self.checkpoint_episode = checkpoint_episode
         self.lam = lam
         self.gamma = gamma
         self.kl_ctl = kl_ctl
@@ -183,7 +185,7 @@ class PPOTrainer():
         print('Start RL Training')
         # initialize memories
         memories = deque([])
-        for episode in range(self.num_episode):
+        for episode in range(self.num_episodes):
             print(f'Start generating experience:, episode: {episode}')
             for step, batch_prompt in enumerate(self.prompt_dataloader):
                 print(
@@ -223,6 +225,10 @@ class PPOTrainer():
                         f'Episode: {episode} |Epoch: {epoch}|step: {i}| actor_loss: {actor_loss/inner_iter} \
                         |cri_loss: {critic_loss/inner_iter}')
             memories.clear()
+            # save checkpoints
+            if (episode % self.checkpoint_episode == 0) and (episode != 0):
+                self.save_checkpoint(current_episode=episode,
+                                     path=self.model_folder)
         print('Finished training RLHF !!!')
 
     def actor_loss_fn(self, logprobs, old_logprobs, advantages, mask):
