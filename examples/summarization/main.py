@@ -69,16 +69,13 @@ def main():
         for epoch in range(args.ppo_epochs):
             print("Training RLHF")
             for i, exp_data in enumerate(dataloader):
-                print(f"Training RLHF, epoch: {epoch}, step: {i}")
                 actor_loss, critic_loss = ppo_trainer.train_rlhf(exp_data)
                 critic_loss += actor_loss.item()
                 actor_loss += critic_loss.item()
                 inner_iter += 1
                 print(
-                    f'epoch: {epoch}|step: {i}| actor_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
+                    f'Episode: {episode} |Epoch: {epoch}|step: {i}| actor_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
                 )
-        print(f"Finished training RLHF, episode: {episode} ")
-
     print("Finished training RLHF !!!")
 
 
