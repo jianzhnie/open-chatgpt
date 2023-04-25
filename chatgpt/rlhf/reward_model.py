@@ -28,7 +28,6 @@ class RewardModelOutput(ModelOutput):
 
 
 class Pooler(nn.Module):
-
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -46,7 +45,6 @@ class Pooler(nn.Module):
 class MeanPooler(nn.Module):
     """Applies a mean pooling on the hidden states of the last layer of the
     transformer model."""
-
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -70,7 +68,6 @@ class PairedRewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
-
     def __init__(self, pretrained: str = 'openai-gpt'):
         super().__init__()
         # Instantiate model based on input string
@@ -151,7 +148,6 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
-
     def __init__(self, pretrained: str = 'opt-125m'):
         super().__init__()
 
@@ -190,7 +186,6 @@ class RewardModel(nn.Module):
 
         if 'opt' in pretrained:
             self.config.n_embd = self.config.word_embed_proj_dim
-        self.pooler = MeanPooler(self.config.n_embd)
         self.value_head = nn.Linear(self.config.n_embd, 1, bias=False)
         self.PAD_ID = self.tokenizer.pad_token_id
 
@@ -216,11 +211,8 @@ class RewardModel(nn.Module):
         outputs = self.model(input_ids=input_ids,
                              attention_mask=attention_mask,
                              return_dict=return_dict)
-        last_hidden_states = outputs['last_hidden_state']
-
-        # Calculate the values and return the mean value for each sequence
-        pooled_output = self.pooler(last_hidden_states)
-        values = self.value_head(pooled_output)
+        last_hidden_states = outputs.last_hidden_state
+        values = self.value_head(last_hidden_states)
         return values
 
     def forward_value(self,
@@ -234,16 +226,14 @@ class RewardModel(nn.Module):
                       prompt_length=0,
                       use_cache=False):
 
-        transformer_outputs = self.model(input_ids,
-                                         past_key_values=past_key_values,
-                                         attention_mask=attention_mask,
-                                         head_mask=head_mask,
-                                         inputs_embeds=inputs_embeds,
-                                         use_cache=use_cache)
-        hidden_states = transformer_outputs[0]
+        outputs = self.model(input_ids,
+                             past_key_values=past_key_values,
+                             attention_mask=attention_mask,
+                             head_mask=head_mask,
+                             inputs_embeds=inputs_embeds,
+                             use_cache=use_cache)
+        hidden_states = outputs[0]
         values = self.value_head(hidden_states).squeeze(-1)
-        print(input_ids.shape)
-        print("forward_value", values.shape)
         if return_value_only:
             return values
         else:
@@ -259,7 +249,8 @@ class RewardModel(nn.Module):
                 value = values[i]
 
                 c_inds = (input_id[prompt_length:] == self.PAD_ID).nonzero()
-                # here we only use the answer part of the sequence so we do not need to care about the padding at the beginning
+                # here we only use the answer part of the sequence so we do not need to care about
+                # the padding at the beginning
                 c_ind = c_inds[0].item() + prompt_length if len(
                     c_inds) > 0 else seq_len
                 chosen_end_scores.append(value[c_ind - 1])
