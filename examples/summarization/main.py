@@ -20,15 +20,12 @@ def main():
     prompt_dataset = TokenizedPromptDataset(data_path=data_path,
                                             tokenizer=tokenizer,
                                             split='valid',
-                                            max_length=512)
+                                            max_length=256)
     prompt_dataloader = DataLoader(prompt_dataset, shuffle=True, batch_size=32)
     config = {
         'pretrained': 'facebook/opt-125m',
-        'num_train_epochs': 10,
-        'ppo_epoch': 10,
-        'replay_buffer_size': 5000,
-        'per_device_mini_train_batch_size': 4,
-        'learning_rate': 0.0005,
+        'num_episode': 10,
+        'ppo_epochs': 1,
         'gamma': 0.99,
         'batch_size': 32,
         'total_steps': 1000000,
@@ -44,10 +41,12 @@ def main():
     args = argparse.Namespace(**config)
     memories = deque([])
     ppo_trainer = PPOTrainer(pretrained=args.pretrained, device=device)
-    for epoch in range(10):
-        print(epoch, args.num_train_epochs)
+    for episode in range(args.num_episode):
+        print(f"Start generating experience:, episode: {episode}")
         for step, batch_prompt in enumerate(prompt_dataloader):
+            print(f"Generating experience:, episode: {episode}, step: {step}")
             out = ppo_trainer.generate_experience(batch_prompt)
+            print("Putting experience into replay buffer")
             for i in range(out['prompts'].shape[0]):
                 memories.append(
                     DsMemory(
@@ -59,22 +58,28 @@ def main():
                         out['input_ids'][i, :].detach().cpu(),
                         out['attention_mask'][i, :].detach().cpu(),
                     ))
-
+        print("Finished generating experience, start training")
         if memories is not None:
             inner_iter = 0
-            critic_loss, actor_loss = 0, 0
+            critic_loss = 0
+            actor_loss = 0
 
         dataset = DsExperienceDataset(memories)
         dataloader = DataLoader(dataset, batch_size=8)
-        for ppo_ep in range(args.ppo_epoch):
+        for epoch in range(args.ppo_epochs):
+            print("Training RLHF")
             for i, exp_data in enumerate(dataloader):
+                print(f"Training RLHF, epoch: {epoch}, step: {i}")
                 actor_loss, critic_loss = ppo_trainer.train_rlhf(exp_data)
                 critic_loss += actor_loss.item()
                 actor_loss += critic_loss.item()
                 inner_iter += 1
-                print(f'epoch: {epoch}|step: {step}|ppo_ep: {ppo_ep+1}| \
-                        act_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
-                      )
+                print(
+                    f'epoch: {epoch}|step: {i}| actor_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
+                )
+        print(f"Finished training RLHF, episode: {episode} ")
+
+    print("Finished training RLHF !!!")
 
 
 if __name__ == '__main__':

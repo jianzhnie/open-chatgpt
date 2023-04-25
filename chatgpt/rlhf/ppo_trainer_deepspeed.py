@@ -14,30 +14,39 @@ def gather_log_probs(logits, labels):
 
 class PPOTrainer():
 
-    def __init__(self,
-                 pretrained: str = None,
-                 actor_lr: float = 1e-4,
-                 critic_lr: float = 1e-4,
-                 max_answer_seq_len: int = 256,
-                 device: str = 'cpu'):
+    def __init__(
+        self,
+        pretrained: str = None,
+        actor_lr: float = 1e-4,
+        critic_lr: float = 1e-4,
+        kl_ctl: float = 0.02,
+        clip_reward_value: float = 5,
+        cliprange: float = 0.2,
+        cliprange_value: float = 0.2,
+        gamma: float = 1.0,
+        lam: float = 0.95,
+        max_answer_seq_len: int = 256,
+        device: str = 'cpu',
+    ):
         self.actor_model = ActorModel(pretrained=pretrained).to(device)
         self.critic_model = CriticModel(pretrained=pretrained).to(device)
         self.ref_model = ActorModel(pretrained=pretrained).to(device)
         self.reward_model = RewardModel(pretrained=pretrained).to(device)
         self.tokenizer = self.actor_model.tokenizer
-        self.max_answer_seq_len = max_answer_seq_len
 
         # Those value can be changed
-        self.device = device
-        self.kl_ctl = 0.02
-        self.clip_reward_value = 5
-        self.cliprange = 0.2
-        self.cliprange_value = 0.2
-        self.gamma = 1.0
-        self.lam = 0.95
+        self.lam = lam
+        self.gamma = gamma
+        self.kl_ctl = kl_ctl
+        self.clip_reward_value = clip_reward_value
+        self.cliprange = cliprange
+        self.cliprange_value = cliprange_value
+        self.max_answer_seq_len = max_answer_seq_len
+
         self.actor_optimizer = Adam(self.actor_model.parameters(), lr=actor_lr)
         self.critic_optimizer = Adam(self.critic_model.parameters(),
                                      lr=critic_lr)
+        self.device = device
 
     def _generate_sequence(self, prompts):
         prompts = prompts.to(self.device)
@@ -105,8 +114,6 @@ class PPOTrainer():
         rewards = kl_divergence_estimate
         start = prompts.shape[1] - 1
         ends = start + action_mask[:, start:].sum(1)
-        # ends = ends.cpu().detach().numpy()[0]
-        # print(ends)
         reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
                                   self.clip_reward_value)
         batch_size = log_probs.shape[0]
@@ -118,10 +125,6 @@ class PPOTrainer():
     def train_rlhf(self, inputs):
         (prompts, log_probs, ref_log_probs, reward_score, seq, attention_mask,
          values) = [tensor.to(self.device) for tensor in inputs]
-
-        for tensor in inputs:
-            print(tensor.shape)
-
         start = prompts.size()[-1] - 1
         action_mask = attention_mask[:, 1:]
 
