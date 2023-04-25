@@ -48,27 +48,33 @@ def main():
         print(epoch, args.num_train_epochs)
         for step, batch_prompt in enumerate(prompt_dataloader):
             out = ppo_trainer.generate_experience(batch_prompt)
-            memories.append(DsMemory(**out))
+            for i in range(out['prompts'].shape[0]):
+                memories.append(
+                    DsMemory(
+                        out['prompts'][i, :].detach().cpu(),
+                        out['logprobs'][i, :].detach().cpu(),
+                        out['ref_logprobs'][i, :].detach().cpu(),
+                        out['value'][i, :].detach().cpu(),
+                        out['rewards'][i].detach().cpu(),
+                        out['input_ids'][i, :].detach().cpu(),
+                        out['attention_mask'][i, :].detach().cpu(),
+                    ))
+
         if memories is not None:
             inner_iter = 0
             critic_loss, actor_loss = 0, 0
-            average_reward = 0
 
-        memories = list(zip(*memories))
         dataset = DsExperienceDataset(memories)
         dataloader = DataLoader(dataset, batch_size=8)
         for ppo_ep in range(args.ppo_epoch):
             for i, exp_data in enumerate(dataloader):
-                print(exp_data)
                 actor_loss, critic_loss = ppo_trainer.train_rlhf(exp_data)
                 critic_loss += actor_loss.item()
                 actor_loss += critic_loss.item()
-                average_reward += exp_data['rewards'].mean()
                 inner_iter += 1
                 print(f'epoch: {epoch}|step: {step}|ppo_ep: {ppo_ep+1}| \
                         act_loss: {actor_loss/inner_iter} |cri_loss: {critic_loss/inner_iter}'
                       )
-                print(f'average reward score: {average_reward/inner_iter}')
 
 
 if __name__ == '__main__':

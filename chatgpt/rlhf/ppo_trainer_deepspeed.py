@@ -116,23 +116,12 @@ class PPOTrainer():
         return rewards
 
     def train_rlhf(self, inputs):
-        # train the rlhf mode here
-        # process the old outputs
-        # prompts = inputs['prompts']
-        # log_probs = inputs['logprobs']
-        # ref_log_probs = inputs['ref_logprobs']
-        # reward_score = inputs['rewards']
-        # values = inputs['value']
-        # attention_mask = inputs['attention_mask']
-        # seq = inputs['input_ids']
-
         (prompts, log_probs, ref_log_probs, reward_score, seq, attention_mask,
          values) = [tensor.to(self.device) for tensor in inputs]
 
         for tensor in inputs:
             print(tensor.shape)
 
-            
         start = prompts.size()[-1] - 1
         action_mask = attention_mask[:, 1:]
 
@@ -146,9 +135,8 @@ class PPOTrainer():
 
         # process the new outputs
         batch = {'input_ids': seq, 'attention_mask': attention_mask}
-        actor_prob = self.actor_model(**batch, use_cache=False).logits
-        actor_log_prob = gather_log_probs(actor_prob[:, :-1, :],
-                                          inputs['input_ids'][:, 1:])
+        actor_prob = self.actor_model.forward(**batch)
+        actor_log_prob = gather_log_probs(actor_prob[:, :-1, :], seq[:, 1:])
         actor_loss = self.actor_loss_fn(actor_log_prob[:, start:],
                                         log_probs[:, start:], advantages,
                                         action_mask[:, start:])
@@ -162,8 +150,6 @@ class PPOTrainer():
         critic_loss = self.critic_loss_fn(value[:, start:], old_values[:,
                                                                        start:],
                                           returns, action_mask[:, start:])
-        self.critic_model.backward(critic_loss)
-        self.critic_model.step()
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
