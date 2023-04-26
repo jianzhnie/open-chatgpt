@@ -28,6 +28,7 @@ class RewardModelOutput(ModelOutput):
 
 
 class Pooler(nn.Module):
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -45,6 +46,7 @@ class Pooler(nn.Module):
 class MeanPooler(nn.Module):
     """Applies a mean pooling on the hidden states of the last layer of the
     transformer model."""
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -68,8 +70,10 @@ class PairedRewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'openai-gpt'):
         super().__init__()
+
         # Instantiate model based on input string
         if 'opt' in pretrained:
             self.model = OPTModel.from_pretrained(pretrained)
@@ -84,7 +88,15 @@ class PairedRewardModel(nn.Module):
 
         # Get the model's config and create a value head
         self.config = self.model.config
-        self.value_head = nn.Linear(self.config.word_embed_proj_dim, 1)
+        self.config.n_embd = self.config.hidden_size if hasattr(
+            self.config, "hidden_size") else self.config.n_embd
+        if 'opt' in pretrained:
+            self.config.n_embd = self.config.word_embed_proj_dim
+
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.PAD_ID = self.tokenizer(self.tokenizer.pad_token)["input_ids"][0]
+        self.value_head = nn.Linear(self.config.n_embed, 1, bias=False)
         self.loss_fn = PairWiseLoss()
 
     def forward(
@@ -94,7 +106,6 @@ class PairedRewardModel(nn.Module):
         chosen_attention_mask: Optional[torch.Tensor] = None,
         rejected_attention_mask: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
-        return_dict=None,
     ) -> torch.Tensor:
         """Forward pass of the model.
 
@@ -108,37 +119,66 @@ class PairedRewardModel(nn.Module):
         Returns:
             torch.Tensor: Output tensor of value estimates.
         """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         # Get the model's outputs and extract the last hidden state
-        outputs_chosen = self.model(input_ids=chosen_input_ids,
-                                    attention_mask=chosen_attention_mask,
-                                    return_dict=return_dict)
-        last_hidden_states_chosen = outputs_chosen['last_hidden_state']
+        outputs_chosen = self.model(
+            input_ids=chosen_input_ids,
+            attention_mask=chosen_attention_mask,
+        )
+        last_hidden_states_chosen = outputs_chosen.last_hidden_state
 
         # Calculate the values and return the mean value for each sequence
-        values_chosen = self.value_head(last_hidden_states_chosen)[:, :-1]
-        rewards_chosen = values_chosen.mean(dim=1).squeeze(1)
+        chosen_rewards = self.value_head(last_hidden_states_chosen).squeeze(-1)
 
         # Get the model's outputs and extract the last hidden state
-        outputs_rejected = self.model(input_ids=rejected_input_ids,
-                                      attention_mask=rejected_attention_mask,
-                                      return_dict=return_dict)
-        last_hidden_states_rejected = outputs_rejected['last_hidden_state']
+        outputs_rejected = self.model(
+            input_ids=rejected_input_ids,
+            attention_mask=rejected_attention_mask,
+        )
+        last_hidden_states_rejected = outputs_rejected.last_hidden_state
 
         # Calculate the values and return the mean value for each sequence
+        rejected_rewards = self.value_head(
+            last_hidden_states_rejected).squeeze(-1)
 
-        values_rejected = self.value_head(last_hidden_states_rejected)[:, :-1]
-        rewards_rejected = values_rejected.mean(dim=1).squeeze(1)
+        chosen_end_scores = []
+        rejected_end_scores = []
+        bs = chosen_input_ids.shape[0]
+        for i in range(bs):
 
-        loss = self.loss_fn(rewards_chosen, rewards_rejected)
+            # Check if there is any padding otherwise take length of sequence
+            c_inds = (chosen_input_ids[i] == self.PAD_ID).nonzero()
+            c_ind = c_inds[0].item(
+            ) if len(c_inds) > 0 else chosen_input_ids.shape[1]
+            r_inds = (rejected_input_ids[i] == self.PAD_ID).nonzero()
+            r_ind = r_inds[0].item(
+            ) if len(r_inds) > 0 else rejected_input_ids.shape[1]
+            end_ind = max(c_ind, r_ind)
 
-        if not return_dict:
-            output = (loss, rewards_chosen, rewards_rejected)
-            return output
+            # Retrieve first index where trajectories diverge
+            divergence_ind = (chosen_input_ids[i] !=
+                              rejected_input_ids[i]).nonzero()[0]
+            assert divergence_ind > 0
 
-        return RewardModelOutput(loss=loss,
-                                 rewards_chosen=rewards_chosen,
-                                 rewards_rejected=rewards_rejected)
+            # Index into the correct rewards
+            c_truncated_reward = chosen_rewards[i][divergence_ind:end_ind]
+            r_truncated_reward = rejected_rewards[i][divergence_ind:end_ind]
+
+            # Append the last rewards to the list of end scores
+            chosen_end_scores.append(c_truncated_reward[-1])
+            rejected_end_scores.append(r_truncated_reward[-1])
+
+        # Calculate the loss
+        loss = self.loss_fn(r_truncated_reward, r_truncated_reward)
+
+        # Stack the end scores and return them
+        chosen_end_scores = torch.stack(chosen_end_scores)
+        rejected_end_scores = torch.stack(rejected_end_scores)
+
+        return RewardModelOutput(
+            loss=loss,
+            rewards_chosen=chosen_end_scores,
+            rewards_rejected=rejected_end_scores,
+        )
 
 
 class RewardModel(nn.Module):
@@ -148,6 +188,7 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'opt-125m'):
         super().__init__()
 
