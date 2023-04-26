@@ -26,6 +26,7 @@ if __name__ == '__main__':
         os.mkdir(output_dir)
 
     set_seed(42)
+    # Set up the model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     model = AutoModelForCausalLM.from_pretrained('facebook/opt-125m',
                                                  use_cache=False)
@@ -37,8 +38,8 @@ if __name__ == '__main__':
 
     # Set up the datasets
     data_path = 'CarperAI/openai_summarize_tldr'
-    train_dataset = TLDRDataset(data_path, tokenizer, 'train', max_length=512)
-    dev_dataset = TLDRDataset(data_path, tokenizer, 'valid', max_length=512)
+    train_dataset = TLDRDataset(data_path, tokenizer, 'train', max_length=550)
+    dev_dataset = TLDRDataset(data_path, tokenizer, 'valid', max_length=550)
     # Set up the metric
     rouge = evaluate.load('rouge')
 
@@ -67,12 +68,15 @@ if __name__ == '__main__':
         gradient_accumulation_steps=4,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
-        eval_steps=50,
-        save_steps=500,
+        eval_steps=500,
+        save_steps=1000,
         warmup_steps=100,
-        learning_rate=2e-5,
+        learning_rate=1e-5,
         weight_decay=0.001,
+        half_precision_backend=True,
         fp16=True,
+        adam_beta1=0.9,
+        adam_beta2=0.95,
         fp16_opt_level='02',  # mixed precision mode
         do_train=True,  # Perform training
         do_eval=True,  # Perform evaluation
@@ -82,9 +86,9 @@ if __name__ == '__main__':
         eval_accumulation_steps=1,
         load_best_model_at_end=True,
         gradient_checkpointing=True,
-        # half_precision_backend=True,
         logging_steps=50,
         logging_dir='./logs',
+        deepspeed='./ds_config_opt.json',
     )
 
     trainer = Trainer(
