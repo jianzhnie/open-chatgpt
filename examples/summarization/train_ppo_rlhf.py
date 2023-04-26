@@ -1,48 +1,30 @@
-import argparse
 import sys
 
-import torch
-
 sys.path.append('../../')
-from chatgpt.rlhf.ppo_trainer import PPOTrainer
+import torch
+from transformers import AutoTokenizer
+
+from chatgpt.dataset.prompt_dataset import TokenizedPromptDataset
+from chatgpt.rlhf.trainer import PPOTrainer
 
 
-def main(args):
+def main():
     pretrained = 'facebook/opt-125m'
     data_path = 'CarperAI/openai_summarize_tldr'
+    tokenizer = AutoTokenizer.from_pretrained(pretrained)
+    prompt_dataset = TokenizedPromptDataset(data_path=data_path,
+                                            tokenizer=tokenizer,
+                                            split='valid',
+                                            max_length=256)
+
     device = torch.device(
         'cuda') if torch.cuda.is_available() else torch.device('cpu')
     print('Using device: ', device)
-    # configure trainer
-    trainer = PPOTrainer(
-        prompt_data_path=data_path,
-        pretrained_model=pretrained,
-        device=device,
-        debug=True,
-    )
-
-    trainer.train()
+    ppo_trainer = PPOTrainer(pretrained=pretrained,
+                             prompt_dataset=prompt_dataset,
+                             device=device)
+    ppo_trainer.train()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--prompt_path',
-                        type=str,
-                        default=None,
-                        help='path to the prompt dataset')
-    parser.add_argument('--pretrain_dataset',
-                        type=str,
-                        default=None,
-                        help='path to the pretrained dataset')
-    parser.add_argument('--num_episodes', type=int, default=10)
-    parser.add_argument('--max_timesteps', type=int, default=10)
-    parser.add_argument('--update_timesteps', type=int, default=10)
-    parser.add_argument('--max_epochs', type=int, default=5)
-    parser.add_argument('--train_batch_size', type=int, default=8)
-    parser.add_argument('--buffer_limit', type=int, default=32)
-    parser.add_argument('--ptx_batch_size', type=int, default=1)
-    parser.add_argument('--experience_batch_size', type=int, default=8)
-    parser.add_argument('--kl_coef', type=float, default=0.1)
-    parser.add_argument('--ptx_coef', type=float, default=0.9)
-    args = parser.parse_args()
-    main(args)
+    main()
