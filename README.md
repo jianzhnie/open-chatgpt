@@ -16,6 +16,7 @@
   - [Step 2: Train Reward Model (RM)](#step-2-train-reward-model-rm)
   - [Step 3: Optimize the Policy Using Reinforcement Learning(RLHF)](#step-3-optimize-the-policy-using-reinforcement-learningrlhf)
 - [RLHF Dataset preparation](#rlhf-dataset-preparation)
+- [☕ Quick Start ☕](#-quick-start-)
 - [Examples](#examples)
   - [Example1: Learning to summarize with human feedback](#example1-learning-to-summarize-with-human-feedback)
     - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
@@ -23,7 +24,6 @@
     - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
   - [Example2: Learning to generate positive sentiment with human feedback](#example2-learning-to-generate-positive-sentiment-with-human-feedback)
   - [Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange](#example3-stackllama-train-llama-with-rlhf-on-stackexchange)
-- [Installation](#installation)
 - [Support Model](#support-model)
 - [Contributing](#contributing)
 - [License](#license)
@@ -33,7 +33,9 @@
 
 `Open-ChatGPT`  is a open-source library that allows you to train a  hyper-personalized ChatGPT-like ai model using your own data and the least amount of compute possible.
 
-I have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by huggingface's transformer library. It supports distributed training and offloading, which can fit extremly large models.
+`Open-ChatGPT` is a general system framework for enabling an end-to-end training experience for ChatGPT-like models. It can automatically take your favorite pre-trained large language models though an OpenAI InstructGPT style three stages to produce your very own high-quality ChatGPT-style model.
+
+We have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by transformer library and DeepsSpeed. It supports distributed training and offloading, which can fit extremly large models.
 
 If you like the project, please show your support by [leaving a star ⭐](https://github.com/jianzhnie/open-chatgpt/stargazers).
 
@@ -57,8 +59,6 @@ Reinforcement learning from human feedback (RLHF) is a challenging concept as it
 GPT 3.5 itself has difficulty in understanding the different intentions implied in various types of human instructions, and it is also difficult to judge whether the generated content is of high quality. To make [GPT 3.5](https://arxiv.org/abs/2203.02155) initially understand the intent of instructions, high-quality answers are given by human annotators for randomly selected questions in the dataset, and the GPT-3.5 model is fine-tuned with these manually labeled data to obtain the SFT model (Supervised Fine-Tuning).
 
 The SFT model at this point is already better than GPT-3 in following instructions/dialogues, but may not necessarily align with human preferences.
-
-
 
 <div align="center">
   <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/pretraining.png" width="500"/>
@@ -107,8 +107,19 @@ Alternatively, training can be bootstrapped using a pre-existing dataset availab
 |    [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr)    |         The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human.         |     |
 | [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons) |    It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred.    |     |
 
+
+To find more datasets, please check out the following links:
+[jianzhnie/awesome-prompt-datasets](https://github.com/jianzhnie/awesome-prompt-datasets): A collection of open-source dataset to train instruction-following LLMs (ChatGPT,LLaMA,Alpaca)
+
 </p>
 </details>
+
+## ☕ Quick Start ☕
+
+```bash
+git clone https://github.com/jianzhnie/open-chatgpt.git
+pip install -r requirements.txt
+```
 
 ## Examples
 
@@ -168,15 +179,6 @@ python gpt2-sentiment.py
 
 
 ```shell
-```
-
-
-
-## Installation
-
-```bash
-git clone https://github.com/jianzhnie/open-chatgpt.git
-pip install -r requirements.txt
 ```
 
 ## Support Model
