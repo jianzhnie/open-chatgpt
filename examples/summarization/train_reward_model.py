@@ -21,23 +21,15 @@ def compute_metrics(eval_preds: EvalPrediction):
 
 if __name__ == '__main__':
     optput_dir = 'work_dirs/reward_model_checkpoint'
-    if not os.path.exists():
+    if not os.path.exists(optput_dir):
         os.makedirs(optput_dir)
 
     # Set up the model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained('facebook/opt-125m')
     # Initialize the reward model from the (supervised) fine-tuned opt model
-    reward_model = PairedRewardModel(
-        model='opt', pretrained='fintune-summarize-checkpoint/')
+    reward_model = PairedRewardModel(pretrained='facebook/opt-125m')
 
     tokenizer.pad_token = tokenizer.eos_token
-
-    # Freeze the first 70% of the hidden layers of the reward model backbone
-    layers = reward_model.model.h
-    num_layers = len(layers)
-    num_unfrozen = int(0.3 * num_layers)
-    for layer in layers[:-num_unfrozen]:
-        layer.requires_grad_(False)
 
     # Create the comparisons datasets
     data_path = 'CarperAI/openai_summarize_comparisons'
@@ -56,18 +48,18 @@ if __name__ == '__main__':
         output_dir=optput_dir,
         num_train_epochs=10,
         gradient_accumulation_steps=4,
-        per_device_train_batch_size=16,
+        per_device_train_batch_size=4,
         per_device_eval_batch_size=16,
         eval_steps=500,
         save_steps=1000,
         warmup_steps=100,
         learning_rate=1e-5,
         weight_decay=0.0001,  # strength of weight decay
-        half_precision_backend=True,
-        fp16=True,
+        # half_precision_backend=True,
+        # fp16=True,
         adam_beta1=0.9,
         adam_beta2=0.95,
-        fp16_opt_level='02',  # mixed precision mode
+        # fp16_opt_level='02',  # mixed precision mode
         do_train=True,  # Perform training
         do_eval=True,  # Perform evaluation
         save_strategy='steps',
@@ -75,10 +67,9 @@ if __name__ == '__main__':
         save_total_limit=5,
         eval_accumulation_steps=1,
         load_best_model_at_end=True,
-        gradient_checkpointing=True,
         logging_steps=50,
         logging_dir='work_dirs/logs',
-        deepspeed="ds_config_rm.json",
+        # deepspeed="ds_config_rm.json",
         seed=42)
 
     # Set up the trainer
