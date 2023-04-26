@@ -18,6 +18,7 @@ def gather_log_probs(logits, labels):
 
 
 class PPOTrainer():
+
     def __init__(
         self,
         prompt_dataset: Dataset = None,
@@ -96,9 +97,9 @@ class PPOTrainer():
         return out_seq
 
     def generate_experience(self, prompts):
-        self.eval()
+        self.set_model_eval()
         seq = self._generate_sequence(prompts)
-        self.train()
+        self.set_model_train()
 
         pad_token_id = self.tokenizer.pad_token_id
         attention_mask = seq.not_equal(pad_token_id).long()
@@ -181,7 +182,7 @@ class PPOTrainer():
 
         return actor_loss, critic_loss
 
-    def fit(self, ):
+    def train(self):
         print('Start RL Training')
         # initialize memories
         memories = deque([])
@@ -278,11 +279,11 @@ class PPOTrainer():
         assert not self.ref_model.training
         assert not self.reward_model.training
 
-    def train(self):
+    def set_model_train(self):
         self.actor_model.train()
         self.critic_model.train()
 
-    def eval(self):
+    def set_model_eval(self):
         self.actor_model.eval()
         self.critic_model.eval()
         self.reward_model.eval()
@@ -298,8 +299,8 @@ class PPOTrainer():
 
         # if the checkpoint already exists remove it.
         actor_model_path = os.path.join(path, 'actor')
-        actor_file_name = os.path.join(critic_model_path,
-                                       current_episode + '.tar')
+        actor_file_name = os.path.join(
+            actor_model_path, "episode_" + str(current_episode) + '.tar')
         if not os.path.exists(actor_model_path):
             os.makedirs(actor_model_path)
 
@@ -314,8 +315,8 @@ class PPOTrainer():
         # if the checkpoint already exists remove it.
         # Deepspeed checkpoints are already directories and will be overwritten
         critic_model_path = os.path.join(path, 'critic')
-        critic_file_name = os.path.join(critic_model_path,
-                                        current_episode + '.tar')
+        critic_file_name = os.path.join(
+            critic_model_path, "episode_" + str(current_episode) + '.tar')
         if not os.path.exists(critic_model_path):
             os.makedirs(critic_model_path)
 
