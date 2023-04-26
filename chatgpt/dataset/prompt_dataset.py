@@ -25,7 +25,7 @@ class TokenizedPromptDataset(Dataset):
                  max_length: int = 512) -> None:
 
         dataset = load_dataset(data_path, split=split)
-        self.post_list = [sample['prompt'] for sample in dataset][:64]
+        self.post_list = [sample['prompt'] for sample in dataset]
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.input_size = LengthSampler(5, 20)
@@ -78,7 +78,6 @@ class PromptDataset(Dataset):
 
         dataset = load_dataset(data_path, split=split)
         self.post_list = [sample['prompt'] for sample in dataset]
-        self.post_list = self.post_list[:64]
         self.input_size = LengthSampler(input_min_text_length,
                                         input_max_text_length)
 
