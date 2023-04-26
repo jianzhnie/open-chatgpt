@@ -21,10 +21,10 @@ class TLDRDataset(Dataset):
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
                  split: str,
-                 max_length: int = 512) -> None:
+                 max_length: int = 550) -> None:
 
         dataset = load_dataset(data_path, split=split)
-        self.post_list = [(sample['prompt'], sample['label'])
+        self.post_list = [(sample['prompt'] + sample['label'])
                           for sample in dataset]
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -47,18 +47,13 @@ class TLDRDataset(Dataset):
                 f'Index {idx} out of range for TLDRDataset with length {len(self)}'
             )
 
-        input_txt, summary_txt = self.post_list[idx]
-        encodings_input = self.tokenizer(input_txt,
+        txt = self.post_list[idx]
+        encodings_input = self.tokenizer(txt,
                                          truncation=True,
                                          max_length=self.max_length,
                                          padding='max_length')
-        # Setup the tokenizer for targets
-        encodings_labels = self.tokenizer(summary_txt,
-                                          truncation=True,
-                                          max_length=self.max_length,
-                                          padding='max_length')
 
-        encodings_input['labels'] = encodings_labels['input_ids']
+        encodings_input['labels'] = encodings_input['input_ids']
 
         encodings_input = {
             key: torch.tensor(val)
