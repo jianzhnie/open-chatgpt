@@ -1,4 +1,4 @@
-## Learning to summarize from Human Feedback using `trlx`
+## Learning to summarize from Human Feedback using `open-chatgpt`
 
 This example shows how to train a summarization model using human feedback
 following the fine-tuning procedures described in Stiennon et al.'s, "[Learning to Summarize from human feedback](https://arxiv.org/abs/2009.01325)".

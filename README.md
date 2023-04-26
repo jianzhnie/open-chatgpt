@@ -126,9 +126,54 @@ Firstly, we will fine-tune the transformer model for text summarization on the [
 
 This is relatively straightforward. Load the dataset, tokenize it, and then train the model. The entire pipeline is built using HuggingFace.
 
+- Training with huggingface transformers trainer api.
+
+First, modify the `training_args` in `train_fintune_summarize.py` file with your own param.
+
 ```shell
 cd scripts/
-python  train_fintune_summarize.py
+python train_reward_model.py
+```
+
+- Speedup training with deepspeed
+
+First, add the `deepspeed` param in  `train_fintune_summarize.py` file.
+
+```python
+# Prepare the trainer and start training
+training_args = TrainingArguments(
+    output_dir=output_dir,
+    num_train_epochs=5,
+    gradient_accumulation_steps=4,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    eval_steps=500,
+    save_steps=1000,
+    warmup_steps=100,
+    learning_rate=1e-5,
+    weight_decay=0.001,
+    half_precision_backend=True,
+    fp16=True,
+    adam_beta1=0.9,
+    adam_beta2=0.95,
+    fp16_opt_level='02',  # mixed precision mode
+    do_train=True,  # Perform training
+    do_eval=True,  # Perform evaluation
+    save_strategy='steps',
+    save_total_limit=5,
+    evaluation_strategy='steps',
+    eval_accumulation_steps=1,
+    load_best_model_at_end=True,
+    gradient_checkpointing=True,
+    logging_steps=50,
+    logging_dir='./logs',
+    deepspeed='./ds_config_opt.json',
+)
+```
+Then, run the following command to start training.
+
+```shell
+deepseed train_fintune_summarize.py
 ```
 
 The model is evaluated using the ROUGE score. The best model is selected based on the average ROUGE score on the validation set. This model will be used to initialize the reward model, which will be further fine-tuned using PPO.
