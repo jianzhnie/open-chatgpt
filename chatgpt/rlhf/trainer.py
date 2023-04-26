@@ -1,7 +1,12 @@
+import os
+from collections import deque
+
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset
 
+from chatgpt.buffer.replay_buffer import DsExperienceDataset, DsMemory
 from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
 from chatgpt.rlhf.reward_model import RewardModel
 
@@ -14,30 +19,55 @@ def gather_log_probs(logits, labels):
 
 class PPOTrainer():
 
-    def __init__(self,
-                 pretrained: str = None,
-                 actor_lr: float = 1e-4,
-                 critic_lr: float = 1e-4,
-                 max_answer_seq_len: int = 256,
-                 device: str = 'cpu'):
+    def __init__(
+        self,
+        prompt_dataset: Dataset = None,
+        pretrained: str = None,
+        num_episodes: int = 10,
+        ppo_epochs: int = 1,
+        batch_size: int = 32,
+        actor_lr: float = 1e-4,
+        critic_lr: float = 1e-4,
+        kl_ctl: float = 0.02,
+        clip_reward_value: float = 5,
+        cliprange: float = 0.2,
+        cliprange_value: float = 0.2,
+        gamma: float = 1.0,
+        lam: float = 0.95,
+        checkpoint_episode: int = 1,
+        max_answer_seq_len: int = 256,
+        work_dirs: str = 'work_dirs',
+        debug: bool = False,
+        device: str = 'cpu',
+    ):
+
+        # Those value can be changed
+        self.num_episodes = num_episodes
+        self.ppo_epochs = ppo_epochs
+        self.checkpoint_episode = checkpoint_episode
+        self.lam = lam
+        self.gamma = gamma
+        self.kl_ctl = kl_ctl
+        self.clip_reward_value = clip_reward_value
+        self.cliprange = cliprange
+        self.cliprange_value = cliprange_value
+        self.max_answer_seq_len = max_answer_seq_len
+
+        # Those value should not be changed
         self.actor_model = ActorModel(pretrained=pretrained).to(device)
         self.critic_model = CriticModel(pretrained=pretrained).to(device)
         self.ref_model = ActorModel(pretrained=pretrained).to(device)
         self.reward_model = RewardModel(pretrained=pretrained).to(device)
         self.tokenizer = self.actor_model.tokenizer
-        self.max_answer_seq_len = max_answer_seq_len
-
-        # Those value can be changed
-        self.device = device
-        self.kl_ctl = 0.02
-        self.clip_reward_value = 5
-        self.cliprange = 0.2
-        self.cliprange_value = 0.2
-        self.gamma = 1.0
-        self.lam = 0.95
         self.actor_optimizer = Adam(self.actor_model.parameters(), lr=actor_lr)
         self.critic_optimizer = Adam(self.critic_model.parameters(),
                                      lr=critic_lr)
+        self.prompt_dataloader = DataLoader(prompt_dataset,
+                                            batch_size=batch_size,
+                                            shuffle=True)
+        self.model_folder = os.path.join(work_dirs, 'checkpoints')
+        self.debug = debug
+        self.device = device
 
     def _generate_sequence(self, prompts):
         prompts = prompts.to(self.device)
@@ -67,9 +97,9 @@ class PPOTrainer():
         return out_seq
 
     def generate_experience(self, prompts):
-        self.eval()
+        self.set_model_eval()
         seq = self._generate_sequence(prompts)
-        self.train()
+        self.set_model_train()
 
         pad_token_id = self.tokenizer.pad_token_id
         attention_mask = seq.not_equal(pad_token_id).long()
@@ -78,9 +108,10 @@ class PPOTrainer():
             logits = self.actor_model(seq, attention_mask=attention_mask)
             logits_ref = self.ref_model(seq, attention_mask=attention_mask)
             reward_score = self.reward_model.forward_value(
-                seq, attention_mask,
-                prompt_length=self.prompt_length)['chosen_end_scores'].detach(
-                )
+                input_ids=seq,
+                attention_mask=attention_mask,
+                prompt_length=self.prompt_length,
+            )['chosen_end_scores'].detach()
             values = self.critic_model.forward_value(
                 seq, attention_mask, return_value_only=True).detach()[:, :-1]
 
@@ -105,8 +136,6 @@ class PPOTrainer():
         rewards = kl_divergence_estimate
         start = prompts.shape[1] - 1
         ends = start + action_mask[:, start:].sum(1)
-        # ends = ends.cpu().detach().numpy()[0]
-        # print(ends)
         reward_clip = torch.clamp(reward_score, -self.clip_reward_value,
                                   self.clip_reward_value)
         batch_size = log_probs.shape[0]
@@ -115,24 +144,9 @@ class PPOTrainer():
 
         return rewards
 
-    def train_rlhf(self, inputs):
-        # train the rlhf mode here
-        # process the old outputs
-        # prompts = inputs['prompts']
-        # log_probs = inputs['logprobs']
-        # ref_log_probs = inputs['ref_logprobs']
-        # reward_score = inputs['rewards']
-        # values = inputs['value']
-        # attention_mask = inputs['attention_mask']
-        # seq = inputs['input_ids']
-
+    def learn(self, inputs):
         (prompts, log_probs, ref_log_probs, reward_score, seq, attention_mask,
          values) = [tensor.to(self.device) for tensor in inputs]
-
-        for tensor in inputs:
-            print(tensor.shape)
-
-            
         start = prompts.size()[-1] - 1
         action_mask = attention_mask[:, 1:]
 
@@ -146,9 +160,8 @@ class PPOTrainer():
 
         # process the new outputs
         batch = {'input_ids': seq, 'attention_mask': attention_mask}
-        actor_prob = self.actor_model(**batch, use_cache=False).logits
-        actor_log_prob = gather_log_probs(actor_prob[:, :-1, :],
-                                          inputs['input_ids'][:, 1:])
+        actor_prob = self.actor_model.forward(**batch)
+        actor_log_prob = gather_log_probs(actor_prob[:, :-1, :], seq[:, 1:])
         actor_loss = self.actor_loss_fn(actor_log_prob[:, start:],
                                         log_probs[:, start:], advantages,
                                         action_mask[:, start:])
@@ -162,14 +175,62 @@ class PPOTrainer():
         critic_loss = self.critic_loss_fn(value[:, start:], old_values[:,
                                                                        start:],
                                           returns, action_mask[:, start:])
-        self.critic_model.backward(critic_loss)
-        self.critic_model.step()
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
         return actor_loss, critic_loss
+
+    def train(self):
+        print('Start RL Training')
+        # initialize memories
+        memories = deque([])
+        for episode in range(self.num_episodes):
+            print(f'Start generating experience:, episode: {episode}')
+            for step, batch_prompt in enumerate(self.prompt_dataloader):
+                print(
+                    f'Generating experience:, episode: {episode}, step: {step}'
+                )
+                experience_data = self.generate_experience(batch_prompt)
+                print('Putting experience into replay buffer')
+                for i in range(experience_data['prompts'].shape[0]):
+                    memories.append(
+                        DsMemory(
+                            experience_data['prompts'][i, :].detach().cpu(),
+                            experience_data['logprobs'][i, :].detach().cpu(),
+                            experience_data['ref_logprobs'][
+                                i, :].detach().cpu(),
+                            experience_data['value'][i, :].detach().cpu(),
+                            experience_data['rewards'][i].detach().cpu(),
+                            experience_data['input_ids'][i, :].detach().cpu(),
+                            experience_data['attention_mask'][
+                                i, :].detach().cpu(),
+                        ))
+            print('Finished generating experience, start training')
+            if memories is not None:
+                inner_iter = 0
+                critic_loss = 0
+                actor_loss = 0
+
+            dataset = DsExperienceDataset(memories)
+            dataloader = DataLoader(dataset, batch_size=8)
+            for epoch in range(self.ppo_epochs):
+                print('Training RLHF')
+                for i, exp_data in enumerate(dataloader):
+                    actor_loss, critic_loss = self.learn(exp_data)
+                    critic_loss += actor_loss.item()
+                    actor_loss += critic_loss.item()
+                    inner_iter += 1
+                    print(
+                        f'Episode: {episode} |Epoch: {epoch}|step: {i}| actor_loss: {actor_loss/inner_iter} \
+                        |cri_loss: {critic_loss/inner_iter}')
+            memories.clear()
+            # save checkpoints
+            if (episode % self.checkpoint_episode == 0) and (episode != 0):
+                self.save_checkpoint(current_episode=episode,
+                                     path=self.model_folder)
+        print('Finished training RLHF !!!')
 
     def actor_loss_fn(self, logprobs, old_logprobs, advantages, mask):
         # policy gradient loss
@@ -218,12 +279,52 @@ class PPOTrainer():
         assert not self.ref_model.training
         assert not self.reward_model.training
 
-    def train(self):
+    def set_model_train(self):
         self.actor_model.train()
         self.critic_model.train()
 
-    def eval(self):
+    def set_model_eval(self):
         self.actor_model.eval()
         self.critic_model.eval()
         self.reward_model.eval()
         self.ref_model.eval()
+
+    def save_checkpoint(
+        self,
+        current_episode: int,
+        path: str,
+    ) -> None:
+
+        print(f'Saving checkpoint for episode {current_episode+1}..')
+
+        # if the checkpoint already exists remove it.
+        actor_model_path = os.path.join(path, 'actor')
+        actor_file_name = os.path.join(
+            actor_model_path, "episode_" + str(current_episode) + '.tar')
+        if not os.path.exists(actor_model_path):
+            os.makedirs(actor_model_path)
+
+        # save the checkpoint
+        actor_checkpoint_dict = {
+            'episode': current_episode,
+            'actor_state_dict': self.actor_model.state_dict(),
+            'actor_optim_state_dict': self.actor_optimizer.state_dict(),
+        }
+        torch.save(actor_checkpoint_dict, actor_file_name)
+
+        # if the checkpoint already exists remove it.
+        # Deepspeed checkpoints are already directories and will be overwritten
+        critic_model_path = os.path.join(path, 'critic')
+        critic_file_name = os.path.join(
+            critic_model_path, "episode_" + str(current_episode) + '.tar')
+        if not os.path.exists(critic_model_path):
+            os.makedirs(critic_model_path)
+
+        # save the checkpoint
+        critic_checkpoint_dict = {
+            'episode': current_episode,
+            'critic_state_dict': self.critic_model.state_dict(),
+            'critic_optim_state_dict': self.critic_optimizer.state_dict(),
+        }
+
+        torch.save(critic_checkpoint_dict, critic_file_name)

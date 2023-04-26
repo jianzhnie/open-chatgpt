@@ -1,3 +1,4 @@
+import os
 from collections import deque
 from typing import Deque, Optional, Tuple
 
@@ -59,6 +60,8 @@ class PPOTrainer:
         beta_s: float = 0.01,
         actor_eps_clip: float = 0.2,
         critic_eps_clip: float = 0.2,
+        checkpoint_episode: int = 1,
+        work_dirs: str = 'work_dirs',
         device: str = 'cpu',
         debug: bool = False,
     ) -> None:
@@ -79,12 +82,15 @@ class PPOTrainer:
         self.cliprange_value = 0.2
         self.gamma = 1.0
         self.lam = 0.95
+        self.checkpoint_episode = checkpoint_episode
         self.device = device
         self.debug = debug
+        self.model_folder = os.path.join(work_dirs, 'checkpoints')
 
         # initialize agent-critic
         self.actor_critic = ActorCritic(pretrained=pretrained_model,
                                         debug=False).to(device)
+        # initialize optimizers
         self.actor_optimizer = Adam(self.actor_critic.actor.parameters(),
                                     lr=actor_lr)
         self.critic_optimizer = Adam(self.actor_critic.critic.parameters(),
@@ -97,6 +103,47 @@ class PPOTrainer:
         self.prompt_dataloader = DataLoader(self.prompt_dataset,
                                             batch_size=self.batch_size,
                                             shuffle=True)
+
+    def save_checkpoint(
+        self,
+        current_episode: int,
+        max_episode: int,
+        path: str,
+    ) -> None:
+
+        print(f'Saving checkpoint for episode {current_episode+1}..')
+        # if the checkpoint already exists remove it.
+        # Deepspeed checkpoints are already directories and will be overwritten
+        critic_model_path = os.path.join(path, 'critic')
+        critic_file_name = os.path.join(critic_model_path,
+                                        current_episode + '.tar')
+        if not os.path.exists(critic_model_path):
+            os.makedirs(critic_model_path)
+
+        # save the checkpoint
+        critic_checkpoint_dict = {
+            'episode': current_episode,
+            'critic_state_dict': self.actor_critic.critic.state_dict(),
+            'critic_optim_state_dict': self.critic_optimizer.state_dict(),
+        }
+
+        torch.save(critic_checkpoint_dict, critic_file_name)
+
+        # if the checkpoint already exists remove it.
+        # Deepspeed checkpoints are already directories and will be overwritten
+        actor_model_path = os.path.join(path, 'actor')
+        actor_file_name = os.path.join(critic_model_path,
+                                       current_episode + '.tar')
+        if not os.path.exists(actor_model_path):
+            os.makedirs(actor_model_path)
+
+        # save the checkpoint
+        actor_checkpoint_dict = {
+            'episode': current_episode,
+            'actor_state_dict': self.actor_critic.actor.state_dict(),
+            'actor_optim_state_dict': self.actor_optimizer.state_dict(),
+        }
+        torch.save(actor_checkpoint_dict, actor_file_name)
 
     def learn(self, memories: Deque[Memory]) -> None:
         """Train the agent-critic model using RL:
@@ -291,7 +338,7 @@ class PPOTrainer:
                                              dim=-1).max(dim=-1).values)
                 actions_log_probs = torch.log(action_prob + self.eps)
 
-                reward_sequence = sequences_actor
+                reward_sequence = sequences_critic
                 reward_mask = sequences_mask_actor
 
                 # compute rewards
@@ -329,6 +376,12 @@ class PPOTrainer:
                     memories.clear()
                     cnt_timesteps = 0
                     cnt_learn_iter += 1
+
+            # save checkpoints
+            if (episode % self.checkpoint_episode == 0) and (episode != 0):
+                self.save_checkpoint(current_episode=episode,
+                                     max_episode=self.num_episodes,
+                                     path=self.model_folder)
 
         print('End RL Training')
 
