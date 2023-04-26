@@ -21,7 +21,7 @@ def set_seed(seed_val=42):
 
 
 if __name__ == '__main__':
-    output_dir = 'fintune-summarize-checkpoint'
+    output_dir = 'work_dirs/fintune-summarize-checkpoint'
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
@@ -81,14 +81,14 @@ if __name__ == '__main__':
         do_train=True,  # Perform training
         do_eval=True,  # Perform evaluation
         save_strategy='steps',
-        save_total_limit=5,
         evaluation_strategy='steps',
+        save_total_limit=5,
         eval_accumulation_steps=1,
         load_best_model_at_end=True,
         gradient_checkpointing=True,
         logging_steps=50,
-        logging_dir='./logs',
-        deepspeed='./ds_config_opt.json',
+        logging_dir='work_dirs/logs',
+        deepspeed='./ds_config_sft.json',
     )
 
     trainer = Trainer(
