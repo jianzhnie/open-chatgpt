@@ -41,8 +41,6 @@ If you like the project, please show your support by [leaving a star ⭐](https:
 
 
 ## Illustrating  RLHF
-<details><summary>CLICK ME</summary>
-<p>
 
 ChatGPT continues the technical path of [InstructGPT/GPT3.5](https://arxiv.org/abs/2203.02155) and adds RLHF (Reinforcement Learning from Human Feedback) which enhances the adjustment of the model output by humans and sorts the results with greater understanding.
 
@@ -93,9 +91,6 @@ If you want to learn more details about RLHF technology, I strongly recommend re
 
 ## RLHF Dataset preparation
 
-<details><summary>CLICK ME</summary>
-<p>
-
 To successfully train a ChatGPT-like assistant, you need 3 different datasets: `actor_training_data`, `rlhf_training_data` and `reward_training_data`.
 
 Alternatively, training can be bootstrapped using a pre-existing dataset available on HuggingFace.  High quality candidates are namely the `Anthropic HH RLHF` and the `Stanford Human Preference datasets`, `Reddit TL;DR dataset` and  `Comparisons datasets`.
@@ -124,9 +119,6 @@ pip install -r requirements.txt
 ## Examples
 
 ### Example1: Learning to summarize with human feedback
-
-<details><summary>CLICK ME</summary>
-<p>
 
 #### Step1: Supervised Fine-Tuning (SFT)
 
