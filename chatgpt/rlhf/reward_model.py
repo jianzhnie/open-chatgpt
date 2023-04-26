@@ -88,15 +88,24 @@ class PairedRewardModel(nn.Module):
 
         # Get the model's config and create a value head
         self.config = self.model.config
-        self.config.n_embd = self.config.hidden_size if hasattr(
+
+        n_embed = self.config.hidden_size if hasattr(
             self.config, "hidden_size") else self.config.n_embd
         if 'opt' in pretrained:
-            self.config.n_embd = self.config.word_embed_proj_dim
+            n_embed = self.config.word_embed_proj_dim
 
         self.tokenizer = AutoTokenizer.from_pretrained(pretrained)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.PAD_ID = self.tokenizer(self.tokenizer.pad_token)["input_ids"][0]
-        self.value_head = nn.Linear(self.config.n_embed, 1, bias=False)
+        # Set EOS token and padding token
+        if self.tokenizer.eos_token is None:
+            self.tokenizer.eos_token = '</s>'
+            self.tokenizer.eos_token_id = 2
+            # add pad token if not present
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+
+        self.PAD_ID = self.tokenizer.pad_token_id
+        self.value_head = nn.Linear(n_embed, 1, bias=False)
         self.loss_fn = PairWiseLoss()
 
     def forward(
@@ -142,6 +151,8 @@ class PairedRewardModel(nn.Module):
 
         chosen_end_scores = []
         rejected_end_scores = []
+        c_truncated_reward_list = []
+        r_truncated_reward_list = []
         bs = chosen_input_ids.shape[0]
         for i in range(bs):
 
@@ -162,17 +173,22 @@ class PairedRewardModel(nn.Module):
             # Index into the correct rewards
             c_truncated_reward = chosen_rewards[i][divergence_ind:end_ind]
             r_truncated_reward = rejected_rewards[i][divergence_ind:end_ind]
-
+            print(c_truncated_reward)
+            print(r_truncated_reward)
             # Append the last rewards to the list of end scores
             chosen_end_scores.append(c_truncated_reward[-1])
             rejected_end_scores.append(r_truncated_reward[-1])
-
-        # Calculate the loss
-        loss = self.loss_fn(r_truncated_reward, r_truncated_reward)
+            c_truncated_reward_list.append(c_truncated_reward)
+            r_truncated_reward_list.append(r_truncated_reward)
 
         # Stack the end scores and return them
+        c_truncated_reward_list = torch.stack(c_truncated_reward_list)
+        r_truncated_reward_list = torch.stack(r_truncated_reward_list)
+
         chosen_end_scores = torch.stack(chosen_end_scores)
         rejected_end_scores = torch.stack(rejected_end_scores)
+        # Calculate the loss
+        loss = self.loss_fn(c_truncated_reward_list, r_truncated_reward_list)
 
         return RewardModelOutput(
             loss=loss,
