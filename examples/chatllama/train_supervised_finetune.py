@@ -28,7 +28,7 @@ def get_args():
 
     parser.add_argument('--seq_length', type=int, default=1024)
     parser.add_argument('--max_steps', type=int, default=10000)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1)
     parser.add_argument('--eos_token_id', type=int, default=49152)
 
@@ -39,7 +39,7 @@ def get_args():
 
     parser.add_argument('--local_rank', type=int, default=0)
     parser.add_argument('--no_fp16', action='store_false')
-    parser.add_argument('--bf16', action='store_true', default=True)
+    parser.add_argument('--bf16', action='store_false')
     parser.add_argument('--no_gradient_checkpointing',
                         action='store_false',
                         default=False)
@@ -277,7 +277,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args()
-    # assert args.model_path != '', 'Please provide the llama model path'
+    assert args.model_path != '', 'Please provide the llama model path'
 
     set_seed(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
