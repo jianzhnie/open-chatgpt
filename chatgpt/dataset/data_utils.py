@@ -4,6 +4,7 @@
 # DeepSpeed Team
 """Part of the code was adopted from https://github.com/microsoft/Megatron-
 DeepSpeed/blob/main/megatron/data/dataset_utils.py."""
+import hashlib
 import os
 from itertools import chain
 
@@ -12,53 +13,43 @@ import torch
 import torch.nn.functional as F
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import ConcatDataset, Dataset, Subset
+from torch.utils.data import ConcatDataset, Subset
+from transformers import PreTrainedTokenizer
 
-from . import raw_datasets
+from .raw_datasets import (
+    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
+    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
+    DahoasSyntheticinstructgptjpairwiseDataset, HelloSimpleAIHC3ChineseDataset,
+    LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
+    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, PromptDataset,
+    PromptRawDataset, StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
+    YitingxieRlhfrewarddatasetsDataset)
+
+name2Method = {
+    'Dahoas/rm-static': DahoasRmstaticDataset,
+    'Dahoas/full-hh-rlhf': DahoasFullhhrlhfDataset,
+    'Dahoas/synthetic-instruct-gptj-pairwise':
+    DahoasSyntheticinstructgptjpairwiseDataset,
+    'yitingxie/rlhf-reward-datasets': YitingxieRlhfrewarddatasetsDataset,
+    'openai/webgpt_comparisons': OpenaiWebgptcomparisonsDataset,
+    'stanfordnlp/SHP': StanfordnlpSHPDataset,
+    'wangrui6/Zhihu-KOL': Wangrui6ZhihuKOLDataset,
+    'Cohere/miracl-zh-queries-22-12': CohereMiraclzhqueries2212Dataset,
+    'Hello-SimpleAI/HC3-Chinese': HelloSimpleAIHC3ChineseDataset,
+    'mkqa-Chinese': MkqaChineseDataset,
+    'mkqa-Japanese': MkqaJapaneseDataset,
+    'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
+    'lmqg/qg_jaquad': LmqgQgjaquadDataset,
+    'lmqg/qag_jaquad': LmqgQagjaquadDataset,
+}
 
 
-def get_raw_dataset(dataset_name, output_path, seed, local_rank):
-    if dataset_name == 'Dahoas/rm-static':
-        return raw_datasets.DahoasRmstaticDataset(output_path, seed,
-                                                  local_rank)
-    elif dataset_name == 'Dahoas/full-hh-rlhf':
-        return raw_datasets.DahoasFullhhrlhfDataset(output_path, seed,
-                                                    local_rank)
-    elif dataset_name == 'Dahoas/synthetic-instruct-gptj-pairwise':
-        return raw_datasets.DahoasSyntheticinstructgptjpairwiseDataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'yitingxie/rlhf-reward-datasets':
-        return raw_datasets.YitingxieRlhfrewarddatasetsDataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'openai/webgpt_comparisons':
-        return raw_datasets.OpenaiWebgptcomparisonsDataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'stanfordnlp/SHP':
-        return raw_datasets.StanfordnlpSHPDataset(output_path, seed,
-                                                  local_rank)
-    elif dataset_name == 'wangrui6/Zhihu-KOL':
-        return raw_datasets.Wangrui6ZhihuKOLDataset(output_path, seed,
-                                                    local_rank)
-    elif dataset_name == 'Cohere/miracl-zh-queries-22-12':
-        return raw_datasets.CohereMiraclzhqueries2212Dataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'Hello-SimpleAI/HC3-Chinese':
-        return raw_datasets.HelloSimpleAIHC3ChineseDataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'mkqa-Chinese':
-        return raw_datasets.MkqaChineseDataset(output_path, seed, local_rank)
-    elif dataset_name == 'mkqa-Japanese':
-        return raw_datasets.MkqaJapaneseDataset(output_path, seed, local_rank)
-    elif dataset_name == 'Cohere/miracl-ja-queries-22-12':
-        return raw_datasets.CohereMiracljaqueries2212Dataset(
-            output_path, seed, local_rank)
-    elif dataset_name == 'lmqg/qg_jaquad':
-        return raw_datasets.LmqgQgjaquadDataset(output_path, seed, local_rank)
-    elif dataset_name == 'lmqg/qag_jaquad':
-        return raw_datasets.LmqgQagjaquadDataset(output_path, seed, local_rank)
+def get_raw_dataset(dataset_name, output_path, seed):
+    if dataset_name in name2Method:
+        return name2Method[dataset_name](output_path, seed, dataset_name)
     else:
         raise RuntimeError(
-            f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in raw_datasets.py.'
+            f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in py.'
         )
 
 
@@ -72,11 +63,10 @@ def get_shuffle_idx(seed, size):
     return shuffle_idx
 
 
-def get_raw_dataset_split_index(local_rank, output_path, dataset_name, seed,
-                                split_name, data_split, split_index,
-                                data_size):
+def get_raw_dataset_split_index(output_path, dataset_name, seed, split_name,
+                                data_split, split_index, data_size):
     index_file_name = f'{output_path}/{dataset_name}_seed{seed}_{split_name}_{data_split}_{split_index}.npy'
-    if not os.path.isfile(index_file_name) and local_rank <= 0:
+    if not os.path.isfile(index_file_name):
         splits = [float(s) for s in data_split.split(',')]
         splits_sum = sum(splits)
         splits = [split / splits_sum for split in splits]
@@ -91,192 +81,159 @@ def get_raw_dataset_split_index(local_rank, output_path, dataset_name, seed,
 
         shuffle_idx = get_shuffle_idx(seed, data_size)
         for split_i in range(len(splits)):
-            shuffle_idx_split_file_name = f'{output_path}/{dataset_name}_seed{seed}_{split_name}_{data_split}_{split_i}.npy'
+            shuffle_idx_split_file_name = f'{output_path}/{dataset_name}_seed{seed}_\
+                {split_name}_{data_split}_{split_i}.npy'
+
             shuffle_idx_split = shuffle_idx[
                 splits_index[split_i]:splits_index[split_i + 1]]
             np.save(shuffle_idx_split_file_name,
                     shuffle_idx_split,
                     allow_pickle=True)
-    torch.distributed.barrier()
     index = np.load(index_file_name, allow_pickle=True)
     return index.tolist()
 
 
-class PromptDataset(Dataset):
-    def __init__(self, prompt_dataset, chosen_dataset, reject_dataset,
-                 pad_token_id, train_phase) -> None:
-        super().__init__()
-        self.prompt_dataset = prompt_dataset
-        self.chosen_dataset = chosen_dataset
-        self.reject_dataset = reject_dataset
-        self.pad_token_id = pad_token_id
-        self.train_phase = train_phase
-
-    def __len__(self):
-        length = len(self.chosen_dataset)
-        if self.train_phase == 3:
-            length = len(self.prompt_dataset)
-        return length
-
-    def __getitem__(self, idx):
-        if self.train_phase == 1:
-            return {
-                'input_ids': self.chosen_dataset[idx]['input_ids'],
-                'attention_mask': self.chosen_dataset[idx]['attention_mask'],
-                'labels': self.chosen_dataset[idx]['input_ids']
-            }
-        elif self.train_phase == 2:
-            return self.chosen_dataset[idx]['input_ids'], self.chosen_dataset[idx]['attention_mask'], \
-                self.reject_dataset[idx]['input_ids'], self.reject_dataset[idx]['attention_mask']
-        elif self.train_phase == 3:
-            return self.prompt_dataset[idx]['input_ids'],self.prompt_dataset[idx]['attention_mask'], \
-                self.pad_token_id
-
-
-def create_dataset_split(current_dataset, raw_dataset, train_phase, tokenizer,
-                         end_of_conversation_token, max_seq_len):
+def create_dataset_split(
+    current_dataset=None,
+    raw_dataset: PromptRawDataset = None,
+    train_phase: int = 1,
+    tokenizer: PreTrainedTokenizer = None,
+    max_seq_len: int = 512,
+    end_of_conversation_token: str = None,
+):
     prompt_dataset = []
     chosen_dataset = []
     reject_dataset = []
     if train_phase == 1:
-        for i, tmp_data in enumerate(current_dataset):
+        for i, raw_sample in enumerate(current_dataset):
             # tokenize the text
-            chosen_sentence = raw_dataset.get_prompt_and_chosen(
-                tmp_data)  # the accept response
+            chosen_sentence = raw_dataset.get_prompt_and_chosen(raw_sample)
+            # the accept response
             if chosen_sentence is not None:
                 chosen_sentence += end_of_conversation_token
-                chosen_token = tokenizer(chosen_sentence,
-                                         max_length=max_seq_len,
-                                         padding='max_length',
-                                         truncation=True,
-                                         return_tensors='pt')
-                chosen_token['input_ids'] = chosen_token['input_ids'].squeeze(
-                    0)
-                chosen_token['attention_mask'] = chosen_token[
-                    'attention_mask'].squeeze(0)
-                chosen_dataset.append(chosen_token)
+                chosen_dataset.append(chosen_sentence)
 
     elif train_phase == 2:
-        for i, tmp_data in enumerate(current_dataset):
+        for i, raw_sample in enumerate(current_dataset):
             # tokenize the text
-            chosen_sentence = raw_dataset.get_prompt_and_chosen(
-                tmp_data)  # the accept response
-            reject_sentence = raw_dataset.get_prompt_and_rejected(
-                tmp_data)  # the accept response
+            chosen_sentence = raw_dataset.get_prompt_and_chosen(raw_sample)
+            # the accept response
+            reject_sentence = raw_dataset.get_prompt_and_rejected(raw_sample)
+            # the accept response
             if chosen_sentence is not None and reject_sentence is not None:
                 chosen_sentence += end_of_conversation_token  # the accept response
                 reject_sentence += end_of_conversation_token
-                chosen_token = tokenizer(chosen_sentence,
-                                         max_length=max_seq_len,
-                                         padding='max_length',
-                                         truncation=True,
-                                         return_tensors='pt')
-                reject_token = tokenizer(reject_sentence,
-                                         max_length=max_seq_len,
-                                         padding='max_length',
-                                         truncation=True,
-                                         return_tensors='pt')
-                chosen_token['input_ids'] = chosen_token['input_ids']
-                chosen_token['attention_mask'] = chosen_token['attention_mask']
-                chosen_dataset.append(chosen_token)
-
-                reject_token['input_ids'] = reject_token['input_ids']
-                reject_token['attention_mask'] = reject_token['attention_mask']
-                reject_dataset.append(reject_token)
+                chosen_dataset.append(chosen_sentence)
+                reject_dataset.append(reject_sentence)
 
     elif train_phase == 3:
-        for i, tmp_data in enumerate(current_dataset):
+        for i, raw_sample in enumerate(current_dataset):
             # tokenize the text
-            prompt = raw_dataset.get_prompt(tmp_data)
+            prompt = raw_dataset.get_prompt(raw_sample)
             if prompt is not None:
-                prompt_token = tokenizer(prompt, return_tensors='pt')
-                prompt_token['input_ids'] = prompt_token['input_ids']
-                prompt_token['attention_mask'] = prompt_token['attention_mask']
-                for key_word in ['input_ids', 'attention_mask']:
-                    length = prompt_token[key_word].size()[-1]
-                    if length > max_seq_len:
-                        y = prompt_token[key_word].squeeze(0)[length -
-                                                              (max_seq_len -
-                                                               1):].flip(0)
-                    else:
-                        y = prompt_token[key_word].squeeze(0).flip(0)
-                    prompt_token[key_word] = y
-                prompt_dataset.append(prompt_token)
-    return PromptDataset(prompt_dataset, chosen_dataset, reject_dataset,
-                         tokenizer.pad_token_id, train_phase)
+                prompt_dataset.append(prompt)
+    return PromptDataset(prompt_dataset,
+                         chosen_dataset,
+                         reject_dataset,
+                         tokenizer=tokenizer,
+                         max_length=max_seq_len,
+                         train_phase=train_phase)
 
 
-def create_dataset(local_rank, dataset_name, data_split, output_path,
-                   train_phase, seed, tokenizer, end_of_conversation_token,
-                   max_seq_len):
-    raw_dataset = get_raw_dataset(dataset_name, output_path, seed, local_rank)
+def create_dataset(dataset_name: str = None,
+                   data_split: str = '10,0',
+                   output_path: str = None,
+                   train_phase: int = None,
+                   seed: int = None,
+                   tokenizer: PreTrainedTokenizer = None,
+                   max_seq_len: int = 512,
+                   end_of_conversation_token: str = None):
+    raw_dataset = get_raw_dataset(dataset_name, output_path, seed)
+    assert isinstance(raw_dataset, PromptRawDataset)
+    assert raw_dataset in name2Method.values()
     train_dataset = raw_dataset.get_train_data()
-    train_index = get_raw_dataset_split_index(local_rank, output_path,
+    train_index = get_raw_dataset_split_index(output_path,
                                               raw_dataset.dataset_name_clean,
                                               seed, 'train', data_split,
                                               train_phase - 1,
                                               len(train_dataset))
     train_dataset = Subset(train_dataset, train_index)
-    train_dataset = create_dataset_split(train_dataset, raw_dataset,
-                                         train_phase, tokenizer,
-                                         end_of_conversation_token,
-                                         max_seq_len)
+    train_dataset = create_dataset_split(
+        train_dataset,
+        raw_dataset,
+        train_phase,
+        tokenizer=tokenizer,
+        max_seq_len=max_seq_len,
+        end_of_conversation_token=end_of_conversation_token)
 
     eval_dataset = raw_dataset.get_eval_data()
-    eval_index = get_raw_dataset_split_index(local_rank, output_path,
+    eval_index = get_raw_dataset_split_index(output_path,
                                              raw_dataset.dataset_name_clean,
                                              seed, 'eval',
                                              data_split, train_phase - 1,
                                              len(eval_dataset))
     eval_dataset = Subset(eval_dataset, eval_index)
-    eval_dataset = create_dataset_split(eval_dataset, raw_dataset, train_phase,
-                                        tokenizer, end_of_conversation_token,
-                                        max_seq_len)
+    eval_dataset = create_dataset_split(
+        eval_dataset,
+        raw_dataset,
+        train_phase,
+        tokenizer=tokenizer,
+        max_seq_len=max_seq_len,
+        end_of_conversation_token=end_of_conversation_token)
     return train_dataset, eval_dataset
 
 
-def create_prompt_dataset(local_rank,
-                          data_path,
-                          data_split,
-                          output_path,
-                          train_phase,
-                          seed,
-                          tokenizer,
-                          max_seq_len,
-                          end_of_conversation_token='<|endoftext|>',
-                          sft_only_data_path=[]):
+def create_prompt_dataset(
+    dataset_names: str = None,
+    data_split: str = None,
+    output_path: str = None,
+    train_phase: int = None,
+    seed: int = None,
+    tokenizer: PreTrainedTokenizer = None,
+    max_seq_len: int = 512,
+    end_of_conversation_token='<|endoftext|>',
+    sft_only_data_path=[],
+):
     """Creates the prompt dataset."""
     os.makedirs(output_path, exist_ok=True)
-    fname = '_'.join(data_path)
+    fname = '_'.join(dataset_names)
     sft_cache_key = '_'.join(sft_only_data_path)
     tokenizer_name = tokenizer.init_kwargs['name_or_path'].replace('/', '_')
-    fname = f'{fname}_split{data_split}_phase{train_phase}_seed{seed}_tokenizer{tokenizer_name}_seqlen{max_seq_len}_sft{sft_cache_key}'
+    fname = f'{fname}_split{data_split}_phase{train_phase}_seed{seed}_tokenizer{tokenizer_name}\
+        _seqlen{max_seq_len}_sft{sft_cache_key}'
+
     fname = '_'.join(fname.split('/'))
-    fname = str(hash(fname))  # hash the file name to avoid too long file name
+    fname = hashlib.sha256(fname.encode()).hexdigest()
+    # hash the file name to avoid too long file name
     train_fname = f'{output_path}/traindata_{fname}.pt'
     eval_fname = f'{output_path}/evaldata_{fname}.pt'
 
     cache_found = os.path.isfile(train_fname) and os.path.isfile(eval_fname)
     buf_create_cache = torch.ByteTensor([not cache_found]).cuda()
-    torch.distributed.all_reduce(buf_create_cache)
 
     # Skip creating cache if we found it on all the nodes.
     if buf_create_cache.item() == 0:
         return torch.load(train_fname), torch.load(eval_fname)
     else:
-        if len(data_path) == 1:  # Single dataset.
+        if len(dataset_names) == 1:  # Single dataset.
             train_dataset, eval_dataset = create_dataset(
-                local_rank, data_path[0], data_split, output_path, train_phase,
-                seed, tokenizer, end_of_conversation_token, max_seq_len)
+                dataset_names[0], data_split, output_path, train_phase, seed,
+                end_of_conversation_token)
         else:  # Blending datasets.
             train_datasets = []
             eval_datasets = []
             train_size = 0
             eval_size = 0
-            for d_path in data_path:
+            for d_name in dataset_names:
                 train_dataset, eval_dataset = create_dataset(
-                    local_rank, d_path, data_split, output_path, train_phase,
-                    seed, tokenizer, end_of_conversation_token, max_seq_len)
+                    d_name,
+                    data_split,
+                    output_path,
+                    train_phase,
+                    seed,
+                    tokenizer=tokenizer,
+                    max_seq_len=max_seq_len,
+                    end_of_conversation_token=end_of_conversation_token)
                 train_datasets.append(train_dataset)
                 eval_datasets.append(eval_dataset)
                 train_size += len(train_dataset)
@@ -296,15 +253,14 @@ def create_prompt_dataset(local_rank,
             sft_eval_size = 0
             for sft_path in sft_only_data_path:
                 sft_train_dataset, sft_eval_dataset = create_dataset(
-                    local_rank,
                     sft_path,
                     '10,0,0',
                     output_path,
                     train_phase,
                     seed,
-                    tokenizer,
-                    end_of_conversation_token,
-                    max_seq_len,
+                    tokenizer=tokenizer,
+                    max_seq_len=max_seq_len,
+                    end_of_conversation_token=end_of_conversation_token,
                 )
                 sft_train_datasets.append(sft_train_dataset)
                 sft_eval_datasets.append(sft_eval_dataset)
@@ -322,10 +278,9 @@ def create_prompt_dataset(local_rank,
                 shuffle_idx = get_shuffle_idx(seed, len(eval_dataset))
                 eval_dataset = Subset(eval_dataset, shuffle_idx.tolist())
 
-        if local_rank <= 0:
-            torch.save(train_dataset, train_fname)
-            torch.save(eval_dataset, eval_fname)
-        return train_dataset, eval_dataset
+        torch.save(train_dataset, train_fname)
+        torch.save(eval_dataset, eval_fname)
+    return torch.load(train_fname), torch.load(eval_fname)
 
 
 class DataCollatorReward:
@@ -356,7 +311,7 @@ class DataCollatorRLHF:
                                    padding_value=0,
                                    batch_first=True)
 
-        ### make sure the final ouput is a seqence of 2**?
+        # make sure the final ouput is a seqence of 2**?
         length = prompt.size()[-1]
         pad_length = self.max_token_len - length
         if pad_length > 0:
