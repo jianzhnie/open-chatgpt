@@ -81,8 +81,7 @@ def get_raw_dataset_split_index(output_path, dataset_name, seed, split_name,
 
         shuffle_idx = get_shuffle_idx(seed, data_size)
         for split_i in range(len(splits)):
-            shuffle_idx_split_file_name = f'{output_path}/{dataset_name}_seed{seed}_\
-                {split_name}_{data_split}_{split_i}.npy'
+            shuffle_idx_split_file_name = f'{output_path}/{dataset_name}_seed{seed}_{split_name}_{data_split}_{split_i}.npy'
 
             shuffle_idx_split = shuffle_idx[
                 splits_index[split_i]:splits_index[split_i + 1]]
@@ -132,12 +131,14 @@ def create_dataset_split(
             prompt = raw_dataset.get_prompt(raw_sample)
             if prompt is not None:
                 prompt_dataset.append(prompt)
-    return PromptDataset(prompt_dataset,
-                         chosen_dataset,
-                         reject_dataset,
-                         tokenizer=tokenizer,
-                         max_length=max_seq_len,
-                         train_phase=train_phase)
+    return PromptDataset(
+        prompt_dataset,
+        chosen_dataset,
+        reject_dataset,
+        tokenizer=tokenizer,
+        max_length=max_seq_len,
+        train_phase=train_phase,
+    )
 
 
 def create_dataset(dataset_name: str = None,
@@ -149,8 +150,9 @@ def create_dataset(dataset_name: str = None,
                    max_seq_len: int = 512,
                    end_of_conversation_token: str = None):
     raw_dataset = get_raw_dataset(dataset_name, output_path, seed)
+    print(raw_dataset)
     assert isinstance(raw_dataset, PromptRawDataset)
-    assert raw_dataset in name2Method.values()
+    # assert raw_dataset in name2Method.values()
     train_dataset = raw_dataset.get_train_data()
     train_index = get_raw_dataset_split_index(
         output_path=output_path,
@@ -190,6 +192,7 @@ def create_dataset(dataset_name: str = None,
         max_seq_len=max_seq_len,
         end_of_conversation_token=end_of_conversation_token,
     )
+    print(train_dataset)
     return train_dataset, eval_dataset
 
 
@@ -299,6 +302,7 @@ def create_prompt_dataset(
 
 
 class DataCollatorReward:
+
     def __call__(self, data):
         batch = {}
         batch['input_ids'] = torch.cat([f[0]
@@ -311,6 +315,7 @@ class DataCollatorReward:
 
 
 class DataCollatorRLHF:
+
     def __init__(self, max_token_len, inference_tp_size):
         self.max_token_len = max_token_len
         self.inference_tp_size = inference_tp_size
@@ -398,49 +403,3 @@ def get_unsupervised_data(args, tokenizer):
 
     return train_dataset
 
-
-class MiniDataset:
-    def __init__(self, max_size, small_batch_size):
-        self.dataset = []
-        self.max_size = max_size
-        self.small_batch_size = small_batch_size
-
-    def seperate(self):
-        small_dataset = []
-        for large_batch in self.dataset:
-            if type(large_batch) == list or type(large_batch) == tuple:
-                large_size = len(large_batch[0])
-            elif type(large_batch) == dict:
-                large_size = len(large_batch[list(large_batch.keys())[0]])
-            else:
-                large_size = len(large_batch)
-            for i in range(0, large_size, self.small_batch_size):
-                if type(large_batch) == list or type(large_batch) == tuple:
-                    small_dataset.append(
-                        [x[i:i + self.small_batch_size] for x in large_batch])
-                elif type(large_batch) == dict:
-                    small_dataset.append({
-                        k: v[i:i + self.small_batch_size]
-                        for k, v in large_batch.items()
-                    })
-                else:
-                    small_dataset.append(large_batch[i:i +
-                                                     self.small_batch_size])
-        self.free()
-
-        return small_dataset
-
-    def add(self, data):
-        if len(self.dataset) < self.max_size:
-            self.dataset.append(data)
-            if len(self.dataset) == self.max_size:
-                return self.seperate()
-            else:
-                return None
-        else:
-            raise ValueError(
-                'The dataset is full but we did not stop it. There is a bug in the code.'
-            )
-
-    def free(self):
-        self.dataset = []
