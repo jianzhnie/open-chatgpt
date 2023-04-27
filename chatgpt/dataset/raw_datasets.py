@@ -1,20 +1,98 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
 import re
+from typing import List
 
-# DeepSpeed Team
+import torch
 from datasets import load_dataset
-from torch.utils.data import Subset
+from torch.utils.data import Dataset, Subset
+from transformers import PreTrainedTokenizer
+
+
+class PromptDataset(Dataset):
+    def __init__(self,
+                 prompt_dataset: List,
+                 chosen_dataset: List,
+                 reject_dataset: List,
+                 tokenizer: PreTrainedTokenizer = None,
+                 max_length: int = 512,
+                 train_phase: int = 1) -> None:
+        super().__init__()
+        self.prompt_dataset = prompt_dataset
+        self.chosen_dataset = chosen_dataset
+        self.reject_dataset = reject_dataset
+        self.tokenizer = tokenizer
+        self.pad_token_id = tokenizer.pad_token_id
+        self.max_length = max_length
+        self.train_phase = train_phase
+
+    def __len__(self):
+        length = len(self.chosen_dataset)
+        if self.train_phase == 3:
+            length = len(self.prompt_dataset)
+        return length
+
+    def __getitem__(self, idx):
+        if self.train_phase == 1:
+            raw_input = self.prompt_dataset[idx]
+            encoding_input = self.tokenizer(raw_input,
+                                            truncation=True,
+                                            max_length=self.max_length,
+                                            padding='max_length')
+            encoding_input['labels'] = encoding_input['input_ids']
+            encoding_input = {
+                key: torch.tensor(val)
+                for key, val in encoding_input.items()
+            }
+            return encoding_input
+
+        elif self.train_phase == 2:
+            chosen_sentence = self.chosen_dataset[idx]
+            reject_sentence = self.reject_dataset[idx]
+            chosen_input = self.tokenizer(chosen_sentence,
+                                          truncation=True,
+                                          max_length=self.max_length,
+                                          padding='max_length')
+            reject_input = self.tokenizer(reject_sentence,
+                                          truncation=True,
+                                          max_length=self.max_length,
+                                          padding='max_length')
+
+            chosen_input = {
+                key: torch.tensor(val)
+                for key, val in chosen_input.items()
+            }
+            reject_input = {
+                key: torch.tensor(val)
+                for key, val in reject_input.items()
+            }
+
+            return chosen_input['input_ids'], chosen_input[
+                'attention_mask'], chosen_input['labels'], reject_input[
+                    'input_ids'], reject_input['attention_mask']
+
+        elif self.train_phase == 3:
+            raw_input = self.prompt_dataset[idx]
+            encoding_input = self.tokenizer(raw_input,
+                                            truncation=True,
+                                            max_length=self.max_length,
+                                            padding='max_length')
+            encoding_input = {
+                key: torch.tensor(val)
+                for key, val in encoding_input.items()
+            }
+
+            return encoding_input['input_ids'], encoding_input[
+                'attention_mask'], self.pad_token_id
 
 
 # The template prompt dataset class that all new dataset porting needs to
 # follow in order to have a unified API and unified data format.
 class PromptRawDataset(object):
-    def __init__(self, output_path, seed, local_rank):
+    def __init__(self, output_path, seed, dataset_name):
+        self.dataset_name = dataset_name
+        self.dataset_name_clean = dataset_name.replace('/', '_')
         self.output_path = output_path
         self.seed = seed
-        self.local_rank = local_rank
+        self.raw_datasets = load_dataset(dataset_name)
 
     def get_train_data(self):
         return
@@ -44,11 +122,13 @@ class PromptRawDataset(object):
 
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'Dahoas/rm-static'
-        self.dataset_name_clean = 'Dahoas_rm_static'
-        self.raw_datasets = load_dataset('Dahoas/rm-static')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Dahoas/rm-static',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -74,11 +154,13 @@ class DahoasRmstaticDataset(PromptRawDataset):
 
 # English dataset
 class DahoasFullhhrlhfDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'Dahoas/full-hh-rlhf'
-        self.dataset_name_clean = 'Dahoas_full_hh_rlhf'
-        self.raw_datasets = load_dataset('Dahoas/full-hh-rlhf')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Dahoas/full-hh-rlhf',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -104,17 +186,18 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
 
 # English dataset
 class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'Dahoas/synthetic-instruct-gptj-pairwise'
-        self.dataset_name_clean = 'Dahoas_synthetic_instruct_gptj_pairwise'
-        self.raw_datasets = load_dataset(
-            'Dahoas/synthetic-instruct-gptj-pairwise')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Dahoas/synthetic-instruct-gptj-pairwise',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -124,7 +207,7 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -150,11 +233,13 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
 
 # English dataset
 class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'yitingxie/rlhf-reward-datasets'
-        self.dataset_name_clean = 'yitingxie_rlhf_reward_datasets'
-        self.raw_datasets = load_dataset('yitingxie/rlhf-reward-datasets')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='yitingxie/rlhf-reward-datasets',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -180,16 +265,18 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
 
 # English dataset
 class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'openai/webgpt_comparisons'
-        self.dataset_name_clean = 'openai_webgpt_comparisons'
-        self.raw_datasets = load_dataset('openai/webgpt_comparisons')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='openai/webgpt_comparisons',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -199,7 +286,7 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -253,11 +340,13 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
 
 # English dataset
 class StanfordnlpSHPDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'stanfordnlp/SHP'
-        self.dataset_name_clean = 'stanfordnlp_SHP'
-        self.raw_datasets = load_dataset('stanfordnlp/SHP')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='stanfordnlp/SHP',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -299,16 +388,18 @@ class StanfordnlpSHPDataset(PromptRawDataset):
 
 # Chinese dataset
 class Wangrui6ZhihuKOLDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'wangrui6/Zhihu-KOL'
-        self.dataset_name_clean = 'wangrui6_Zhihu_KOL'
-        self.raw_datasets = load_dataset('wangrui6/Zhihu-KOL')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='wangrui6/Zhihu-KOL',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -318,7 +409,7 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -356,11 +447,13 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
 
 # Chinese dataset
 class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'Cohere/miracl-zh-queries-22-12'
-        self.dataset_name_clean = 'Cohere_miracl_zh_queries_22_12'
-        self.raw_datasets = load_dataset('Cohere/miracl-zh-queries-22-12')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Cohere/miracl-zh-queries-22-12',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -388,16 +481,20 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
 
 # Chinese dataset
 class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Hello-SimpleAI/HC3-Chinese',
+    ):
+        super().__init__(output_path, seed, dataset_name)
         self.dataset_name = 'Hello-SimpleAI/HC3-Chinese'
         self.dataset_name_clean = 'Hello_SimpleAI_HC3_Chinese'
-        self.raw_datasets = load_dataset('Hello-SimpleAI/HC3-Chinese', 'all')
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -407,7 +504,7 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -446,16 +543,18 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
 
 # Chinese dataset
 class MkqaChineseDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'mkqa-Chinese'
-        self.dataset_name_clean = 'mkqa'
-        self.raw_datasets = load_dataset('mkqa')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='mkqa-Chinese',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -465,7 +564,7 @@ class MkqaChineseDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -505,16 +604,18 @@ class MkqaChineseDataset(PromptRawDataset):
 
 # Japanese dataset
 class MkqaJapaneseDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'mkqa-Japanese'
-        self.dataset_name_clean = 'mkqa'
-        self.raw_datasets = load_dataset('mkqa')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='mkqa-Japanese',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 0,
                                             len(dataset))
@@ -524,7 +625,7 @@ class MkqaJapaneseDataset(PromptRawDataset):
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.local_rank, self.output_path,
+        index = get_raw_dataset_split_index(self.output_path,
                                             self.dataset_name_clean,
                                             self.seed, 'train_eval', '9,1', 1,
                                             len(dataset))
@@ -563,11 +664,13 @@ class MkqaJapaneseDataset(PromptRawDataset):
 
 # Japanese dataset
 class CohereMiracljaqueries2212Dataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'Cohere/miracl-ja-queries-22-12'
-        self.dataset_name_clean = 'Cohere_miracl_ja_queries_22_12'
-        self.raw_datasets = load_dataset('Cohere/miracl-ja-queries-22-12')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='Cohere/miracl-ja-queries-22-12',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -595,11 +698,13 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQgjaquadDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'lmqg/qg_jaquad'
-        self.dataset_name_clean = 'lmqg_qg_jaquad'
-        self.raw_datasets = load_dataset('lmqg/qg_jaquad')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='lmqg/qg_jaquad',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -632,11 +737,13 @@ class LmqgQgjaquadDataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQagjaquadDataset(PromptRawDataset):
-    def __init__(self, output_path, seed, local_rank):
-        super().__init__(output_path, seed, local_rank)
-        self.dataset_name = 'lmqg/qag_jaquad'
-        self.dataset_name_clean = 'lmqg_qag_jaquad'
-        self.raw_datasets = load_dataset('lmqg/qag_jaquad')
+    def __init__(
+        self,
+        output_path,
+        seed,
+        dataset_name='lmqg/qag_jaquad',
+    ):
+        super().__init__(output_path, seed, dataset_name)
 
     def get_train_data(self):
         return self.raw_datasets['train']

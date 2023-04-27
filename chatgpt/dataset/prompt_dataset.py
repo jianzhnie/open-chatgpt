@@ -17,7 +17,6 @@ class TokenizedPromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
-
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -69,7 +68,6 @@ class PromptDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
-
     def __init__(self,
                  data_path: str,
                  split: str,
