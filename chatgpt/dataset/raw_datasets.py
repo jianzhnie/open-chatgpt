@@ -1,21 +1,27 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
 import re
+from typing import List
 
-# DeepSpeed Team
+import torch
 from datasets import load_dataset
 from torch.utils.data import Dataset, Subset
+from transformers import PreTrainedTokenizer
 
 
 class PromptDataset(Dataset):
-    def __init__(self, prompt_dataset, chosen_dataset, reject_dataset,
-                 pad_token_id, train_phase) -> None:
+    def __init__(self,
+                 prompt_dataset: List,
+                 chosen_dataset: List,
+                 reject_dataset: List,
+                 tokenizer: PreTrainedTokenizer = None,
+                 max_length: int = 512,
+                 train_phase: int = 1) -> None:
         super().__init__()
         self.prompt_dataset = prompt_dataset
         self.chosen_dataset = chosen_dataset
         self.reject_dataset = reject_dataset
-        self.pad_token_id = pad_token_id
+        self.tokenizer = tokenizer
+        self.pad_token_id = tokenizer.pad_token_id
+        self.max_length = max_length
         self.train_phase = train_phase
 
     def __len__(self):
@@ -26,18 +32,56 @@ class PromptDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.train_phase == 1:
-            return {
-                'input_ids': self.chosen_dataset[idx]['input_ids'],
-                'attention_mask': self.chosen_dataset[idx]['attention_mask'],
-                'labels': self.chosen_dataset[idx]['input_ids']
+            raw_input = self.prompt_dataset[idx]
+            encoding_input = self.tokenizer(raw_input,
+                                            truncation=True,
+                                            max_length=self.max_length,
+                                            padding='max_length')
+            encoding_input['labels'] = encoding_input['input_ids']
+            encoding_input = {
+                key: torch.tensor(val)
+                for key, val in encoding_input.items()
             }
+            return encoding_input
+
         elif self.train_phase == 2:
-            return self.chosen_dataset[idx]['input_ids'], self.chosen_dataset[
-                idx]['attention_mask'], self.reject_dataset[idx][
-                    'input_ids'], self.reject_dataset[idx]['attention_mask']
+            chosen_sentence = self.chosen_dataset[idx]
+            reject_sentence = self.reject_dataset[idx]
+            chosen_input = self.tokenizer(chosen_sentence,
+                                          truncation=True,
+                                          max_length=self.max_length,
+                                          padding='max_length')
+            reject_input = self.tokenizer(reject_sentence,
+                                          truncation=True,
+                                          max_length=self.max_length,
+                                          padding='max_length')
+
+            chosen_input = {
+                key: torch.tensor(val)
+                for key, val in chosen_input.items()
+            }
+            reject_input = {
+                key: torch.tensor(val)
+                for key, val in reject_input.items()
+            }
+
+            return chosen_input['input_ids'], chosen_input[
+                'attention_mask'], chosen_input['labels'], reject_input[
+                    'input_ids'], reject_input['attention_mask']
+
         elif self.train_phase == 3:
-            return self.prompt_dataset[idx]['input_ids'], self.prompt_dataset[
-                idx]['attention_mask'], self.pad_token_id
+            raw_input = self.prompt_dataset[idx]
+            encoding_input = self.tokenizer(raw_input,
+                                            truncation=True,
+                                            max_length=self.max_length,
+                                            padding='max_length')
+            encoding_input = {
+                key: torch.tensor(val)
+                for key, val in encoding_input.items()
+            }
+
+            return encoding_input['input_ids'], encoding_input[
+                'attention_mask'], self.pad_token_id
 
 
 # The template prompt dataset class that all new dataset porting needs to
