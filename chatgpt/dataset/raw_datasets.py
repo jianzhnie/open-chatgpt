@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Tuple
 
 import torch
 from datasets import load_dataset
@@ -18,10 +18,32 @@ def get_dataset_split_index(data_size, test_data_ratio, seed):
 
 
 class PromptDataset(Dataset):
+    """
+    A PyTorch dataset class that prepares prompt sentences and their corresponding chosen/rejected sentences for training.
+
+    Args:
+        prompt_dataset (List): A list of prompt sentences.
+        chosen_dataset (List): A list of chosen sentences.
+        reject_dataset (List): A list of rejected sentences.
+        tokenizer (PreTrainedTokenizer): A pre-trained tokenizer from the Hugging Face transformers library.
+        max_length (int): Maximum length of encoded sequences. Default is 512.
+        train_phase (int): Phase of training data to prepare. Can be 1, 2 or 3. Default is 1.
+
+    Returns:
+        Dictionary or tuple of tensors depending on the value of train_phase.
+
+    Examples:
+        >>> prompt_dataset = ['What is your favorite color?', 'Do you like pizza?']
+        >>> chosen_dataset = ['My favorite color is blue.', 'I love pizza!']
+        >>> reject_dataset = ['I don\'t have a favorite color.', 'Pizza is not my thing.']
+        >>> tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        >>> dataset = PromptDataset(prompt_dataset, chosen_dataset, reject_dataset, tokenizer, max_length=256)
+
+    """
     def __init__(self,
-                 prompt_dataset: List,
-                 chosen_dataset: List,
-                 reject_dataset: List,
+                 prompt_dataset: List[str],
+                 chosen_dataset: List[str],
+                 reject_dataset: List[str],
                  tokenizer: PreTrainedTokenizer = None,
                  max_length: int = 512,
                  train_phase: int = 1) -> None:
@@ -34,19 +56,35 @@ class PromptDataset(Dataset):
         self.max_length = max_length
         self.train_phase = train_phase
 
-    def __len__(self):
-        length = len(self.chosen_dataset)
-        if self.train_phase == 3:
-            length = len(self.prompt_dataset)
-        return length
+    def __len__(self) -> int:
+        """
+        Returns the length of chosen_dataset, or prompt_dataset if train_phase is 3.
 
-    def __getitem__(self, idx):
+        Returns:
+            int: Length of dataset.
+        """
+        if self.train_phase == 3:
+            return len(self.prompt_dataset)
+        else:
+            return len(self.chosen_dataset)
+
+    def __getitem__(self, idx: int) -> dict or Tuple[torch.Tensor]:
+        """
+        Returns a dictionary or tuple of tensors depending on the value of train_phase.
+
+        Args:
+            idx (int): Index of dataset item to retrieve.
+
+        Returns:
+            Dictionary or tuple of tensors depending on the value of train_phase.
+        """
         if self.train_phase == 1:
-            raw_input = self.prompt_dataset[idx]
+            raw_input = self.chosen_dataset[idx]
             encoding_input = self.tokenizer(raw_input,
                                             truncation=True,
                                             max_length=self.max_length,
                                             padding='max_length')
+            # set labels equal to input_ids to enable computing loss later
             encoding_input['labels'] = encoding_input['input_ids']
             encoding_input = {
                 key: torch.tensor(val)
@@ -75,9 +113,9 @@ class PromptDataset(Dataset):
                 for key, val in reject_input.items()
             }
 
-            return chosen_input['input_ids'], chosen_input[
-                'attention_mask'], chosen_input['labels'], reject_input[
-                    'input_ids'], reject_input['attention_mask']
+            return (chosen_input['input_ids'], chosen_input['attention_mask'],
+                    chosen_input['labels'], reject_input['input_ids'],
+                    reject_input['attention_mask'])
 
         elif self.train_phase == 3:
             raw_input = self.prompt_dataset[idx]
@@ -90,8 +128,8 @@ class PromptDataset(Dataset):
                 for key, val in encoding_input.items()
             }
 
-            return encoding_input['input_ids'], encoding_input[
-                'attention_mask'], self.pad_token_id
+            return (encoding_input['input_ids'],
+                    encoding_input['attention_mask'], self.pad_token_id)
 
 
 # The template prompt dataset class that all new dataset porting needs to
