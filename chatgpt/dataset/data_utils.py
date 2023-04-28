@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import ConcatDataset, Subset
 from transformers import PreTrainedTokenizer
@@ -44,9 +45,9 @@ name2Method = {
 }
 
 
-def get_raw_dataset(dataset_name, output_path, seed):
+def get_raw_dataset(dataset_name, seed):
     if dataset_name in name2Method:
-        return name2Method[dataset_name](output_path, seed, dataset_name)
+        return name2Method[dataset_name](dataset_name, seed)
     else:
         raise RuntimeError(
             f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in py.'
@@ -63,33 +64,13 @@ def get_shuffle_idx(seed, size):
     return shuffle_idx
 
 
-def get_raw_dataset_split_index(output_path, dataset_name, seed, split_name,
-                                data_split, split_index, data_size):
-    index_file_name = f'{output_path}/{dataset_name}_seed{seed}_{split_name}_{data_split}_{split_index}.npy'
-    if not os.path.isfile(index_file_name):
-        splits = [float(s) for s in data_split.split(',')]
-        splits_sum = sum(splits)
-        splits = [split / splits_sum for split in splits]
-        splits_index = [0]
-        for index, split in enumerate(splits):
-            splits_index.append(splits_index[index] +
-                                int(round(split * float(data_size))))
-        diff = splits_index[-1] - data_size
-        for index in range(1, len(splits_index)):
-            splits_index[index] -= diff
-        assert splits_index[-1] == data_size
+def get_dataset_split_index(data_size, test_size, seed):
 
-        shuffle_idx = get_shuffle_idx(seed, data_size)
-        for split_i in range(len(splits)):
-            shuffle_idx_split_file_name = f'{output_path}/{dataset_name}_seed{seed}_{split_name}_{data_split}_{split_i}.npy'
-
-            shuffle_idx_split = shuffle_idx[
-                splits_index[split_i]:splits_index[split_i + 1]]
-            np.save(shuffle_idx_split_file_name,
-                    shuffle_idx_split,
-                    allow_pickle=True)
-    index = np.load(index_file_name, allow_pickle=True)
-    return index.tolist()
+    index_list = list(range(data_size))
+    triain_index, test_index = train_test_split(index_list,
+                                                test_size=test_size,
+                                                random_state=seed)
+    return triain_index, test_index
 
 
 def create_dataset_split(
@@ -141,29 +122,17 @@ def create_dataset_split(
     )
 
 
-def create_dataset(dataset_name: str = None,
-                   data_split: str = '10,0',
-                   output_path: str = None,
-                   train_phase: int = None,
-                   seed: int = None,
-                   tokenizer: PreTrainedTokenizer = None,
-                   max_seq_len: int = 512,
-                   end_of_conversation_token: str = None):
-    raw_dataset = get_raw_dataset(dataset_name, output_path, seed)
-    print(raw_dataset)
+def create_dataset(
+    dataset_name: str = None,
+    train_phase: int = None,
+    tokenizer: PreTrainedTokenizer = None,
+    max_seq_len: int = 512,
+    end_of_conversation_token: str = None,
+    seed: int = None,
+):
+    raw_dataset = get_raw_dataset(dataset_name, seed)
     assert isinstance(raw_dataset, PromptRawDataset)
-    # assert raw_dataset in name2Method.values()
     train_dataset = raw_dataset.get_train_data()
-    train_index = get_raw_dataset_split_index(
-        output_path=output_path,
-        dataset_name=raw_dataset.dataset_name_clean,
-        seed=seed,
-        split_name='train',
-        data_split=data_split,
-        split_index=train_phase - 1,
-        data_size=len(train_dataset),
-    )
-    train_dataset = Subset(train_dataset, train_index)
     train_dataset = create_dataset_split(
         current_dataset=train_dataset,
         raw_dataset=raw_dataset,
@@ -174,16 +143,6 @@ def create_dataset(dataset_name: str = None,
     )
 
     eval_dataset = raw_dataset.get_eval_data()
-    eval_index = get_raw_dataset_split_index(
-        output_path=output_path,
-        dataset_name=raw_dataset.dataset_name_clean,
-        seed=seed,
-        split_name='eval',
-        data_split=data_split,
-        split_index=train_phase - 1,
-        data_size=len(eval_dataset),
-    )
-    eval_dataset = Subset(eval_dataset, eval_index)
     eval_dataset = create_dataset_split(
         current_dataset=eval_dataset,
         raw_dataset=raw_dataset,
@@ -192,27 +151,23 @@ def create_dataset(dataset_name: str = None,
         max_seq_len=max_seq_len,
         end_of_conversation_token=end_of_conversation_token,
     )
-    print(train_dataset)
     return train_dataset, eval_dataset
 
 
 def create_prompt_dataset(
-    dataset_names: str = None,
-    data_split: str = None,
-    output_path: str = None,
+    dataset_names: list = None,
     train_phase: int = None,
-    seed: int = None,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
     end_of_conversation_token='<|endoftext|>',
-    sft_only_data_path=[],
+    output_path: str = None,
+    seed: int = None,
 ):
     """Creates the prompt dataset."""
     os.makedirs(output_path, exist_ok=True)
     fname = '_'.join(dataset_names)
-    sft_cache_key = '_'.join(sft_only_data_path)
     tokenizer_name = tokenizer.init_kwargs['name_or_path'].replace('/', '_')
-    fname = f'{fname}_split{data_split}_phase{train_phase}_seed{seed}_tokenizer{tokenizer_name}_seqlen{max_seq_len}_sft{sft_cache_key}'
+    fname = f'{fname}_phase{train_phase}_seed{seed}_tokenizer{tokenizer_name}_seqlen{max_seq_len}'
 
     fname = '_'.join(fname.split('/'))
     fname = hashlib.sha256(fname.encode()).hexdigest()
@@ -228,13 +183,11 @@ def create_prompt_dataset(
         if len(dataset_names) == 1:  # Single dataset.
             train_dataset, eval_dataset = create_dataset(
                 dataset_name=dataset_names[0],
-                data_split=data_split,
-                output_path=output_path,
                 train_phase=train_phase,
-                seed=seed,
                 tokenizer=tokenizer,
                 max_seq_len=max_seq_len,
                 end_of_conversation_token=end_of_conversation_token,
+                seed=seed,
             )
         else:  # Blending datasets.
             train_datasets = []
@@ -244,13 +197,11 @@ def create_prompt_dataset(
             for d_name in dataset_names:
                 train_dataset, eval_dataset = create_dataset(
                     dataset_name=d_name,
-                    data_split=data_split,
-                    output_path=output_path,
                     train_phase=train_phase,
-                    seed=seed,
                     tokenizer=tokenizer,
                     max_seq_len=max_seq_len,
                     end_of_conversation_token=end_of_conversation_token,
+                    seed=seed,
                 )
                 train_datasets.append(train_dataset)
                 eval_datasets.append(eval_dataset)
@@ -263,46 +214,12 @@ def create_prompt_dataset(
             shuffle_idx = get_shuffle_idx(seed, eval_size)
             eval_dataset = Subset(eval_dataset, shuffle_idx.tolist())
 
-        # Append the SFT-only dataset if it exists, and current phase is 1(SFT).
-        if train_phase == 1 and sft_only_data_path:
-            sft_train_datasets = []
-            sft_eval_datasets = []
-            sft_train_size = 0
-            sft_eval_size = 0
-            for sft_path in sft_only_data_path:
-                sft_train_dataset, sft_eval_dataset = create_dataset(
-                    dataset_name=sft_path,
-                    data_split='10,0,0',
-                    output_path=output_path,
-                    train_phase=train_phase,
-                    seed=seed,
-                    tokenizer=tokenizer,
-                    max_seq_len=max_seq_len,
-                    end_of_conversation_token=end_of_conversation_token,
-                )
-                sft_train_datasets.append(sft_train_dataset)
-                sft_eval_datasets.append(sft_eval_dataset)
-                sft_train_size += len(sft_train_dataset)
-                sft_eval_size += len(sft_eval_dataset)
-            if sft_train_datasets:  # Check if sft_train_datasets is not empty
-                sft_train_dataset = ConcatDataset(sft_train_datasets)
-                train_dataset = ConcatDataset(
-                    [train_dataset, sft_train_dataset])
-                shuffle_idx = get_shuffle_idx(seed, len(train_dataset))
-                train_dataset = Subset(train_dataset, shuffle_idx.tolist())
-            if sft_eval_datasets:  # Check if sft_eval_datasets is not empty
-                sft_eval_dataset = ConcatDataset(sft_eval_datasets)
-                eval_dataset = ConcatDataset([eval_dataset, sft_eval_dataset])
-                shuffle_idx = get_shuffle_idx(seed, len(eval_dataset))
-                eval_dataset = Subset(eval_dataset, shuffle_idx.tolist())
-
         torch.save(train_dataset, train_fname)
         torch.save(eval_dataset, eval_fname)
     return torch.load(train_fname), torch.load(eval_fname)
 
 
 class DataCollatorReward:
-
     def __call__(self, data):
         batch = {}
         batch['input_ids'] = torch.cat([f[0]
@@ -315,7 +232,6 @@ class DataCollatorReward:
 
 
 class DataCollatorRLHF:
-
     def __init__(self, max_token_len, inference_tp_size):
         self.max_token_len = max_token_len
         self.inference_tp_size = inference_tp_size
@@ -402,4 +318,3 @@ def get_unsupervised_data(args, tokenizer):
     train_dataset = lm_datasets['train']
 
     return train_dataset
-
