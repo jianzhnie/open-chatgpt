@@ -138,9 +138,10 @@ class DahoasRmstaticDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/rm-static',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -203,9 +204,10 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/synthetic-instruct-gptj-pairwise',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -245,9 +247,10 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='yitingxie/rlhf-reward-datasets',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -276,9 +279,10 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='openai/webgpt_comparisons',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -347,9 +351,10 @@ class StanfordnlpSHPDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='stanfordnlp/SHP',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -394,9 +399,10 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='wangrui6/Zhihu-KOL',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -449,9 +455,10 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-zh-queries-22-12',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -482,9 +489,10 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Hello-SimpleAI/HC3-Chinese',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -538,9 +546,10 @@ class MkqaChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Chinese',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -595,9 +604,10 @@ class MkqaJapaneseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Japanese',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -651,9 +661,10 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-ja-queries-22-12',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -684,9 +695,10 @@ class LmqgQgjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qg_jaquad',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -722,9 +734,10 @@ class LmqgQagjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qag_jaquad',
+        test_size: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, seed)
+        super().__init__(dataset_name, test_size, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
