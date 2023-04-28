@@ -1,7 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
 """Part of the code was adopted from https://github.com/microsoft/Megatron-
 DeepSpeed/blob/main/megatron/data/dataset_utils.py."""
 import hashlib
@@ -13,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import ConcatDataset, Dataset, Subset
+from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
