@@ -8,6 +8,7 @@ from transformers import PreTrainedTokenizer
 
 
 class PromptDataset(Dataset):
+
     def __init__(self,
                  prompt_dataset: List,
                  chosen_dataset: List,
@@ -87,6 +88,7 @@ class PromptDataset(Dataset):
 # The template prompt dataset class that all new dataset porting needs to
 # follow in order to have a unified API and unified data format.
 class PromptRawDataset(object):
+
     def __init__(self, output_path, seed, dataset_name):
         self.dataset_name = dataset_name
         self.dataset_name_clean = dataset_name.replace('/', '_')
@@ -122,6 +124,7 @@ class PromptRawDataset(object):
 
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -154,6 +157,7 @@ class DahoasRmstaticDataset(PromptRawDataset):
 
 # English dataset
 class DahoasFullhhrlhfDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -186,6 +190,7 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
 
 # English dataset
 class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -197,20 +202,30 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -233,6 +248,7 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
 
 # English dataset
 class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -265,6 +281,7 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
 
 # English dataset
 class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -276,20 +293,30 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -340,6 +367,7 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
 
 # English dataset
 class StanfordnlpSHPDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -388,6 +416,7 @@ class StanfordnlpSHPDataset(PromptRawDataset):
 
 # Chinese dataset
 class Wangrui6ZhihuKOLDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -399,20 +428,30 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -447,6 +486,7 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
 
 # Chinese dataset
 class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -481,6 +521,7 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
 
 # Chinese dataset
 class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -494,20 +535,30 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -543,6 +594,7 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
 
 # Chinese dataset
 class MkqaChineseDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -554,20 +606,30 @@ class MkqaChineseDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -604,6 +666,7 @@ class MkqaChineseDataset(PromptRawDataset):
 
 # Japanese dataset
 class MkqaJapaneseDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -615,20 +678,30 @@ class MkqaJapaneseDataset(PromptRawDataset):
     def get_train_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 0,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=0,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
     def get_eval_data(self):
         from .data_utils import get_raw_dataset_split_index
         dataset = self.raw_datasets['train']
-        index = get_raw_dataset_split_index(self.output_path,
-                                            self.dataset_name_clean,
-                                            self.seed, 'train_eval', '9,1', 1,
-                                            len(dataset))
+        index = get_raw_dataset_split_index(
+            output_path=self.output_path,
+            dataset_name=self.dataset_name_clean,
+            split_name='train_eval',
+            data_split='9,1',
+            split_index=1,
+            data_size=len(dataset),
+            seed=self.seed,
+        )
         dataset = Subset(dataset, index)
         return dataset
 
@@ -664,6 +737,7 @@ class MkqaJapaneseDataset(PromptRawDataset):
 
 # Japanese dataset
 class CohereMiracljaqueries2212Dataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -698,6 +772,7 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQgjaquadDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
@@ -737,6 +812,7 @@ class LmqgQgjaquadDataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQagjaquadDataset(PromptRawDataset):
+
     def __init__(
         self,
         output_path,
