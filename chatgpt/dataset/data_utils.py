@@ -12,12 +12,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
-from sklearn.model_selection import train_test_split
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import ConcatDataset, Subset
 from transformers import PreTrainedTokenizer
 
-from .raw_datasets import (
+from chatgpt.dataset.raw_datasets import (
     CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
     DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
     DahoasSyntheticinstructgptjpairwiseDataset, HelloSimpleAIHC3ChineseDataset,
@@ -62,15 +61,6 @@ def get_shuffle_idx(seed, size):
     shuffle_idx = np.arange(start=0, stop=size, step=1, dtype=dtype_)
     np_rng.shuffle(shuffle_idx)
     return shuffle_idx
-
-
-def get_dataset_split_index(data_size, test_size, seed):
-
-    index_list = list(range(data_size))
-    triain_index, test_index = train_test_split(index_list,
-                                                test_size=test_size,
-                                                random_state=seed)
-    return triain_index, test_index
 
 
 def create_dataset_split(
@@ -203,6 +193,9 @@ def create_prompt_dataset(
                     end_of_conversation_token=end_of_conversation_token,
                     seed=seed,
                 )
+                print(
+                    f'Ceate dataset, {d_name}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
+                )
                 train_datasets.append(train_dataset)
                 eval_datasets.append(eval_dataset)
                 train_size += len(train_dataset)
@@ -213,6 +206,9 @@ def create_prompt_dataset(
             eval_dataset = ConcatDataset(eval_datasets)
             shuffle_idx = get_shuffle_idx(seed, eval_size)
             eval_dataset = Subset(eval_dataset, shuffle_idx.tolist())
+            print(
+                f'Concate dataset, {d_name}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
+            )
 
         torch.save(train_dataset, train_fname)
         torch.save(eval_dataset, eval_fname)
