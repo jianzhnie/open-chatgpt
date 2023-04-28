@@ -3,10 +3,18 @@ from typing import List
 
 import torch
 from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, Subset
 from transformers import PreTrainedTokenizer
 
-from .data_utils import get_dataset_split_index
+
+def get_dataset_split_index(data_size, test_size, seed):
+
+    index_list = list(range(data_size))
+    triain_index, test_index = train_test_split(index_list,
+                                                test_size=test_size,
+                                                random_state=seed)
+    return triain_index, test_index
 
 
 class PromptDataset(Dataset):
@@ -208,7 +216,7 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
 
     def get_train_data(self):
 
-        dataset = Subset(dataset, self.train_index)
+        dataset = Subset(self.dataset, self.train_index)
         return dataset
 
     def get_eval_data(self):
