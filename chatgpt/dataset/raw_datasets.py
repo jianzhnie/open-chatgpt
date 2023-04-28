@@ -170,10 +170,12 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/full-hh-rlhf',
+        test_data_ratio: float = 0.1,
         seed=None,
     ):
         super().__init__(
             dataset_name,
+            test_data_ratio,
             seed,
         )
 
