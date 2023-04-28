@@ -150,10 +150,10 @@ class ActorModel(nn.Module):
         actions = sequences[:, input_ids.shape[1]:]
         # Extract generated actions from full sequence
         if self.debug:
-            print(f"input length {input_ids.shape[1]} \n"
-                  f"max sequence length {max_sequence_length} \n"
-                  f"max completion {max_completion} \n"
-                  f"generated sequence {sequences.shape[1]} \n")
+            print(f'input length {input_ids.shape[1]} \n'
+                  f'max sequence length {max_sequence_length} \n'
+                  f'max completion {max_completion} \n'
+                  f'generated sequence {sequences.shape[1]} \n')
             print('ActorModel.generate')
             print('state', input_ids)
             print('state shape', input_ids.shape)
