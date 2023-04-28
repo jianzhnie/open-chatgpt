@@ -44,9 +44,13 @@ name2Method = {
 }
 
 
-def get_raw_dataset(dataset_name, seed):
+def get_raw_dataset(dataset_name: str = None,
+                    test_data_ratio=0.1,
+                    seed: int = None):
     if dataset_name in name2Method:
-        return name2Method[dataset_name](dataset_name, seed)
+        return name2Method[dataset_name](dataset_name=dataset_name,
+                                         test_data_ratio=test_data_ratio,
+                                         seed=seed)
     else:
         raise RuntimeError(
             f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in py.'
@@ -115,12 +119,15 @@ def create_dataset_split(
 def create_dataset(
     dataset_name: str = None,
     train_phase: int = None,
+    test_data_ratio: float = 0.1,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
     end_of_conversation_token: str = None,
     seed: int = None,
 ):
-    raw_dataset = get_raw_dataset(dataset_name, seed)
+    raw_dataset = get_raw_dataset(dataset_name,
+                                  test_data_ratio=test_data_ratio,
+                                  seed=seed)
     assert isinstance(raw_dataset, PromptRawDataset)
     train_dataset = raw_dataset.get_train_data()
     train_dataset = create_dataset_split(
@@ -147,6 +154,7 @@ def create_dataset(
 def create_prompt_dataset(
     dataset_names: list = None,
     train_phase: int = None,
+    test_data_ratio: float = 0.1,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
     end_of_conversation_token='<|endoftext|>',
@@ -174,6 +182,7 @@ def create_prompt_dataset(
             train_dataset, eval_dataset = create_dataset(
                 dataset_name=dataset_names[0],
                 train_phase=train_phase,
+                test_data_ratio=test_data_ratio,
                 tokenizer=tokenizer,
                 max_seq_len=max_seq_len,
                 end_of_conversation_token=end_of_conversation_token,
@@ -188,6 +197,7 @@ def create_prompt_dataset(
                 train_dataset, eval_dataset = create_dataset(
                     dataset_name=d_name,
                     train_phase=train_phase,
+                    test_data_ratio=test_data_ratio,
                     tokenizer=tokenizer,
                     max_seq_len=max_seq_len,
                     end_of_conversation_token=end_of_conversation_token,
@@ -198,21 +208,15 @@ def create_prompt_dataset(
                 )
                 train_datasets.append(train_dataset)
                 eval_datasets.append(eval_dataset)
+                print(train_datasets)
                 train_size += len(train_dataset)
                 eval_size += len(eval_dataset)
             train_dataset = ConcatDataset(train_datasets)
-            shuffle_idx = get_shuffle_idx(seed, train_size)
-            train_dataset = Subset(train_dataset, shuffle_idx.tolist())
             eval_dataset = ConcatDataset(eval_datasets)
-            shuffle_idx = get_shuffle_idx(seed, eval_size)
-            eval_dataset = Subset(eval_dataset, shuffle_idx.tolist())
             print(
-                f'Concate dataset, {d_name}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
+                f'Concate dataset: {train_datasets}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
             )
-
-        torch.save(train_dataset, train_fname)
-        torch.save(eval_dataset, eval_fname)
-    return torch.load(train_fname), torch.load(eval_fname)
+    return train_dataset, eval_dataset
 
 
 class DataCollatorReward:
