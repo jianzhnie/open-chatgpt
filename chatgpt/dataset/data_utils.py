@@ -16,8 +16,9 @@ from chatgpt.dataset.raw_datasets import (
     AnthropicHHRLHF, CohereMiracljaqueries2212Dataset,
     CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
     DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
-    HelloSimpleAIHC3ChineseDataset, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
-    MkqaChineseDataset, MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset,
+    DatabricksDolly15k, HelloSimpleAIHC3ChineseDataset, LaionOIG,
+    LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
+    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1,
     PromptDataset, PromptRawDataset, StackExchangeParied,
     StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
     YitingxieRlhfrewarddatasetsDataset)
@@ -40,6 +41,9 @@ name2Method = {
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
     'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
+    '': DatabricksDolly15k,
+    '': LaionOIG,
+    '': OpenAssistantOasst1
 }
 
 
