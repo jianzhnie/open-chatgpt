@@ -137,13 +137,17 @@ class PromptDataset(Dataset):
 class PromptRawDataset(object):
     def __init__(self,
                  dataset_name: str = None,
+                 data_dir: str = None,
+                 num_proc: int = 8,
                  test_data_ratio: float = 0.1,
                  seed: int = None):
         self.dataset_name = dataset_name
         self.dataset_name_clean = dataset_name.replace('/', '_')
         self.test_data_ratio = test_data_ratio
         self.seed = seed
-        self.raw_datasets = load_dataset(dataset_name)
+        self.raw_datasets = load_dataset(dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
 
     def get_train_data(self):
         return
@@ -171,15 +175,62 @@ class PromptRawDataset(object):
         return
 
 
+class StackExchangeParied(PromptRawDataset):
+    def __init__(
+        self,
+        dataset_name='lvwerra/stack-exchange-paired',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.raw_datasets = load_dataset(dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
+
+        self.raw_datasets = self.raw_datasets.train_test_split(
+            test_size=test_data_ratio)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['question']
+
+    def get_chosen(self, sample):
+        return sample['response_j']
+
+    def get_rejected(self, sample):
+        return sample['response_k']
+
+    def get_prompt_and_chosen(self, sample):
+        return 'Question: ' + sample['question'] + '\n\nAnswer: ' + sample[
+            'response_j']
+
+    def get_prompt_and_rejected(self, sample):
+        return 'Question: ' + sample['question'] + '\n\nAnswer: ' + sample[
+            'response_k']
+
+
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/rm-static',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -208,14 +259,13 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/full-hh-rlhf',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(
-            dataset_name,
-            test_data_ratio,
-            seed,
-        )
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -244,10 +294,13 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/synthetic-instruct-gptj-pairwise',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -287,10 +340,13 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='yitingxie/rlhf-reward-datasets',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -319,10 +375,13 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='openai/webgpt_comparisons',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -391,10 +450,13 @@ class StanfordnlpSHPDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='stanfordnlp/SHP',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -439,10 +501,13 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='wangrui6/Zhihu-KOL',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -495,10 +560,13 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-zh-queries-22-12',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -529,10 +597,13 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Hello-SimpleAI/HC3-Chinese',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -586,10 +657,13 @@ class MkqaChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Chinese',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -644,10 +718,13 @@ class MkqaJapaneseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Japanese',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
         self.dataset = self.raw_datasets['train']
         self.train_index, self.eval_index = get_dataset_split_index(
@@ -701,10 +778,13 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-ja-queries-22-12',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -735,10 +815,13 @@ class LmqgQgjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qg_jaquad',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -774,10 +857,13 @@ class LmqgQagjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qag_jaquad',
+        data_dir: str = None,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, test_data_ratio, seed)
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
