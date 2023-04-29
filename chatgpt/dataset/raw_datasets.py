@@ -255,6 +255,28 @@ class AnthropicHHRLHF(PromptRawDataset):
         return sample['question'] + sample['rejected']
 
 
+# TODO
+# [databricks/databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+
+# TODO
+# [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
+
+# TODO
+# [laion/OIG](https://huggingface.co/datasets/laion/OIG)
+
+# TODO
+# [OpenAssistant/oasst1](https://github.com/LAION-AI/Open-Assistant/blob/main/docs/docs/data/datasets.md)
+
+# TODO
+# [baize-chatbot](https://github.com/project-baize/baize-chatbot/tree/main/data)
+
+# TODO
+# [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
+
+# TODO
+# [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
+
+
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
     def __init__(
