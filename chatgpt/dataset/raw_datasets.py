@@ -19,7 +19,8 @@ def get_dataset_split_index(data_size, test_data_ratio, seed):
 
 class PromptDataset(Dataset):
     """
-    A PyTorch dataset class that prepares prompt sentences and their corresponding chosen/rejected sentences for training.
+    A PyTorch dataset class that prepares prompt sentences and their corresponding \
+        chosen/rejected sentences for training.
 
     Args:
         prompt_dataset (List): A list of prompt sentences.
