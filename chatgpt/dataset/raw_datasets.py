@@ -257,15 +257,118 @@ class AnthropicHHRLHF(PromptRawDataset):
 
 # TODO
 # [databricks/databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
+class DatabricksDolly15k(PromptRawDataset):
+    def __init__(
+        self,
+        dataset_name='databricks/databricks-dolly-15k',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['question']
+
+    def get_chosen(self, sample):
+        return sample['chosen']
+
+    def get_rejected(self, sample):
+        return sample['rejected']
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['question'] + +sample['chosen']
+
+    def get_prompt_and_rejected(self, sample):
+        return sample['question'] + sample['rejected']
+
 
 # TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
 
+
 # TODO
 # [laion/OIG](https://huggingface.co/datasets/laion/OIG)
+class LaionOIG(PromptRawDataset):
+    def __init__(
+        self,
+        dataset_name='laion/OIG',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['question']
+
+    def get_chosen(self, sample):
+        return sample['chosen']
+
+    def get_rejected(self, sample):
+        return sample['rejected']
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['question'] + +sample['chosen']
+
+    def get_prompt_and_rejected(self, sample):
+        return sample['question'] + sample['rejected']
+
 
 # TODO
 # [OpenAssistant/oasst1](https://github.com/LAION-AI/Open-Assistant/blob/main/docs/docs/data/datasets.md)
+class OpenAssistantOasst1(PromptRawDataset):
+    def __init__(
+        self,
+        dataset_name='OpenAssistant/oasst1',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['question']
+
+    def get_chosen(self, sample):
+        return sample['chosen']
+
+    def get_rejected(self, sample):
+        return sample['rejected']
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['question'] + +sample['chosen']
+
+    def get_prompt_and_rejected(self, sample):
+        return sample['question'] + sample['rejected']
+
 
 # TODO
 # [baize-chatbot](https://github.com/project-baize/baize-chatbot/tree/main/data)
