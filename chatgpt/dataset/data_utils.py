@@ -13,12 +13,13 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
-    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
-    DahoasSyntheticinstructgptjpairwiseDataset, HelloSimpleAIHC3ChineseDataset,
-    LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
-    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, PromptDataset,
-    PromptRawDataset, StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
+    AnthropicHHRLHF, CohereMiracljaqueries2212Dataset,
+    CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
+    DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
+    HelloSimpleAIHC3ChineseDataset, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
+    MkqaChineseDataset, MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset,
+    PromptDataset, PromptRawDataset, StackExchangeParied,
+    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
     YitingxieRlhfrewarddatasetsDataset)
 
 name2Method = {
@@ -37,6 +38,8 @@ name2Method = {
     'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
     'lmqg/qg_jaquad': LmqgQgjaquadDataset,
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
+    'lvwerra/stack-exchange-paired': StackExchangeParied,
+    'Anthropic/hh-rlhf': AnthropicHHRLHF,
 }
 
 
