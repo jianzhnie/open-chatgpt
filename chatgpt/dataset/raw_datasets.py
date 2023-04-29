@@ -220,6 +220,41 @@ class StackExchangeParied(PromptRawDataset):
             'response_k']
 
 
+class AnthropicHHRLHF(PromptRawDataset):
+    def __init__(
+        self,
+        dataset_name='Anthropic/hh-rlhf',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['question']
+
+    def get_chosen(self, sample):
+        return sample['chosen']
+
+    def get_rejected(self, sample):
+        return sample['rejected']
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['question'] + +sample['chosen']
+
+    def get_prompt_and_rejected(self, sample):
+        return sample['question'] + sample['rejected']
+
+
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
     def __init__(
@@ -232,6 +267,9 @@ class DahoasRmstaticDataset(PromptRawDataset):
     ):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
+
+        self.raw_datasets = self.raw_datasets.train_test_split(
+            test_size=test_data_ratio)
 
     def get_train_data(self):
         return self.raw_datasets['train']
