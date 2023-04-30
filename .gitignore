@@ -127,9 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-colossalai/
-chatllama/
-data/
 opt-supervised-summarize-checkpoint/
 wandb/
 logs/

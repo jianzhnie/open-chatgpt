@@ -1,7 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
 """Part of the code was adopted from https://github.com/microsoft/Megatron-
 DeepSpeed/blob/main/megatron/data/dataset_utils.py."""
 import hashlib
@@ -13,16 +9,18 @@ import torch
 import torch.nn.functional as F
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import ConcatDataset, Subset
+from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
-    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
-    DahoasSyntheticinstructgptjpairwiseDataset, HelloSimpleAIHC3ChineseDataset,
+    AnthropicHHRLHF, CohereMiracljaqueries2212Dataset,
+    CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
+    DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
+    DatabricksDolly15k, HelloSimpleAIHC3ChineseDataset, LaionOIG,
     LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
-    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, PromptDataset,
-    PromptRawDataset, StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
+    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1,
+    PromptDataset, PromptRawDataset, StackExchangeParied,
+    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
     YitingxieRlhfrewarddatasetsDataset)
 
 name2Method = {
@@ -41,6 +39,11 @@ name2Method = {
     'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
     'lmqg/qg_jaquad': LmqgQgjaquadDataset,
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
+    'lvwerra/stack-exchange-paired': StackExchangeParied,
+    'Anthropic/hh-rlhf': AnthropicHHRLHF,
+    '': DatabricksDolly15k,
+    '': LaionOIG,
+    '': OpenAssistantOasst1
 }
 
 
@@ -53,7 +56,7 @@ def get_raw_dataset(dataset_name: str = None,
                                          seed=seed)
     else:
         raise RuntimeError(
-            f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in py.'
+            f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
         )
 
 
@@ -68,7 +71,7 @@ def get_shuffle_idx(seed, size):
 
 
 def create_dataset_split(
-    current_dataset=None,
+    current_dataset: Dataset = None,
     raw_dataset: PromptRawDataset = None,
     train_phase: int = 1,
     tokenizer: PreTrainedTokenizer = None,
@@ -178,9 +181,13 @@ def create_prompt_dataset(
     if cache_found:
         return torch.load(train_fname), torch.load(eval_fname)
     else:
-        if len(dataset_names) == 1:  # Single dataset.
+        train_datasets = []
+        eval_datasets = []
+        train_size = 0
+        eval_size = 0
+        for d_name in dataset_names:
             train_dataset, eval_dataset = create_dataset(
-                dataset_name=dataset_names[0],
+                dataset_name=d_name,
                 train_phase=train_phase,
                 test_data_ratio=test_data_ratio,
                 tokenizer=tokenizer,
@@ -188,34 +195,21 @@ def create_prompt_dataset(
                 end_of_conversation_token=end_of_conversation_token,
                 seed=seed,
             )
-        else:  # Blending datasets.
-            train_datasets = []
-            eval_datasets = []
-            train_size = 0
-            eval_size = 0
-            for d_name in dataset_names:
-                train_dataset, eval_dataset = create_dataset(
-                    dataset_name=d_name,
-                    train_phase=train_phase,
-                    test_data_ratio=test_data_ratio,
-                    tokenizer=tokenizer,
-                    max_seq_len=max_seq_len,
-                    end_of_conversation_token=end_of_conversation_token,
-                    seed=seed,
-                )
-                print(
-                    f'Ceate dataset, {d_name}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
-                )
-                train_datasets.append(train_dataset)
-                eval_datasets.append(eval_dataset)
-                print(train_datasets)
-                train_size += len(train_dataset)
-                eval_size += len(eval_dataset)
-            train_dataset = ConcatDataset(train_datasets)
-            eval_dataset = ConcatDataset(eval_datasets)
             print(
-                f'Concate dataset: {train_datasets}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
+                f'Ceate dataset, {d_name}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
             )
+            train_datasets.append(train_dataset)
+            eval_datasets.append(eval_dataset)
+            print(train_datasets)
+            train_size += len(train_dataset)
+            eval_size += len(eval_dataset)
+        train_dataset = ConcatDataset(train_datasets)
+        eval_dataset = ConcatDataset(eval_datasets)
+        print(
+            f'Concate dataset: {train_datasets}, train size: {len(train_dataset)}, eval size: {len(eval_dataset)}'
+        )
+        torch.save(train_dataset, train_fname)
+        torch.save(eval_dataset, eval_fname)
     return train_dataset, eval_dataset
 
 
