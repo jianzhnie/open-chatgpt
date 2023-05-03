@@ -1,5 +1,6 @@
+import random
 import re
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from datasets import load_dataset
@@ -135,13 +136,48 @@ class PromptDataset(Dataset):
 
 # The template prompt dataset class that all new dataset porting needs to
 # follow in order to have a unified API and unified data format.
+
+
 class PromptRawDataset(object):
+    """
+    A class to handle raw text data for prompt-based dialogue systems.
+
+    Attributes:
+        dataset_name (str): The name of the dataset to load.
+        dataset_name_clean (str): The cleaned version of the dataset name.
+        test_data_ratio (float): The ratio of data to split as test data.
+        seed (int): The random seed to use for data splitting.
+        raw_datasets: The raw dataset loaded using `load_dataset()` function.
+
+    Methods:
+        get_train_data(): Returns the training data.
+        get_eval_data(): Returns the evaluation data.
+        get_prompt(sample: Dict[str, Any]) -> str: Returns the formatted prompt for a given sample.
+        get_chosen(sample: Dict[str, Any]) -> Optional[str]: Returns the chosen response for a given sample, \
+        if available.
+        get_rejected(sample: Dict[str, Any]) -> Optional[str]: Returns the rejected response for a given sample, \
+            if available.
+        get_prompt_and_chosen(sample: Dict[str, Any]) -> Tuple[str, Optional[str]]: Returns the formatted prompt \
+            and chosen response for a given sample.
+        get_prompt_and_rejected(sample: Dict[str, Any]) -> Tuple[str, Optional[str]]: Returns the formatted prompt \
+            and rejected response for a given sample, if available.
+    """
     def __init__(self,
-                 dataset_name: str = None,
-                 data_dir: str = None,
-                 num_proc: int = 8,
-                 test_data_ratio: float = 0.1,
-                 seed: int = None):
+                 dataset_name: str,
+                 data_dir: Optional[str] = None,
+                 num_proc: Optional[int] = 8,
+                 test_data_ratio: Optional[float] = 0.1,
+                 seed: Optional[int] = None):
+        """
+        Initializes the PromptRawDataset object.
+
+        Args:
+            dataset_name (str): The name of the dataset to load.
+            data_dir (str, optional): The path to load the dataset from. Defaults to None.
+            num_proc (int, optional): The number of processes to use for parallel loading. Defaults to 8.
+            test_data_ratio (float, optional): The ratio of data to split as test data. Defaults to 0.1.
+            seed (int, optional): The random seed to use for data splitting. Defaults to None.
+        """
         self.dataset_name = dataset_name
         self.dataset_name_clean = dataset_name.replace('/', '_')
         self.test_data_ratio = test_data_ratio
@@ -151,29 +187,95 @@ class PromptRawDataset(object):
                                          num_proc=num_proc)
 
     def get_train_data(self):
-        return
+        """
+        Returns the training data.
+
+        Returns:
+            datasets.Dataset: The training data.
+        """
+        return self.raw_datasets['train']
 
     def get_eval_data(self):
-        return
+        """
+        Returns the evaluation data.
 
-    # The prompt should be in the format of: " Human: " + actual_prompt_sentence + " Assistant:"
-    def get_prompt(self, sample):
-        return
+        Returns:
+            datasets.Dataset: The evaluation data.
+        """
+        return self.raw_datasets['validation']
 
-    # The chosen response should be in the format of: " " + actual_response_sentence
-    def get_chosen(self, sample):
-        return
+    def get_prompt(self, sample: Dict[str, Any]) -> str:
+        """
+        Returns the formatted prompt for a given sample.
 
-    # The rejected response should be in the format of: " " + actual_response_sentence
-    # If the dataset does not have rejected response, return None
-    def get_rejected(self, sample):
-        return
+        Args:
+            sample (Dict[str, Any]): The sample to generate a prompt for.
 
-    def get_prompt_and_chosen(self, sample):
-        return
+        Returns:
+            str: The formatted prompt.
+        """
+        return f"Human: {sample['prompt']} Assistant:"
 
-    def get_prompt_and_rejected(self, sample):
-        return
+    def get_chosen(self, sample: Dict[str, Any]) -> Optional[str]:
+        """
+        Returns the chosen response for a given sample, if available.
+
+        Args:
+            sample (Dict[str, Any]): The sample to retrieve the chosen response from.
+
+        Returns:
+            str or None: The chosen response, or None if not available.
+        """
+        if 'chosen_response' in sample:
+            return f" {sample['chosen_response']}"
+        else:
+            return None
+
+    def get_rejected(self, sample: Dict[str, Any]) -> Optional[str]:
+        """
+        Returns the rejected response for a given sample, if available.
+
+        Args:
+            sample (Dict[str, Any]): The sample to retrieve the rejected response from.
+
+        Returns:
+            str or None: The rejected response, or None if not available.
+        """
+        if 'rejected_responses' in sample and len(
+                sample['rejected_responses']) > 0:
+            return f" {random.choice(sample['rejected_responses'])}"
+        else:
+            return None
+
+    def get_prompt_and_chosen(
+            self, sample: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+        """
+        Returns the formatted prompt and chosen response for a given sample.
+
+        Args:
+            sample (Dict[str, Any]): The sample to generate the prompt and retrieve the chosen response from.
+
+        Returns:
+            Tuple[str, Optional[str]]: The formatted prompt and chosen response, or None if not available.
+        """
+        prompt = self.get_prompt(sample)
+        chosen = self.get_chosen(sample)
+        return prompt + '' + chosen
+
+    def get_prompt_and_rejected(
+            self, sample: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+        """
+        Returns the formatted prompt and rejected response for a given sample.
+
+        Args:
+            sample (Dict[str, Any]): The sample to generate the prompt and retrieve the rejected response from.
+
+        Returns:
+            Tuple[str, Optional[str]]: The formatted prompt and rejected response, or None if not available.
+        """
+        prompt = self.get_prompt(sample)
+        rejected = self.get_rejected(sample)
+        return prompt + '' + rejected
 
 
 class StackExchangeParied(PromptRawDataset):
