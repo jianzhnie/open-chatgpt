@@ -3,8 +3,8 @@ DeepSpeed/blob/main/megatron/data/dataset_utils.py."""
 import hashlib
 import os
 from itertools import chain
+from typing import Dict, Optional, Tuple, Type
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
@@ -23,7 +23,8 @@ from chatgpt.dataset.raw_datasets import (
     StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
     YitingxieRlhfrewarddatasetsDataset)
 
-name2Method = {
+# Create a dictionary mapping dataset names to their corresponding Dataset classes
+name2Method: Dict[str, Type] = {
     'Dahoas/rm-static': DahoasRmstaticDataset,
     'Dahoas/full-hh-rlhf': DahoasFullhhrlhfDataset,
     'Dahoas/synthetic-instruct-gptj-pairwise':
@@ -47,10 +48,29 @@ name2Method = {
 }
 
 
-def get_raw_dataset(dataset_name: str = None,
-                    test_data_ratio=0.1,
-                    seed: int = None):
+def get_raw_dataset(dataset_name: Optional[str] = None,
+                    test_data_ratio: float = 0.1,
+                    seed: Optional[int] = None):
+    """
+    Given a dataset_name, returns an instance of the corresponding Dataset class,
+    initialized with the given test_data_ratio and seed arguments.
+
+    Args:
+        dataset_name (str, optional): Name of the dataset to return.
+                                      Defaults to None.
+        test_data_ratio (float, optional): Ratio of test data to include in the returned dataset.
+                                           Defaults to 0.1.
+        seed (int, optional): Seed used for generating random numbers.
+                              Defaults to None.
+
+    Returns:
+        An instance of the corresponding Dataset class with the provided parameters.
+
+    Raises:
+        RuntimeError: If no Dataset class is defined for the given dataset_name.
+    """
     if dataset_name in name2Method:
+        # Create an instance of the corresponding Dataset class with the provided parameters
         return name2Method[dataset_name](dataset_name=dataset_name,
                                          test_data_ratio=test_data_ratio,
                                          seed=seed)
@@ -60,97 +80,126 @@ def get_raw_dataset(dataset_name: str = None,
         )
 
 
-def get_shuffle_idx(seed, size):
-    np_rng = np.random.RandomState(seed=seed)
-    dtype_ = np.uint32
-    if size >= (np.iinfo(np.uint32).max - 1):
-        dtype_ = np.int64
-    shuffle_idx = np.arange(start=0, stop=size, step=1, dtype=dtype_)
-    np_rng.shuffle(shuffle_idx)
-    return shuffle_idx
+def data_preprocess(
+        current_dataset: Dataset,
+        raw_dataset: PromptRawDataset,
+        train_phase: int = 1,
+        tokenizer: Optional[PreTrainedTokenizer] = None,
+        max_seq_len: int = 512,
+        end_of_conversation_token: Optional[str] = None) -> PromptDataset:
+    """
+    Create different splits of a dataset based on the training phase.
 
+    Args:
+        current_dataset (Dataset): The current state of the dataset.
+        raw_dataset (PromptRawDataset): The raw version of the dataset.
+        train_phase (int, optional): The phase of training the model is in. Defaults to 1.
+        tokenizer (Optional[PreTrainedTokenizer], optional): The tokenizer to use for tokenizing the text data. \
+          Defaults to None.
+        max_seq_len (int, optional): The maximum length for each sequence. Defaults to 512.
+        end_of_conversation_token (Optional[str], optional): A special end-of-conversation token that will be added \
+            to the end of each response if provided. Defaults to None.
 
-def create_dataset_split(
-    current_dataset: Dataset = None,
-    raw_dataset: PromptRawDataset = None,
-    train_phase: int = 1,
-    tokenizer: PreTrainedTokenizer = None,
-    max_seq_len: int = 512,
-    end_of_conversation_token: str = None,
-):
+    Returns:
+        PromptDataset: An instance of the PromptDataset class containing the prompt_dataset, chosen_dataset, and \
+            reject_dataset, along with other relevant information such as the tokenizer, max_length, and train_phase.
+    """
     prompt_dataset = []
     chosen_dataset = []
     reject_dataset = []
-    if train_phase == 1:
-        for i, raw_sample in enumerate(current_dataset):
-            # tokenize the text
+
+    for i, raw_sample in enumerate(current_dataset):
+        if train_phase == 1:
+            # Get the chosen response
             chosen_sentence = raw_dataset.get_prompt_and_chosen(raw_sample)
-            # the accept response
-            if chosen_sentence is not None:
+            # Add end_of_conversation_token to the chosen response if provided
+            if chosen_sentence is not None and end_of_conversation_token is not None:
                 chosen_sentence += end_of_conversation_token
                 chosen_dataset.append(chosen_sentence)
 
-    elif train_phase == 2:
-        for i, raw_sample in enumerate(current_dataset):
-            # tokenize the text
+        elif train_phase == 2:
+            # Get the chosen and rejected responses
             chosen_sentence = raw_dataset.get_prompt_and_chosen(raw_sample)
-            # the accept response
             reject_sentence = raw_dataset.get_prompt_and_rejected(raw_sample)
-            # the accept response
-            if chosen_sentence is not None and reject_sentence is not None:
-                chosen_sentence += end_of_conversation_token  # the accept response
+            # Add end_of_conversation_token to the chosen and rejected responses if provided
+            if chosen_sentence is not None and reject_sentence is not None and end_of_conversation_token is not None:
+                chosen_sentence += end_of_conversation_token
                 reject_sentence += end_of_conversation_token
                 chosen_dataset.append(chosen_sentence)
                 reject_dataset.append(reject_sentence)
 
-    elif train_phase == 3:
-        for i, raw_sample in enumerate(current_dataset):
-            # tokenize the text
+        elif train_phase == 3:
+            # Get the prompt only
             prompt = raw_dataset.get_prompt(raw_sample)
             if prompt is not None:
                 prompt_dataset.append(prompt)
-    return PromptDataset(
-        prompt_dataset,
-        chosen_dataset,
-        reject_dataset,
-        tokenizer=tokenizer,
-        max_length=max_seq_len,
-        train_phase=train_phase,
-    )
+
+    return PromptDataset(prompt_dataset=prompt_dataset,
+                         chosen_dataset=chosen_dataset,
+                         reject_dataset=reject_dataset,
+                         tokenizer=tokenizer,
+                         max_length=max_seq_len,
+                         train_phase=train_phase)
 
 
 def create_dataset(
-    dataset_name: str = None,
-    train_phase: int = None,
+    dataset_name: str,
+    train_phase: Optional[int] = 1,
     test_data_ratio: float = 0.1,
-    tokenizer: PreTrainedTokenizer = None,
+    tokenizer: Optional[PreTrainedTokenizer] = None,
     max_seq_len: int = 512,
-    end_of_conversation_token: str = None,
-    seed: int = None,
-):
+    end_of_conversation_token: Optional[str] = None,
+    seed: Optional[int] = None,
+) -> Tuple:
+    """
+    A function that creates a training and evaluation dataset by splitting a raw dataset.
+
+    Args:
+    - dataset_name (str): The name of the dataset to load.
+    - train_phase (int, optional): An integer indicating the current phase of training.
+                                    Used for creating subsets of data for different phases of training.
+    - test_data_ratio (float, default=0.1): A float indicating the ratio of test data to total data.
+    - tokenizer (PreTrainedTokenizer, optional): An object used for tokenizing text data.
+    - max_seq_len (int, default=512): An integer indicating the maximum length of token sequences.
+    - end_of_conversation_token (str, optional): A string token that marks the end of a conversation.
+    - seed (int, optional): An integer used for setting random seed value for reproducibility purposes.
+
+    Returns:
+    - A tuple containing two datasets: train and eval datasets.
+    """
+
+    # Load the raw dataset using the given name, test_data_ratio and seed
     raw_dataset = get_raw_dataset(dataset_name,
                                   test_data_ratio=test_data_ratio,
                                   seed=seed)
+
+    # Ensure that the raw dataset is of PromptRawDataset type
     assert isinstance(raw_dataset, PromptRawDataset)
+
+    # Get the training dataset from the raw dataset
     train_dataset = raw_dataset.get_train_data()
-    train_dataset = create_dataset_split(
+
+    # Create a split of the training dataset using create_dataset_split function
+    train_dataset = data_preprocess(
         current_dataset=train_dataset,
         raw_dataset=raw_dataset,
         train_phase=train_phase,
         tokenizer=tokenizer,
         max_seq_len=max_seq_len,
-        end_of_conversation_token=end_of_conversation_token,
-    )
+        end_of_conversation_token=end_of_conversation_token)
 
+    # Get the evaluation dataset from the raw dataset
     eval_dataset = raw_dataset.get_eval_data()
-    eval_dataset = create_dataset_split(
+
+    # Create a split of the evaluation dataset using create_dataset_split function
+    eval_dataset = data_preprocess(
         current_dataset=eval_dataset,
         raw_dataset=raw_dataset,
         train_phase=train_phase,
         tokenizer=tokenizer,
         max_seq_len=max_seq_len,
-        end_of_conversation_token=end_of_conversation_token,
-    )
+        end_of_conversation_token=end_of_conversation_token)
+
     return train_dataset, eval_dataset
 
 
@@ -160,7 +209,7 @@ def create_prompt_dataset(
     test_data_ratio: float = 0.1,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
-    end_of_conversation_token='<|endoftext|>',
+    end_of_conversation_token: str = '<|endoftext|>',
     output_path: str = None,
     seed: int = None,
 ):
