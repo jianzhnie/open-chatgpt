@@ -440,6 +440,133 @@ class DatabricksDolly15k(PromptRawDataset):
 
 
 # TODO
+class MosaicmlDollyHHRLHF(PromptRawDataset):
+    """https://huggingface.co/datasets/mosaicml/dolly_hhrlhf
+
+    This dataset is a combination of Databrick's dolly-15k dataset and a filtered subset of Anthropic's HH-RLHF.
+    It also includes a test split, which was missing in the original dolly set.
+    That test set is composed of 200 randomly selected samples from dolly + 4,929 of the test set samples from HH-RLHF \
+        which made it through the filtering process.
+    The train set contains 59,310 samples; 15,014 - 200 = 14,814 from Dolly, and the remaining 44,496 from HH-RLHF.
+
+    It is slightly larger than Alpaca, and in our experience of slightly higher quality, \
+        but is usable for commercial purposes so long as you follow the terms of the license.
+
+    """
+    def __init__(
+        self,
+        dataset_name='mosaicml/dolly_hhrlhf',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return ' Human: ' + sample['prompt']
+
+    def get_chosen(self, sample):
+        return sample['response']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return ' Human: ' + sample['prompt'] + sample['response']
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class GuanacoDataset(PromptRawDataset):
+    """https://huggingface.co/datasets/JosephusCheung/GuanacoDataset
+
+    Guanaco 模型的数据集旨在增强多语言能力并解决各种语言任务。它以 Alpaca 模型的 175 个任务为基础，、
+    提供了用不同语言重写的种子任务，并添加了专门为英语语法分析、自然语言理解、跨语言自我意识和显式内容识别设计的新任务。
+    该数据集总共包含 534,530 个条目，以 6000 美元的低成本生成。
+
+    The dataset for the Guanaco model is designed to enhance the multilingual capabilities and address various \
+    linguistic tasks. It builds upon the 175 tasks from the Alpaca model by providing rewrites of seed tasks \
+    in different languages and adding new tasks specifically designed for English grammar analysis, \
+    natural language understanding, cross-lingual self-awareness, and explicit content recognition. \
+    The dataset comprises a total of 534,530 entries, generated at a low cost of $6K.
+
+    Free chat dialogues without System input: 32,880 entries (recent update) - in English zh-Hans \
+        zh-Hant-TW Japanese Deutsch
+
+    To test 0-shot tasks of Japanese & Deutsch on original 175 tasks with finetuning on chat only.
+
+    Chat dialogues with System input: 16,087 entries (recent update) - in English zh-Hans zh-Hant-TW zh-Hant-HK
+
+    """
+    def __init__(
+        self,
+        dataset_name='JosephusCheung/GuanacoDataset',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.raw_datasets = load_dataset(dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
+
+        self.raw_datasets = self.raw_datasets.train_test_split(
+            test_size=test_data_ratio)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return ' Human: ' + sample['prompt']
+
+    def get_chosen(self, sample):
+        return sample['response']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return ' Human: ' + sample['prompt'] + sample['response']
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+# TODO
+# baize-chatbot
+# https://github.com/project-baize/baize-chatbot/tree/main/data
+
+# TODO
+# https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
+
+# TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
 
 
