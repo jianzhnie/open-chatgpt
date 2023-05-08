@@ -804,7 +804,7 @@ class OpenAssistantOasst1(PromptRawDataset):
 
 # TODO
 # [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
-class BelleGroup_train_1M_CN(PromptRawDataset):
+class BelleGroupTrain1MCN(PromptRawDataset):
     """https://huggingface.co/datasets/BelleGroup/train_1M_CN
 
     - 内容
@@ -883,7 +883,7 @@ class BelleGroup_train_1M_CN(PromptRawDataset):
         return None
 
 
-class BelleGroup_train_05M_CN(BelleGroup_train_1M_CN):
+class BelleGroupTrain05MCN(BelleGroupTrain1MCN):
     """https://huggingface.co/datasets/BelleGroup/train_1M_CN
 
     - 内容
