@@ -19,7 +19,7 @@ from chatgpt.dataset.raw_datasets import (
     DatabricksDolly15k, HelloSimpleAIHC3ChineseDataset, LaionOIG,
     LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
     MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1,
-    PromptDataset, PromptRawDataset, StackExchangeParied,
+    PromptDataset, PromptRawDataset, StackExchangeParied, StandFord_Alpaca,
     StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
     YitingxieRlhfrewarddatasetsDataset)
 
@@ -42,9 +42,10 @@ name2Method: Dict[str, Type] = {
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
     'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
-    '': DatabricksDolly15k,
-    '': LaionOIG,
-    '': OpenAssistantOasst1
+    'databricks/databricks-dolly-15k': DatabricksDolly15k,
+    'laion/OIG': LaionOIG,
+    'OpenAssistant/oasst1': OpenAssistantOasst1,
+    'tatsu-lab/alpaca': StandFord_Alpaca,
 }
 
 
