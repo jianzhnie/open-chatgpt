@@ -13,14 +13,16 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    AnthropicHHRLHF, CohereMiracljaqueries2212Dataset,
-    CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
-    DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
-    DatabricksDolly15k, HelloSimpleAIHC3ChineseDataset, LaionOIG,
+    AlpacaCoT, AlpacaDataCleaned, AlpacaDataset, AnthropicHHRLHF,
+    BelleGroupTrain1MCN, BelleGroupTrain05MCN,
+    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
+    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
+    DahoasSyntheticinstructgptjpairwiseDataset, DatabricksDolly15k,
+    GuanacoDataset, HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset, LaionOIG,
     LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
-    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1,
-    PromptDataset, PromptRawDataset, StackExchangeParied, StandFord_Alpaca,
-    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
+    MkqaJapaneseDataset, MosaicmlDollyHHRLHF, OpenaiWebgptcomparisonsDataset,
+    OpenAssistantOasst1, PromptDataset, PromptRawDataset, StackExchangeParied,
+    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
@@ -43,9 +45,17 @@ name2Method: Dict[str, Type] = {
     'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
     'databricks/databricks-dolly-15k': DatabricksDolly15k,
+    'mosaicml/dolly_hhrlhf': MosaicmlDollyHHRLHF,
+    'JosephusCheung/GuanacoDataset': GuanacoDataset,
+    'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
+    './prompt_data/huatuo_llama_med/llama_data.json': HuatuoMedDataset,
     'laion/OIG': LaionOIG,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
-    'tatsu-lab/alpaca': StandFord_Alpaca,
+    'BelleGroup/train-1MCN': BelleGroupTrain1MCN,
+    'BelleGroup/train-05MCN': BelleGroupTrain05MCN,
+    'tatsu-lab/alpaca': AlpacaDataset,
+    'AlpacaDataCleaned': AlpacaDataCleaned,
+    'AlpacaCoT': AlpacaCoT,
 }
 
 

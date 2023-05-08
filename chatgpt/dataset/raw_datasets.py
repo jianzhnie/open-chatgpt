@@ -569,7 +569,7 @@ class GuanacoDataset(PromptRawDataset):
         return None
 
 
-class YeungNLP_Firefly(PromptRawDataset):
+class YeungNLPFirefly(PromptRawDataset):
     """https://huggingface.co/datasets/YeungNLP/firefly-train-1.1M
 
     本数据应用于项目：Firefly（流萤）: 中文对话式大语言模型 ，训练后得到的模型firefly-1b4

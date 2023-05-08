@@ -18,7 +18,7 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 |   8   |                laion/OIG                |                  LaionOIG                  |                https://huggingface.co/datasets/laion/oig                |             |
 |   9   |          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           |             |
 |  10   |         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          |             |
-|  11   |        BelleGroup/train_0.5M_CN         |           BelleGroupTrain0.5MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
+|  11   |        BelleGroup/train_0.5M_CN         |           BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
 |  12   |            tatsu-lab/alpaca             |                   Alpaca                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
 |  13   |          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
 |  14   |           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
