@@ -647,6 +647,7 @@ class YeungNLP_Firefly(PromptRawDataset):
 # TODO
 # (alpaca_gpt4_zh)|52K
 
+
 # TODO
 class HuatuoMedDataset(PromptRawDataset):
     """https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
@@ -917,7 +918,7 @@ class BelleGroup_train_05M_CN(BelleGroup_train_1M_CN):
 
 # TODO
 # [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
-class StandFord_Alpaca(PromptRawDataset):
+class AlpacaDataset(PromptRawDataset):
     """https://huggingface.co/datasets/tatsu-lab/alpaca
     """
     def __init__(
@@ -939,6 +940,121 @@ class StandFord_Alpaca(PromptRawDataset):
         self.raw_datasets = self.raw_datasets.train_test_split(
             test_size=test_data_ratio)
 
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class AlpacaDataCleaned(PromptRawDataset):
+    """https://huggingface.co/datasets/yahma/alpaca-cleaned
+    """
+    def __init__(
+        self,
+        dataset_name='yahma/alpaca-cleaned',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.raw_datasets = load_dataset(dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
+
+        self.raw_datasets = self.raw_datasets.train_test_split(
+            test_size=test_data_ratio)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class AlpacaCoT(PromptRawDataset):
+    """https://huggingface.co/datasets/Dahoas/rm-static
+    """
+    def __init__(
+        self,
+        dataset_name='QingyiSi/Alpaca-CoT',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
 
