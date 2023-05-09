@@ -59,130 +59,10 @@ name2Method: Dict[str, Type] = {
 }
 
 localdata2Method = {
-    'huatuo_llama_med': HuatuoMedDataset,
+    'huatuo_med_data': HuatuoMedDataset,
     'InstructionWild-en': InstructWildDataset,
     'InstructionWild-zh': InstructWildDataset,
 }
-
-# def get_raw_dataset(dataset_name, data_dir, num_proc, test_data_ratio, seed):
-
-#     if 'Dahoas/rm-static' in dataset_name:
-#         return DahoasRmstaticDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'Dahoas/full-hh-rlhf' in dataset_name:
-#         return DahoasFullhhrlhfDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'Dahoas/synthetic-instruct-gptj-pairwise' in dataset_name:
-#         return DahoasSyntheticinstructgptjpairwiseDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'yitingxie/rlhf-reward-datasets' in dataset_name:
-#         return YitingxieRlhfrewarddatasetsDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'openai/webgpt_comparisons' in dataset_name:
-#         return OpenaiWebgptcomparisonsDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'stanfordnlp/SHP' in dataset_name:
-#         return StanfordnlpSHPDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'wangrui6/Zhihu-KOL' in dataset_name:
-#         return Wangrui6ZhihuKOLDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'Cohere/miracl-zh-queries-22-12' in dataset_name:
-#         return CohereMiraclzhqueries2212Dataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'Hello-SimpleAI/HC3-Chinese' in dataset_name:
-#         return HelloSimpleAIHC3ChineseDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'mkqa-Chinese' in dataset_name:
-#         return MkqaChineseDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'mkqa-Japanese' in dataset_name:
-#         return MkqaJapaneseDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'Cohere/miracl-ja-queries-22-12' in dataset_name:
-#         return CohereMiracljaqueries2212Dataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'lmqg/qg_jaquad' in dataset_name:
-#         return LmqgQgjaquadDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-#     elif 'lmqg/qag_jaquad' in dataset_name:
-#         return LmqgQagjaquadDataset(
-#             dataset_name,
-#             data_dir,
-#             num_proc,
-#             test_data_ratio,
-#             seed,
-#         )
-
-#     else:
-#         raise RuntimeError(
-#             f'We do not have configs for dataset {dataset_name}, but you can add it by yourself in raw_datasets.py.'
-#         )
 
 
 def get_raw_dataset(dataset_name: Optional[str] = None,
@@ -213,22 +93,39 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
                                          data_dir=data_dir,
                                          test_data_ratio=test_data_ratio,
                                          seed=seed)
-    elif dataset_name == 'huatuo_llama_med':
+    elif dataset_name == 'huatuo_med_data':
         dataset_name = os.path.join(data_dir, dataset_name, 'llama_data.json')
 
-        return HuatuoMedDataset(ataset_name=dataset_name,
+        return HuatuoMedDataset(dataset_name=dataset_name,
                                 data_dir=data_dir,
                                 test_data_ratio=test_data_ratio,
                                 seed=seed)
+    
+    elif dataset_name == 'huatuo_med_cancer':
+        dataset_name = os.path.join(data_dir, "huatuo_med_data", 'liver_cancer.json')
 
-    elif dataset_name == 'InstructionWild':
-        dataset_name = os.path.join(data_dir, dataset_name,
+        return HuatuoMedDataset(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                test_data_ratio=test_data_ratio,
+                                seed=seed)
+    
+    elif dataset_name == 'InstructionWild_en':
+        dataset_name = os.path.join(data_dir, "InstructionWild",
                                     'instinwild_en.json')
 
-        return InstructWildDataset(ataset_name=dataset_name,
+        return InstructWildDataset(dataset_name=dataset_name,
                                    data_dir=data_dir,
                                    test_data_ratio=test_data_ratio,
                                    seed=seed)
+    elif dataset_name == 'InstructionWild_ch':
+        dataset_name = os.path.join(data_dir, "InstructionWild",
+                                    'instinwild_ch.json')
+
+        return InstructWildDataset(dataset_name=dataset_name,
+                                   data_dir=data_dir,
+                                   test_data_ratio=test_data_ratio,
+                                   seed=seed)
+    
     else:
         raise RuntimeError(
             f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
@@ -329,10 +226,6 @@ def create_dataset(
                                   data_dir=data_dir,
                                   test_data_ratio=test_data_ratio,
                                   seed=seed)
-
-    # Ensure that the raw dataset is of PromptRawDataset type
-    assert isinstance(raw_dataset, PromptRawDataset)
-
     # Get the training dataset from the raw dataset
     train_dataset = raw_dataset.get_train_data()
 
