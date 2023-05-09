@@ -18,7 +18,7 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 |   8   |                laion/OIG                |                  LaionOIG                  |                https://huggingface.co/datasets/laion/oig                |             |
 |   9   |          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           |             |
 |  10   |         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          |             |
-|  11   |        BelleGroup/train_0.5M_CN         |           BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
+|  11   |        BelleGroup/train_0.5M_CN         |            BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
 |  12   |            tatsu-lab/alpaca             |                   Alpaca                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
 |  13   |          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
 |  14   |           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
@@ -42,14 +42,40 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 ## Using for Training SFT model
 
 
-"""python
-
-
-dataset_list = [
-
-"lvwerra/stack-exchange-paired"
-
+```python
+dataset_list =
+[
+    'Dahoas/rm-static',
+    'Dahoas/full-hh-rlhf',
+    'Dahoas/synthetic-instruct-gptj-pairwise',
+    'yitingxie/rlhf-reward-datasets',
+    'openai/webgpt_comparisons',
+    'stanfordnlp/SHP',
+    'wangrui6/Zhihu-KOL',
+    'Cohere/miracl-zh-queries-22-12',
+    'Hello-SimpleAI/HC3-Chinese',
+    'mkqa-Chinese',
+    'mkqa-Japanese',
+    'Cohere/miracl-ja-queries-22-12',
+    'lmqg/qg_jaquad',
+    'lmqg/qag_jaquad',
+    'lvwerra/stack-exchange-paired',
+    'Anthropic/hh-rlhf',
+    'databricks/databricks-dolly-15k',
+    'mosaicml/dolly_hhrlhf',
+    'JosephusCheung/GuanacoDataset',
+    'YeungNLP/firefly-train-1.1M',
+    'laion/OIG',
+    'OpenAssistant/oasst1',
+    'BelleGroup/train-1MCN',
+    'BelleGroup/train-05MCN',
+    'tatsu-lab/alpaca',
+    'AlpacaDataCleaned',
+    'AlpacaCoT',
+    './prompt_data/huatuo_llama_med/llama_data.json',
 ]
+
+
 ```
 
 

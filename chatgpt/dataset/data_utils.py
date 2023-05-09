@@ -51,15 +51,16 @@ name2Method: Dict[str, Type] = {
     './prompt_data/huatuo_llama_med/llama_data.json': HuatuoMedDataset,
     'laion/OIG': LaionOIG,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
-    'BelleGroup/train-1MCN': BelleGroupTrain1MCN,
-    'BelleGroup/train-05MCN': BelleGroupTrain05MCN,
+    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
+    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
     'tatsu-lab/alpaca': AlpacaDataset,
-    'AlpacaDataCleaned': AlpacaDataCleaned,
-    'AlpacaCoT': AlpacaCoT,
+    'yahma/alpaca-cleaned': AlpacaDataCleaned,
+    'QingyiSi/Alpaca-CoT': AlpacaCoT,
 }
 
 
 def get_raw_dataset(dataset_name: Optional[str] = None,
+                    data_dir: Optional[str] = None,
                     test_data_ratio: float = 0.1,
                     seed: Optional[int] = None):
     """
@@ -83,6 +84,7 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
     if dataset_name in name2Method:
         # Create an instance of the corresponding Dataset class with the provided parameters
         return name2Method[dataset_name](dataset_name=dataset_name,
+                                         data_dir=data_dir,
                                          test_data_ratio=test_data_ratio,
                                          seed=seed)
     else:
@@ -155,6 +157,7 @@ def data_preprocess(
 
 def create_dataset(
     dataset_name: str,
+    data_dir: Optional[str] = None,
     train_phase: Optional[int] = 1,
     test_data_ratio: float = 0.1,
     tokenizer: Optional[PreTrainedTokenizer] = None,
@@ -181,6 +184,7 @@ def create_dataset(
 
     # Load the raw dataset using the given name, test_data_ratio and seed
     raw_dataset = get_raw_dataset(dataset_name,
+                                  data_dir=data_dir,
                                   test_data_ratio=test_data_ratio,
                                   seed=seed)
 
@@ -216,7 +220,8 @@ def create_dataset(
 
 def create_prompt_dataset(
     dataset_names: list = None,
-    train_phase: int = None,
+    data_dir: Optional[str] = None,
+    train_phase: int = 1,
     test_data_ratio: float = 0.1,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
@@ -248,6 +253,7 @@ def create_prompt_dataset(
         for d_name in dataset_names:
             train_dataset, eval_dataset = create_dataset(
                 dataset_name=d_name,
+                data_dir=data_dir,
                 train_phase=train_phase,
                 test_data_ratio=test_data_ratio,
                 tokenizer=tokenizer,
@@ -260,7 +266,6 @@ def create_prompt_dataset(
             )
             train_datasets.append(train_dataset)
             eval_datasets.append(eval_dataset)
-            print(train_datasets)
             train_size += len(train_dataset)
             eval_size += len(eval_dataset)
         train_dataset = ConcatDataset(train_datasets)
