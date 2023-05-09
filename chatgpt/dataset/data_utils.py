@@ -100,17 +100,18 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
                                 data_dir=data_dir,
                                 test_data_ratio=test_data_ratio,
                                 seed=seed)
-    
+
     elif dataset_name == 'huatuo_med_cancer':
-        dataset_name = os.path.join(data_dir, "huatuo_med_data", 'liver_cancer.json')
+        dataset_name = os.path.join(data_dir, 'huatuo_med_data',
+                                    'liver_cancer.json')
 
         return HuatuoMedDataset(dataset_name=dataset_name,
                                 data_dir=data_dir,
                                 test_data_ratio=test_data_ratio,
                                 seed=seed)
-    
+
     elif dataset_name == 'InstructionWild_en':
-        dataset_name = os.path.join(data_dir, "InstructionWild",
+        dataset_name = os.path.join(data_dir, 'InstructionWild',
                                     'instinwild_en.json')
 
         return InstructWildDataset(dataset_name=dataset_name,
@@ -118,14 +119,14 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
                                    test_data_ratio=test_data_ratio,
                                    seed=seed)
     elif dataset_name == 'InstructionWild_ch':
-        dataset_name = os.path.join(data_dir, "InstructionWild",
+        dataset_name = os.path.join(data_dir, 'InstructionWild',
                                     'instinwild_ch.json')
 
         return InstructWildDataset(dataset_name=dataset_name,
                                    data_dir=data_dir,
                                    test_data_ratio=test_data_ratio,
                                    seed=seed)
-    
+
     else:
         raise RuntimeError(
             f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
