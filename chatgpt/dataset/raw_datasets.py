@@ -1147,6 +1147,113 @@ class AlpacaCoT(PromptRawDataset):
         return None
 
 
+class AlpacaChinese(object):
+    """https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data
+    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='trans_chinese_alpaca_data.json',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+# English dataset
+class Gpt4allPromptGeneration(PromptRawDataset):
+    """https://huggingface.co/datasets/Dahoas/rm-static
+    """
+    def __init__(
+        self,
+        dataset_name='nomic-ai/gpt4all-j-prompt-generations',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['prompt']
+
+    def get_chosen(self, sample):
+        return sample['response']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['prompt'] + sample['chosen']
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
     """https://huggingface.co/datasets/Dahoas/rm-static
