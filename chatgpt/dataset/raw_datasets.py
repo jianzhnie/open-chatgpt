@@ -1207,6 +1207,57 @@ class AlpacaChinese(object):
         return None
 
 
+# TODO
+class FudanMossDataset(object):
+    """https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data
+    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='fnlp/moss-002-sft-data',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+
+        return sample['plain_text']
+
+    def get_chosen(self, sample):
+        return sample['plain_text']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['plain_text'] 
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+
 # English dataset
 class Gpt4allPromptGeneration(PromptRawDataset):
     """https://huggingface.co/datasets/Dahoas/rm-static
@@ -1648,8 +1699,8 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.dataset = self.raw_datasets['train']
-        self.raw_datasets = self.dataset.train_test_split(
+        self.datasets = self.raw_datasets['train']
+        self.raw_datasets = self.datasets.train_test_split(
             test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):

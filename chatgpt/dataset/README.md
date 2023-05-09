@@ -90,3 +90,11 @@ dataset_list = [
 
 ]
 ```
+
+
+## Reference
+
+- https://github.com/yaodongC/awesome-instruction-dataset
+- https://github.com/zhilizju/Awesome-instruction-tuning
+- https://github.com/zhengzangw/awesome-instruction-tunning-datasets
+- https://github.com/andy-yangz/Awesome-Chinese-Instruction-Datasets
