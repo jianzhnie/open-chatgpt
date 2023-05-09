@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 
@@ -397,7 +397,7 @@ class DatabricksDolly15k(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         PROMPT_DICT = {
             'prompt_input':
@@ -538,7 +538,7 @@ class GuanacoDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -611,7 +611,7 @@ class YeungNLPFirefly(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -648,20 +648,17 @@ class YeungNLPFirefly(PromptRawDataset):
 
 # TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
-class InstructWildDataset(PromptRawDataset):
+class InstructWildDataset(object):
     """https://github.com/XueFuzhao/InstructionWild/tree/main/data
     """
     def __init__(
         self,
-        dataset_name='./prompt_data/huatuo_llama_med/llama_data.json',
+        dataset_name='instinwild_ch.json',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
-
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
 
         self.raw_datasets = load_dataset('json',
                                          data_files=dataset_name,
@@ -670,7 +667,7 @@ class InstructWildDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -717,7 +714,7 @@ class InstructWildDataset(PromptRawDataset):
 
 
 # TODO
-class HuatuoMedDataset(PromptRawDataset):
+class HuatuoMedDataset(object):
     """https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
     """
     def __init__(
@@ -729,17 +726,12 @@ class HuatuoMedDataset(PromptRawDataset):
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
-
         self.raw_datasets = load_dataset('json',
                                          data_files=dataset_name,
-                                         data_dir=data_dir,
                                          num_proc=num_proc)
-
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -907,7 +899,7 @@ class BelleGroupTrain1MCN(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -1001,7 +993,7 @@ class AlpacaDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -1060,7 +1052,7 @@ class AlpacaDataCleaned(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -1246,7 +1238,7 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1329,7 +1321,7 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1455,7 +1447,7 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1551,7 +1543,7 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1608,7 +1600,7 @@ class MkqaChineseDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1664,17 +1656,15 @@ class MkqaJapaneseDataset(PromptRawDataset):
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio)
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
-        dataset = Subset(dataset, self.train_index)
-        return dataset
+        return self.raw_datasets['train']
 
     def get_eval_data(self):
 
-        dataset = Subset(dataset, self.eval_index)
-        return dataset
+        return self.raw_datasets['test']
 
     def get_prompt(self, sample):
         if sample['queries']['ja'] is not None:
