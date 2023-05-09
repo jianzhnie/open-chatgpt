@@ -299,7 +299,7 @@ class StackExchangeParied(PromptRawDataset):
         self,
         dataset_name='lvwerra/stack-exchange-paired',
         data_dir: str = None,
-        num_proc: int = 1,
+        num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
@@ -307,9 +307,13 @@ class StackExchangeParied(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
+        self.raw_datasets = load_dataset(
+            dataset_name,
+            data_dir=data_dir,
+            split='train',
+            num_proc=num_proc,
+            use_auth_token=True,
+        )
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -641,12 +645,72 @@ class YeungNLPFirefly(PromptRawDataset):
 # baize-chatbot
 # https://github.com/project-baize/baize-chatbot/tree/main/data
 
-# TODO
-# https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
 
 # TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
-# https://drive.google.com/file/d/1OqfOUWYfrK6riE9erOx-Izp3nItfqz_K/view
+class InstructWildDataset(PromptRawDataset):
+    """https://github.com/XueFuzhao/InstructionWild/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='./prompt_data/huatuo_llama_med/llama_data.json',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.raw_datasets = load_dataset('json',
+                                         data_files=dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
 
 # TODO
 # (alpaca_gpt4_zh)|52K
@@ -658,7 +722,7 @@ class HuatuoMedDataset(PromptRawDataset):
     """
     def __init__(
         self,
-        dataset_name='./prompt_data/huatuo_llama_med/llama_data.json',
+        dataset_name='llama_data.json',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
