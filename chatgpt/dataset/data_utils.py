@@ -13,14 +13,17 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    AnthropicHHRLHF, CohereMiracljaqueries2212Dataset,
-    CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
-    DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
-    DatabricksDolly15k, HelloSimpleAIHC3ChineseDataset, LaionOIG,
-    LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
-    MkqaJapaneseDataset, OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1,
-    PromptDataset, PromptRawDataset, StackExchangeParied, StandFord_Alpaca,
-    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset,
+    AlpacaCoT, AlpacaDataCleaned, AlpacaDataset, AnthropicHHRLHF,
+    BelleGroupTrain1MCN, BelleGroupTrain05MCN,
+    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
+    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
+    DahoasSyntheticinstructgptjpairwiseDataset, DatabricksDolly15k,
+    GuanacoDataset, HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset,
+    InstructWildDataset, LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
+    MkqaChineseDataset, MkqaJapaneseDataset, MosaicmlDollyHHRLHF,
+    OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1, PromptDataset,
+    PromptRawDataset, StackExchangeParied, StanfordnlpSHPDataset,
+    Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
@@ -43,13 +46,27 @@ name2Method: Dict[str, Type] = {
     'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
     'databricks/databricks-dolly-15k': DatabricksDolly15k,
+    'mosaicml/dolly_hhrlhf': MosaicmlDollyHHRLHF,
+    'JosephusCheung/GuanacoDataset': GuanacoDataset,
+    'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
     'laion/OIG': LaionOIG,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
-    'tatsu-lab/alpaca': StandFord_Alpaca,
+    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
+    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
+    'tatsu-lab/alpaca': AlpacaDataset,
+    'yahma/alpaca-cleaned': AlpacaDataCleaned,
+    'QingyiSi/Alpaca-CoT': AlpacaCoT,
+}
+
+localdata2Method = {
+    'huatuo_med_data': HuatuoMedDataset,
+    'InstructionWild-en': InstructWildDataset,
+    'InstructionWild-zh': InstructWildDataset,
 }
 
 
 def get_raw_dataset(dataset_name: Optional[str] = None,
+                    data_dir: Optional[str] = None,
                     test_data_ratio: float = 0.1,
                     seed: Optional[int] = None):
     """
@@ -73,8 +90,43 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
     if dataset_name in name2Method:
         # Create an instance of the corresponding Dataset class with the provided parameters
         return name2Method[dataset_name](dataset_name=dataset_name,
+                                         data_dir=data_dir,
                                          test_data_ratio=test_data_ratio,
                                          seed=seed)
+    elif dataset_name == 'huatuo_med_data':
+        dataset_name = os.path.join(data_dir, dataset_name, 'llama_data.json')
+
+        return HuatuoMedDataset(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                test_data_ratio=test_data_ratio,
+                                seed=seed)
+
+    elif dataset_name == 'huatuo_med_cancer':
+        dataset_name = os.path.join(data_dir, 'huatuo_med_data',
+                                    'liver_cancer.json')
+
+        return HuatuoMedDataset(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                test_data_ratio=test_data_ratio,
+                                seed=seed)
+
+    elif dataset_name == 'InstructionWild_en':
+        dataset_name = os.path.join(data_dir, 'InstructionWild',
+                                    'instinwild_en.json')
+
+        return InstructWildDataset(dataset_name=dataset_name,
+                                   data_dir=data_dir,
+                                   test_data_ratio=test_data_ratio,
+                                   seed=seed)
+    elif dataset_name == 'InstructionWild_ch':
+        dataset_name = os.path.join(data_dir, 'InstructionWild',
+                                    'instinwild_ch.json')
+
+        return InstructWildDataset(dataset_name=dataset_name,
+                                   data_dir=data_dir,
+                                   test_data_ratio=test_data_ratio,
+                                   seed=seed)
+
     else:
         raise RuntimeError(
             f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
@@ -145,6 +197,7 @@ def data_preprocess(
 
 def create_dataset(
     dataset_name: str,
+    data_dir: Optional[str] = None,
     train_phase: Optional[int] = 1,
     test_data_ratio: float = 0.1,
     tokenizer: Optional[PreTrainedTokenizer] = None,
@@ -171,12 +224,9 @@ def create_dataset(
 
     # Load the raw dataset using the given name, test_data_ratio and seed
     raw_dataset = get_raw_dataset(dataset_name,
+                                  data_dir=data_dir,
                                   test_data_ratio=test_data_ratio,
                                   seed=seed)
-
-    # Ensure that the raw dataset is of PromptRawDataset type
-    assert isinstance(raw_dataset, PromptRawDataset)
-
     # Get the training dataset from the raw dataset
     train_dataset = raw_dataset.get_train_data()
 
@@ -206,7 +256,8 @@ def create_dataset(
 
 def create_prompt_dataset(
     dataset_names: list = None,
-    train_phase: int = None,
+    data_dir: Optional[str] = None,
+    train_phase: int = 1,
     test_data_ratio: float = 0.1,
     tokenizer: PreTrainedTokenizer = None,
     max_seq_len: int = 512,
@@ -238,6 +289,7 @@ def create_prompt_dataset(
         for d_name in dataset_names:
             train_dataset, eval_dataset = create_dataset(
                 dataset_name=d_name,
+                data_dir=data_dir,
                 train_phase=train_phase,
                 test_data_ratio=test_data_ratio,
                 tokenizer=tokenizer,
@@ -250,7 +302,6 @@ def create_prompt_dataset(
             )
             train_datasets.append(train_dataset)
             eval_datasets.append(eval_dataset)
-            print(train_datasets)
             train_size += len(train_dataset)
             eval_size += len(eval_dataset)
         train_dataset = ConcatDataset(train_datasets)

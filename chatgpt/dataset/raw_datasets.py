@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 
@@ -307,9 +307,13 @@ class StackExchangeParied(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
+        self.raw_datasets = load_dataset(
+            dataset_name,
+            data_dir=data_dir,
+            split='train',
+            num_proc=num_proc,
+            use_auth_token=True,
+        )
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -390,12 +394,22 @@ class DatabricksDolly15k(PromptRawDataset):
 
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
 
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        PROMPT_DICT = {
+            'prompt_input':
+            ('Below is an instruction that describes a task, paired with an input that provides further context. '
+             'Write a response that appropriately completes the request.\n\n'
+             '### Instruction:\n{instruction}\n\n### Input:\n{context}\n\n### Response:'
+             ),
+            'prompt_no_input':
+            ('Below is an instruction that describes a task. '
+             'Write a response that appropriately completes the request.\n\n'
+             '### Instruction:\n{instruction}\n\n### Response:'),
+        }
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -410,8 +424,7 @@ class DatabricksDolly15k(PromptRawDataset):
         if sample.get('context', '') != '':
             instruct = self.prompt_input.format_map(sample)
         else:
-            instruct = self.prompt_no_input.format(
-                instruction=sample['instruction'])
+            instruct = self.prompt_no_input.format_map(sample)
         return ' Human: ' + instruct + ' Assistant:'
 
     def get_chosen(self, sample):
@@ -427,8 +440,7 @@ class DatabricksDolly15k(PromptRawDataset):
         if sample.get('context', '') != '':
             instruct = self.prompt_input.format_map(sample)
         else:
-            instruct = self.prompt_no_input.format(
-                instruction=sample['instruction'])
+            instruct = self.prompt_no_input.format_map(sample)
         target = sample['response']
         return ' Human: ' + instruct + ' Assistant: ' + target
 
@@ -524,12 +536,12 @@ class GuanacoDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -538,10 +550,14 @@ class GuanacoDataset(PromptRawDataset):
         return self.raw_datasets['test']
 
     def get_prompt(self, sample):
-        return ' Human: ' + sample['prompt']
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
 
     def get_chosen(self, sample):
-        return sample['response']
+        return ' ' + sample['output']
 
     def get_rejected(self, sample):
         print(
@@ -550,7 +566,73 @@ class GuanacoDataset(PromptRawDataset):
         return None
 
     def get_prompt_and_chosen(self, sample):
-        return ' Human: ' + sample['prompt'] + sample['response']
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class YeungNLPFirefly(PromptRawDataset):
+    """https://huggingface.co/datasets/YeungNLP/firefly-train-1.1M
+
+    本数据应用于项目：Firefly（流萤）: 中文对话式大语言模型 ，训练后得到的模型firefly-1b4
+
+    如果您觉得此数据集对您有帮助，请like此数据集并在Github项目中star我们。
+
+    我们收集了23个常见的中文数据集，对于每个任务，由人工书写若干种指令模板，保证数据的高质量与丰富度，数据量为115万 。
+
+    每条数据的格式如下，包含任务类型、输入、目标输出：
+
+    {
+    "kind": "ClassicalChinese",
+    "input": "将下面句子翻译成现代文：\n石中央又生一树，高百余尺，条干偃阴为五色，翠叶如盘，花径尺余，色深碧，蕊深红，异香成烟，著物霏霏。",
+    "target": "大石的中央长着一棵树，一百多尺高，枝干是彩色的，树叶有盘子那样大，花的直径有一尺宽，花瓣深蓝色，花中飘出奇异的香气笼罩着周围，如烟似雾。"
+    }
+
+    """
+    def __init__(
+        self,
+        dataset_name='YeungNLP/firefly-train-1.1M',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return ' Human: ' + sample['input']
+
+    def get_chosen(self, sample):
+        return ' ' + sample['target']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return ' Human: ' + sample['input'] + sample['target']
 
     def get_prompt_and_rejected(self, sample):
         print(
@@ -563,11 +645,132 @@ class GuanacoDataset(PromptRawDataset):
 # baize-chatbot
 # https://github.com/project-baize/baize-chatbot/tree/main/data
 
-# TODO
-# https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
 
 # TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
+class InstructWildDataset(object):
+    """https://github.com/XueFuzhao/InstructionWild/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='instinwild_ch.json',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        self.raw_datasets = load_dataset('json',
+                                         data_files=dataset_name,
+                                         data_dir=data_dir,
+                                         num_proc=num_proc)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+# TODO
+# (alpaca_gpt4_zh)|52K
+
+
+# TODO
+class HuatuoMedDataset(object):
+    """https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='llama_data.json',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        self.raw_datasets = load_dataset('json',
+                                         data_files=dataset_name,
+                                         num_proc=num_proc)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
 
 
 # TODO
@@ -661,20 +864,30 @@ class OpenAssistantOasst1(PromptRawDataset):
 
 
 # TODO
-# [baize-chatbot](https://github.com/project-baize/baize-chatbot/tree/main/data)
-
-# TODO
 # [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
+class BelleGroupTrain1MCN(PromptRawDataset):
+    """https://huggingface.co/datasets/BelleGroup/train_1M_CN
+
+    - 内容
+        包含约200万条由BELLE项目生成的中文指令数据。
+
+    - 样例
+        {
+        "instruction": "给定一个文字输入，将其中的所有数字加1。\n“明天的会议在9点开始，记得准时到达。”\n",
+        "input": "",
+        "output": "“明天的会议在10点开始，记得准时到达。”"
+        }
+
+    - 字段：
+        instruction: 指令
+        input: 输入（本数据集均为空）
+        output: 输出
 
 
-# TODO
-# [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
-class StandFord_Alpaca(PromptRawDataset):
-    """https://huggingface.co/datasets/tatsu-lab/alpaca
     """
     def __init__(
         self,
-        dataset_name='tatsu-lab/alpaca',
+        dataset_name='BelleGroup/train_1M_CN',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
@@ -684,12 +897,9 @@ class StandFord_Alpaca(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
@@ -704,8 +914,7 @@ class StandFord_Alpaca(PromptRawDataset):
         if sample.get('input', '') != '':
             instruct = self.prompt_input.format_map(sample)
         else:
-            instruct = self.prompt_no_input.format(
-                instruction=sample['instruction'])
+            instruct = self.prompt_no_input.format_map(sample)
         return ' Human: ' + instruct + ' Assistant:'
 
     def get_chosen(self, sample):
@@ -721,10 +930,322 @@ class StandFord_Alpaca(PromptRawDataset):
         if sample.get('input', '') != '':
             instruct = self.prompt_input.format_map(sample)
         else:
-            instruct = self.prompt_no_input.format(
-                instruction=sample['instruction'])
+            instruct = self.prompt_no_input.format_map(sample)
         target = sample['output']
         return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class BelleGroupTrain05MCN(BelleGroupTrain1MCN):
+    """https://huggingface.co/datasets/BelleGroup/train_1M_CN
+
+    - 内容
+        包含约200万条由BELLE项目生成的中文指令数据。
+
+    - 样例
+        {
+        "instruction": "给定一个文字输入，将其中的所有数字加1。\n“明天的会议在9点开始，记得准时到达。”\n",
+        "input": "",
+        "output": "“明天的会议在10点开始，记得准时到达。”"
+        }
+
+    - 字段：
+        instruction: 指令
+        input: 输入（本数据集均为空）
+        output: 输出
+
+
+    """
+    def __init__(
+        self,
+        dataset_name='BelleGroup/train_0.5M_CN',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+
+# TODO
+# [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
+class AlpacaDataset(PromptRawDataset):
+    """https://huggingface.co/datasets/tatsu-lab/alpaca
+    """
+    def __init__(
+        self,
+        dataset_name='tatsu-lab/alpaca',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class AlpacaDataCleaned(PromptRawDataset):
+    """https://huggingface.co/datasets/yahma/alpaca-cleaned
+    """
+    def __init__(
+        self,
+        dataset_name='yahma/alpaca-cleaned',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class AlpacaCoT(PromptRawDataset):
+    """https://huggingface.co/datasets/Dahoas/rm-static
+    """
+    def __init__(
+        self,
+        dataset_name='QingyiSi/Alpaca-CoT',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+class AlpacaChinese(object):
+    """https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data
+    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data
+    """
+    def __init__(
+        self,
+        dataset_name='trans_chinese_alpaca_data.json',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
+            'prompt_input'], PROMPT_DICT['prompt_no_input']
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        return ' Human: ' + instruct + ' Assistant:'
+
+    def get_chosen(self, sample):
+        return ' ' + sample['output']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        if sample.get('input', '') != '':
+            instruct = self.prompt_input.format_map(sample)
+        else:
+            instruct = self.prompt_no_input.format_map(sample)
+        target = sample['output']
+        return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+# English dataset
+class Gpt4allPromptGeneration(PromptRawDataset):
+    """https://huggingface.co/datasets/Dahoas/rm-static
+    """
+    def __init__(
+        self,
+        dataset_name='nomic-ai/gpt4all-j-prompt-generations',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ):
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+        return sample['prompt']
+
+    def get_chosen(self, sample):
+        return sample['response']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['prompt'] + sample['chosen']
 
     def get_prompt_and_rejected(self, sample):
         print(
@@ -747,9 +1268,6 @@ class DahoasRmstaticDataset(PromptRawDataset):
     ):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -825,18 +1343,9 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -917,18 +1426,9 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1052,18 +1552,9 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1157,18 +1648,9 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1223,19 +1705,9 @@ class MkqaChineseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
@@ -1289,28 +1761,17 @@ class MkqaJapaneseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        # self.dataset = self.raw_datasets['train']
-        # self.train_index, self.eval_index = get_dataset_split_index(
-        #     data_size=len(self.dataset),
-        #     test_data_ratio=self.test_data_ratio,
-        #     seed=self.seed,
-        # )
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
-
-        self.raw_datasets = self.raw_datasets.train_test_split(
-            test_size=test_data_ratio)
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
 
-        dataset = Subset(dataset, self.train_index)
-        return dataset
+        return self.raw_datasets['train']
 
     def get_eval_data(self):
 
-        dataset = Subset(dataset, self.eval_index)
-        return dataset
+        return self.raw_datasets['test']
 
     def get_prompt(self, sample):
         if sample['queries']['ja'] is not None:
