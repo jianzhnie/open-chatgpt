@@ -22,20 +22,20 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 |  12   |            tatsu-lab/alpaca             |                   Alpaca                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
 |  13   |          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
 |  14   |           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
-|  15   |            Dahoas/rm-static             |       RmStaDahoasRmstaticDatasettic        |            https://huggingface.co/datasets/dahoas/rm-static             |             |
-|  16   |           Dahoas/full-hh-rlhf           |          DahoasFullhhrlhfDataset           |           https://huggingface.co/datasets/dahoas/full-hh-rlhf           |             |
-|  17   | Dahoas/synthetic-instruct-gptj-pairwise | DahoasSyntheticinstructgptjpairwiseDataset | https://huggingface.co/datasets/dahoas/synthetic-instruct-gptj-pairwise |             |
-|  18   |     yitingxie/rlhf-reward-datasets      |     YitingxieRlhfrewarddatasetsDataset     |     https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets      |             |
-|  19   |        openai/webgpt_comparisons        |       OpenaiWebgptcomparisonsDataset       |        https://huggingface.co/datasets/openai/webgpt_comparisons        |             |
-|  20   |             stanfordnlp/SHP             |           StanfordnlpSHPDataset            |             https://huggingface.co/datasets/stanfordnlp/SHP             |             |
-|  21   |           wangrui6/Zhihu-KOL            |          Wangrui6ZhihuKOLDataset           |           https://huggingface.co/datasets/wangrui6/Zhihu-KOL            |             |
-|  22   |     Cohere/miracl-zh-queries-22-12      |      CohereMiraclzhqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-zh-queries-22-12      |             |
+|  15   |            Dahoas/rm-static             |       RmStaDahoasRmstaticDatasettic        |            https://huggingface.co/datasets/dahoas/rm-static             |       8w      |
+|  16   |           Dahoas/full-hh-rlhf           |          DahoasFullhhrlhfDataset           |           https://huggingface.co/datasets/dahoas/full-hh-rlhf           |         12w    |
+|  17   | Dahoas/synthetic-instruct-gptj-pairwise | DahoasSyntheticinstructgptjpairwiseDataset | https://huggingface.co/datasets/dahoas/synthetic-instruct-gptj-pairwise |        3w     |
+|  18   |     yitingxie/rlhf-reward-datasets      |     YitingxieRlhfrewarddatasetsDataset     |     https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets      |       8w      |
+|  19   |        openai/webgpt_comparisons        |       OpenaiWebgptcomparisonsDataset       |        https://huggingface.co/datasets/openai/webgpt_comparisons        |         2w   |
+|  20   |             stanfordnlp/SHP             |           StanfordnlpSHPDataset            |             https://huggingface.co/datasets/stanfordnlp/SHP             |       5w      |
+|  21   |           wangrui6/Zhihu-KOL            |          Wangrui6ZhihuKOLDataset           |           https://huggingface.co/datasets/wangrui6/Zhihu-KOL            |        100w     |
+|  22   |     Cohere/miracl-zh-queries-22-12      |      CohereMiraclzhqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-zh-queries-22-12      |        1w     |
 |  23   |       Hello-SimpleAI/HC3-Chinese        |       HelloSimpleAIHC3ChineseDataset       |       https://huggingface.co/datasets/hello-simpleai/HC3-Chinese        |             |
 |  24   |              mkqa-Chinese               |             MkqaChineseDataset             |              https://huggingface.co/datasets/mkqa/Chinese               |             |
 |  25   |              mkqa-Japanese              |            MkqaJapaneseDataset             |              https://huggingface.co/datasets/mkqa/Japanese              |             |
-|  26   |     Cohere/miracl-ja-queries-22-12      |      CohereMiracljaqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-ja-queries-22-12      |             |
-|  27   |             lmqg/qg_jaquad              |            LmqgQgJaquadDataset             |             https://huggingface.co/datasets/lmqg/qg_jaquad              |             |
-|  28   |             lmqg/qag_jaquad             |            LmqgQagJaquadDataset            |             https://huggingface.co/datasets/lmqg/qag_jaquad             |             |
+|  26   |     Cohere/miracl-ja-queries-22-12      |      CohereMiracljaqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-ja-queries-22-12      |        1w     |
+|  27   |             lmqg/qg_jaquad              |            LmqgQgJaquadDataset             |             https://huggingface.co/datasets/lmqg/qg_jaquad              |        3w     |
+|  28   |             lmqg/qag_jaquad             |            LmqgQagJaquadDataset            |             https://huggingface.co/datasets/lmqg/qag_jaquad             |        1w     |
 
 
 
