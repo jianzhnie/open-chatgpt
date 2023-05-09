@@ -1248,14 +1248,13 @@ class FudanMossDataset(object):
         return None
 
     def get_prompt_and_chosen(self, sample):
-        return sample['plain_text'] 
+        return sample['plain_text']
 
     def get_prompt_and_rejected(self, sample):
         print(
             f'Warning: dataset {self.dataset_name} does not include rejected response.'
         )
         return None
-
 
 
 # English dataset

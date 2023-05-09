@@ -16,15 +16,15 @@ if process.returncode != 0:
 
 
 process = subprocess.run(
-    f"git clone https://huggingface.co/datasets/laion/OIG {DIR}/files",
+    f'git clone https://huggingface.co/datasets/laion/OIG {DIR}/files',
     shell=True,
     check=True
 )
 
-for f in glob.glob(f"{DIR}/files/*.gz"):
+for f in glob.glob(f'{DIR}/files/*.gz'):
     out_path, _ = os.path.splitext(f)
     with (
-        gzip.open(f, 'rb') as infile, 
+        gzip.open(f, 'rb') as infile,
         open(out_path, 'wb') as outfile
     ):
         shutil.copyfileobj(infile, outfile)

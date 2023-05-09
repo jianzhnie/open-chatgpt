@@ -13,17 +13,17 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    AlpacaCoT, AlpacaDataCleaned, AlpacaDataset, AnthropicHHRLHF,
-    BelleGroupTrain1MCN, BelleGroupTrain05MCN,
+    AlpacaChinese, AlpacaCoT, AlpacaDataCleaned, AlpacaDataset,
+    AnthropicHHRLHF, BelleGroupTrain1MCN, BelleGroupTrain05MCN,
     CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
     DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
     DahoasSyntheticinstructgptjpairwiseDataset, DatabricksDolly15k,
-    GuanacoDataset, HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset,
-    InstructWildDataset, LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
-    MkqaChineseDataset, MkqaJapaneseDataset, MosaicmlDollyHHRLHF,
-    OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1, PromptDataset,
-    PromptRawDataset, StackExchangeParied, StanfordnlpSHPDataset,
-    Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
+    FudanMossDataset, Gpt4allPromptGeneration, GuanacoDataset,
+    HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset, InstructWildDataset,
+    LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
+    MkqaJapaneseDataset, MosaicmlDollyHHRLHF, OpenaiWebgptcomparisonsDataset,
+    OpenAssistantOasst1, PromptDataset, PromptRawDataset, StackExchangeParied,
+    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
@@ -56,12 +56,17 @@ name2Method: Dict[str, Type] = {
     'tatsu-lab/alpaca': AlpacaDataset,
     'yahma/alpaca-cleaned': AlpacaDataCleaned,
     'QingyiSi/Alpaca-CoT': AlpacaCoT,
+    'fnlp/moss-002-sft-data': FudanMossDataset,
+    'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
 }
 
 localdata2Method = {
     'huatuo_med_data': HuatuoMedDataset,
+    'huatuo_med_cancer': HuatuoMedDataset,
     'InstructionWild-en': InstructWildDataset,
     'InstructionWild-zh': InstructWildDataset,
+    'alpca_translate_chinese': AlpacaChinese,
+    'alpca_zh': AlpacaChinese,
 }
 
 
@@ -126,6 +131,20 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
                                    data_dir=data_dir,
                                    test_data_ratio=test_data_ratio,
                                    seed=seed)
+    elif dataset_name == 'alpca_translate_chinese':
+        dataset_name = os.path.join(data_dir, 'alpaca',
+                                    'alpaca_translate.json')
+
+        return AlpacaChinese(dataset_name=dataset_name,
+                             data_dir=data_dir,
+                             test_data_ratio=test_data_ratio,
+                             seed=seed)
+    elif dataset_name == 'alpca_zh':
+        dataset_name = os.path.join(data_dir, 'alpaca', 'alpaca_zh.json')
+        return AlpacaChinese(dataset_name=dataset_name,
+                             data_dir=data_dir,
+                             test_data_ratio=test_data_ratio,
+                             seed=seed)
 
     else:
         raise RuntimeError(
