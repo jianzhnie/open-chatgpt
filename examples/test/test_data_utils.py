@@ -16,9 +16,9 @@ if __name__ == '__main__':
         'stanfordnlp/SHP',
         'wangrui6/Zhihu-KOL',
         'Cohere/miracl-zh-queries-22-12',
-        # 'Hello-SimpleAI/HC3-Chinese',
-        # 'mkqa-Chinese',
-        # 'mkqa-Japanese',
+        'Hello-SimpleAI/HC3-Chinese',
+        'mkqa-Chinese',
+        'mkqa-Japanese',
         'Cohere/miracl-ja-queries-22-12',
         'lmqg/qg_jaquad',
         'lmqg/qag_jaquad',
@@ -35,12 +35,14 @@ if __name__ == '__main__':
         'tatsu-lab/alpaca',
         'yahma/alpaca-cleaned',
         'QingyiSi/Alpaca-CoT',
+        'fnlp/moss-002-sft-data',
+        'nomic-ai/gpt4all-j-prompt-generations',
         'llama_med',
         'instinwild_ch',
         'liver_cancer',
         'instinwild_en',
         'alpaca_data_zh_51k',
-        'trans_chinese_alpaca_data'
+        'trans_chinese_alpaca_data',
     ]
 
     data_output_path = 'work_dir/data'
@@ -48,7 +50,8 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(pretrained, fast_tokenizer=True)
     train_dataset, eval_dataset = create_prompt_dataset(
         dataset_names=data_path,
-        data_dir="/Users/jianzhengnie/work_dir/chatgpt/open-chatgpt/prompt_data/",
+        data_dir=
+        '/Users/jianzhengnie/work_dir/chatgpt/open-chatgpt/prompt_data/',
         train_phase=train_phase,
         test_data_ratio=0.1,
         tokenizer=tokenizer,
