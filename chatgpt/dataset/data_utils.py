@@ -27,7 +27,7 @@ from chatgpt.dataset.raw_datasets import (
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
-name2Method: Dict[str, Type] = {
+HuggingFaceDataClass: Dict[str, Type] = {
     'Dahoas/rm-static': DahoasRmstaticDataset,
     'Dahoas/full-hh-rlhf': DahoasFullhhrlhfDataset,
     'Dahoas/synthetic-instruct-gptj-pairwise':
@@ -49,8 +49,6 @@ name2Method: Dict[str, Type] = {
     'JosephusCheung/GuanacoDataset': GuanacoDataset,
     'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
-    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
-    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
     'tatsu-lab/alpaca': AlpacaDataset,
     'yahma/alpaca-cleaned': AlpacaDataCleaned,
     'QingyiSi/Alpaca-CoT': AlpacaCoT,
@@ -58,13 +56,15 @@ name2Method: Dict[str, Type] = {
     'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
 }
 
-localdata2Method = {
-    'lvwerra/stack-exchange-paired': StackExchangeParied,
-    'laion/OIG': LaionOIG,
-    'huatuo_med_data': HuatuoMedDataset,
-    'huatuo_med_cancer': HuatuoMedDataset,
-    'InstructionWild-en': InstructWildDataset,
-    'InstructionWild-zh': InstructWildDataset,
+LocalDataClass = {
+    'stack-exchange-paired': StackExchangeParied,
+    'OIG': LaionOIG,
+    'train_1M_CN': BelleGroupTrain1MCN,
+    'train_0.5M_CN': BelleGroupTrain05MCN,
+    'llama_med': HuatuoMedDataset,
+    'liver_cancer': HuatuoMedDataset,
+    'instinwild_en': InstructWildDataset,
+    'instinwild_ch': InstructWildDataset,
     'alpca_translate_chinese': AlpacaChinese,
     'alpca_zh': AlpacaChinese,
 }
@@ -92,63 +92,23 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
     Raises:
         RuntimeError: If no Dataset class is defined for the given dataset_name.
     """
-    if dataset_name in name2Method:
+    if dataset_name in HuggingFaceDataClass:
         # Create an instance of the corresponding Dataset class with the provided parameters
-        return name2Method[dataset_name](dataset_name=dataset_name,
-                                         data_dir=data_dir,
-                                         test_data_ratio=test_data_ratio,
-                                         seed=seed)
-    elif dataset_name == 'huatuo_med_data':
-        dataset_name = os.path.join(data_dir, dataset_name, 'llama_data.json')
-
-        return HuatuoMedDataset(dataset_name=dataset_name,
-                                data_dir=data_dir,
-                                test_data_ratio=test_data_ratio,
-                                seed=seed)
-
-    elif dataset_name == 'huatuo_med_cancer':
-        dataset_name = os.path.join(data_dir, 'huatuo_med_data',
-                                    'liver_cancer.json')
-
-        return HuatuoMedDataset(dataset_name=dataset_name,
-                                data_dir=data_dir,
-                                test_data_ratio=test_data_ratio,
-                                seed=seed)
-
-    elif dataset_name == 'InstructionWild_en':
-        dataset_name = os.path.join(data_dir, 'InstructionWild',
-                                    'instinwild_en.json')
-
-        return InstructWildDataset(dataset_name=dataset_name,
-                                   data_dir=data_dir,
-                                   test_data_ratio=test_data_ratio,
-                                   seed=seed)
-    elif dataset_name == 'InstructionWild_ch':
-        dataset_name = os.path.join(data_dir, 'InstructionWild',
-                                    'instinwild_ch.json')
-
-        return InstructWildDataset(dataset_name=dataset_name,
-                                   data_dir=data_dir,
-                                   test_data_ratio=test_data_ratio,
-                                   seed=seed)
-    elif dataset_name == 'alpca_translate_chinese':
-        dataset_name = os.path.join(data_dir, 'alpaca',
-                                    'alpaca_translate.json')
-
-        return AlpacaChinese(dataset_name=dataset_name,
-                             data_dir=data_dir,
-                             test_data_ratio=test_data_ratio,
-                             seed=seed)
-    elif dataset_name == 'alpca_zh':
-        dataset_name = os.path.join(data_dir, 'alpaca', 'alpaca_zh.json')
-        return AlpacaChinese(dataset_name=dataset_name,
-                             data_dir=data_dir,
-                             test_data_ratio=test_data_ratio,
-                             seed=seed)
-
+        return HuggingFaceDataClass[dataset_name](
+            dataset_name=dataset_name,
+            test_data_ratio=test_data_ratio,
+            seed=seed,
+        )
+    elif dataset_name in LocalDataClass:
+        return LocalDataClass[dataset_name](
+            dataset_name=dataset_name,
+            data_dir=data_dir,
+            test_data_ratio=test_data_ratio,
+            seed=seed,
+        )
     else:
         raise RuntimeError(
-            f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
+            f'We do not have define dataset {dataset_name}, but you can add it by yourself in raw_dataset.py.'
         )
 
 
