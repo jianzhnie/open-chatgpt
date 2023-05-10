@@ -43,11 +43,14 @@ def clone_repo(repo, dir):
     path = os.path.join(dir, repo)
     if not os.path.exists(path):
         os.makedirs(path)
-    process = subprocess.run(
-        f'git clone https://huggingface.co/datasets/{repo} {dir}/{repo}/',
-        shell=True,
-        check=True)
-    print(process.stdout)
+    try:
+        process = subprocess.run(
+            f'git clone https://huggingface.co/datasets/{repo} {dir}/{repo}/',
+            shell=True,
+            check=True)
+        print(process.stdout)
+    except:
+        pass
 
 
 if __name__ == '__main__':

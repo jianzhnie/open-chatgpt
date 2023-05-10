@@ -54,19 +54,16 @@ HuggingFaceDataClass: Dict[str, Type] = {
     'QingyiSi/Alpaca-CoT': AlpacaCoT,
     'fnlp/moss-002-sft-data': FudanMossDataset,
     'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
-}
-
-LocalDataClass = {
-    'stack-exchange-paired': StackExchangeParied,
-    'OIG': LaionOIG,
-    'train_1M_CN': BelleGroupTrain1MCN,
-    'train_0.5M_CN': BelleGroupTrain05MCN,
-    'llama_med': HuatuoMedDataset,
-    'liver_cancer': HuatuoMedDataset,
-    'instinwild_en': InstructWildDataset,
-    'instinwild_ch': InstructWildDataset,
-    'alpaca_data_zh_51k': AlpacaChinese,
-    'trans_chinese_alpaca_data': AlpacaChinese,
+    'lvwerra/stack-exchange-paired': StackExchangeParied,
+    'laion/OIG': LaionOIG,
+    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
+    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
+    'huatuo_med_data/llama_med': HuatuoMedDataset,
+    'huatuo_med_data/liver_cancer': HuatuoMedDataset,
+    'InstructionWild/instinwild_en': InstructWildDataset,
+    'InstructionWild/instinwild_ch': InstructWildDataset,
+    'alpaca_chinese/alpaca_data_zh_51k': AlpacaChinese,
+    'alpaca_chinesetrans_chinese_alpaca_data': AlpacaChinese,
 }
 
 
@@ -95,12 +92,6 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
     if dataset_name in HuggingFaceDataClass:
         # Create an instance of the corresponding Dataset class with the provided parameters
         return HuggingFaceDataClass[dataset_name](
-            dataset_name=dataset_name,
-            test_data_ratio=test_data_ratio,
-            seed=seed,
-        )
-    elif dataset_name in LocalDataClass:
-        return LocalDataClass[dataset_name](
             dataset_name=dataset_name,
             data_dir=data_dir,
             test_data_ratio=test_data_ratio,

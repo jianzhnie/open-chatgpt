@@ -199,8 +199,12 @@ class PromptRawDataset(object):
 
         if data_dir is not None:
             path = os.path.join(data_dir, dataset_name)
-        if os.path.exists(path):
-            self.raw_datasets = load_dataset(path, num_proc=num_proc)
+            if os.path.exists(path) and os.listdir(path):
+                print(f'load {dataset_name}  from {path}')
+                self.raw_datasets = load_dataset(path, num_proc=num_proc)
+            else:
+                self.raw_datasets = load_dataset(dataset_name,
+                                                 num_proc=num_proc)
         else:
             self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
@@ -649,7 +653,7 @@ class InstructWildDataset(object):
     """
     def __init__(
         self,
-        dataset_name='instinwild_ch',
+        dataset_name='InstructionWild/instinwild_ch',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
@@ -657,8 +661,7 @@ class InstructWildDataset(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'InstructionWild',
-                            dataset_name + '.json')
+        path = os.path.join(data_dir, dataset_name + '.json')
         assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
@@ -718,7 +721,7 @@ class HuatuoMedDataset(object):
     """
     def __init__(
         self,
-        dataset_name='llama_data',
+        dataset_name='huatuo_med_data/llama_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
@@ -726,8 +729,7 @@ class HuatuoMedDataset(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'huatuo_med_data',
-                            dataset_name + '.json')
+        path = os.path.join(data_dir, dataset_name + '.json')
         assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
@@ -1154,7 +1156,7 @@ class AlpacaChinese(object):
     """
     def __init__(
         self,
-        dataset_name='trans_chinese_alpaca_data',
+        dataset_name='alpaca_chinese/trans_chinese_alpaca_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
@@ -1162,7 +1164,7 @@ class AlpacaChinese(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'alpaca_chinese', dataset_name + '.json')
+        path = os.path.join(data_dir, dataset_name + '.json')
         assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
