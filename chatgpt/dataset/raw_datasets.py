@@ -1200,7 +1200,7 @@ class AlpacaChinese(object):
 
 # TODO
 class FudanMossDataset(PromptRawDataset):
-    """
+    """https://huggingface.co/datasets/fnlp/moss-002-sft-data
     """
     def __init__(
         self,
@@ -1247,7 +1247,7 @@ class FudanMossDataset(PromptRawDataset):
 
 # English dataset
 class Gpt4allPromptGeneration(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/rm-static
+    """https://huggingface.co/datasets/nomic-ai/gpt4all-j-prompt-generations
     """
     def __init__(
         self,
