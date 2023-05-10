@@ -65,8 +65,8 @@ LocalDataClass = {
     'liver_cancer': HuatuoMedDataset,
     'instinwild_en': InstructWildDataset,
     'instinwild_ch': InstructWildDataset,
-    'alpca_translate_chinese': AlpacaChinese,
-    'alpca_zh': AlpacaChinese,
+    'alpaca_data_zh_51k': AlpacaChinese,
+    'trans_chinese_alpaca_data': AlpacaChinese,
 }
 
 
