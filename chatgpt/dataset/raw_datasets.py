@@ -1,3 +1,4 @@
+import os
 import random
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -177,7 +178,6 @@ class PromptRawDataset(object):
     """
     def __init__(self,
                  dataset_name: str,
-                 data_dir: Optional[str] = None,
                  num_proc: Optional[int] = 8,
                  test_data_ratio: Optional[float] = 0.1,
                  seed: Optional[int] = None):
@@ -186,7 +186,6 @@ class PromptRawDataset(object):
 
         Args:
             dataset_name (str): The name of the dataset to load.
-            data_dir (str, optional): The path to load the dataset from. Defaults to None.
             num_proc (int, optional): The number of processes to use for parallel loading. Defaults to 8.
             test_data_ratio (float, optional): The ratio of data to split as test data. Defaults to 0.1.
             seed (int, optional): The random seed to use for data splitting. Defaults to None.
@@ -195,9 +194,7 @@ class PromptRawDataset(object):
         self.dataset_name_clean = dataset_name.replace('/', '_')
         self.test_data_ratio = test_data_ratio
         self.seed = seed
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
+        self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
     def get_train_data(self):
         """
@@ -292,7 +289,7 @@ class PromptRawDataset(object):
 
 
 # checked
-class StackExchangeParied(PromptRawDataset):
+class StackExchangeParied(object):
     """https://huggingface.co/datasets/lvwerra/stack-exchange-paired
     """
     def __init__(
@@ -304,16 +301,11 @@ class StackExchangeParied(PromptRawDataset):
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
-
-        self.raw_datasets = load_dataset(
-            dataset_name,
-            data_dir=data_dir,
-            split='train',
-            num_proc=num_proc,
-            use_auth_token=True,
-        )
+        if data_dir is not None:
+            path = os.path.join(data_dir, dataset_name)
+            self.raw_datasets = load_dataset(path, num_proc=num_proc)
+        else:
+            self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -347,14 +339,12 @@ class AnthropicHHRLHF(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Anthropic/hh-rlhf',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -386,14 +376,12 @@ class DatabricksDolly15k(PromptRawDataset):
     def __init__(
         self,
         dataset_name='databricks/databricks-dolly-15k',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -468,13 +456,11 @@ class MosaicmlDollyHHRLHF(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mosaicml/dolly_hhrlhf',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -528,13 +514,11 @@ class GuanacoDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='JosephusCheung/GuanacoDataset',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -601,13 +585,11 @@ class YeungNLPFirefly(PromptRawDataset):
     def __init__(
         self,
         dataset_name='YeungNLP/firefly-train-1.1M',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -653,16 +635,17 @@ class InstructWildDataset(object):
     """
     def __init__(
         self,
-        dataset_name='instinwild_ch.json',
+        dataset_name='instinwild_ch',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, 'InstructWild', dataset_name + '.json')
         self.raw_datasets = load_dataset('json',
-                                         data_files=dataset_name,
-                                         data_dir=data_dir,
+                                         data_files=path,
                                          num_proc=num_proc)
 
         self.dataset = self.raw_datasets['train']
@@ -719,15 +702,18 @@ class HuatuoMedDataset(object):
     """
     def __init__(
         self,
-        dataset_name='llama_data.json',
+        dataset_name='llama_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, 'huatuo_med_data',
+                            dataset_name + '.json')
         self.raw_datasets = load_dataset('json',
-                                         data_files=dataset_name,
+                                         data_files=path,
                                          num_proc=num_proc)
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -775,7 +761,7 @@ class HuatuoMedDataset(object):
 
 # TODO
 # [laion/OIG](https://huggingface.co/datasets/laion/OIG)
-class LaionOIG(PromptRawDataset):
+class LaionOIG(object):
     """https://huggingface.co/datasets/laion/OIG
     """
     def __init__(
@@ -787,8 +773,11 @@ class LaionOIG(PromptRawDataset):
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        if data_dir is not None:
+            path = os.path.join(data_dir, dataset_name)
+            self.raw_datasets = load_dataset(path, num_proc=num_proc)
+        else:
+            self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -826,14 +815,12 @@ class OpenAssistantOasst1(PromptRawDataset):
     def __init__(
         self,
         dataset_name='OpenAssistant/oasst1',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -865,7 +852,7 @@ class OpenAssistantOasst1(PromptRawDataset):
 
 # TODO
 # [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
-class BelleGroupTrain1MCN(PromptRawDataset):
+class BelleGroupTrain1MCN(object):
     """https://huggingface.co/datasets/BelleGroup/train_1M_CN
 
     - 内容
@@ -894,8 +881,11 @@ class BelleGroupTrain1MCN(PromptRawDataset):
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        if data_dir is not None:
+            path = os.path.join(data_dir, dataset_name)
+            self.raw_datasets = load_dataset(path, num_proc=num_proc)
+        else:
+            self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -964,14 +954,12 @@ class BelleGroupTrain05MCN(BelleGroupTrain1MCN):
     def __init__(
         self,
         dataset_name='BelleGroup/train_0.5M_CN',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
 
 # TODO
@@ -982,14 +970,12 @@ class AlpacaDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='tatsu-lab/alpaca',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1041,14 +1027,12 @@ class AlpacaDataCleaned(PromptRawDataset):
     def __init__(
         self,
         dataset_name='yahma/alpaca-cleaned',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1100,13 +1084,11 @@ class AlpacaCoT(PromptRawDataset):
     def __init__(
         self,
         dataset_name='QingyiSi/Alpaca-CoT',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
         self.prompt_input, self.prompt_no_input = PROMPT_DICT[
             'prompt_input'], PROMPT_DICT['prompt_no_input']
 
@@ -1160,8 +1142,12 @@ class AlpacaChinese(object):
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, 'alpaca_chinese_data',
+                            dataset_name + '.json')
+        self.raw_datasets = load_dataset('json',
+                                         data_files=path,
+                                         num_proc=num_proc)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1208,21 +1194,18 @@ class AlpacaChinese(object):
 
 
 # TODO
-class FudanMossDataset(object):
-    """https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data
-    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data
+class FudanMossDataset(PromptRawDataset):
+    """
     """
     def __init__(
         self,
         dataset_name='fnlp/moss-002-sft-data',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1264,13 +1247,11 @@ class Gpt4allPromptGeneration(PromptRawDataset):
     def __init__(
         self,
         dataset_name='nomic-ai/gpt4all-j-prompt-generations',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1311,13 +1292,11 @@ class DahoasRmstaticDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/rm-static',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1348,13 +1327,11 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/full-hh-rlhf',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1385,13 +1362,11 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Dahoas/synthetic-instruct-gptj-pairwise',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1430,13 +1405,11 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='yitingxie/rlhf-reward-datasets',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1468,13 +1441,11 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='openai/webgpt_comparisons',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1541,13 +1512,11 @@ class StanfordnlpSHPDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='stanfordnlp/SHP',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1594,13 +1563,11 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='wangrui6/Zhihu-KOL',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1650,13 +1617,11 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-zh-queries-22-12',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1690,13 +1655,11 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Hello-SimpleAI/HC3-Chinese',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.datasets = self.raw_datasets['train']
         self.raw_datasets = self.datasets.train_test_split(
@@ -1747,13 +1710,11 @@ class MkqaChineseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Chinese',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1803,13 +1764,11 @@ class MkqaJapaneseDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='mkqa-Japanese',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1858,13 +1817,11 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='Cohere/miracl-ja-queries-22-12',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1897,13 +1854,11 @@ class LmqgQgjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qg_jaquad',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -1939,13 +1894,11 @@ class LmqgQagjaquadDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='lmqg/qag_jaquad',
-        data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ):
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        super().__init__(dataset_name, num_proc, test_data_ratio, seed)
 
     def get_train_data(self):
         return self.raw_datasets['train']
