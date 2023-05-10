@@ -643,7 +643,8 @@ class InstructWildDataset(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'InstructWild', dataset_name + '.json')
+        path = os.path.join(data_dir, 'InstructionWild', dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
                                          num_proc=num_proc)
@@ -712,6 +713,7 @@ class HuatuoMedDataset(object):
         assert data_dir is not None, 'data_dir must be specified.'
         path = os.path.join(data_dir, 'huatuo_med_data',
                             dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
                                          num_proc=num_proc)
@@ -1135,7 +1137,7 @@ class AlpacaChinese(object):
     """
     def __init__(
         self,
-        dataset_name='trans_chinese_alpaca_data.json',
+        dataset_name='trans_chinese_alpaca_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
@@ -1143,8 +1145,9 @@ class AlpacaChinese(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'alpaca_chinese_data',
+        path = os.path.join(data_dir, 'alpaca_chinese',
                             dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
                                          num_proc=num_proc)
@@ -1184,6 +1187,8 @@ class AlpacaChinese(object):
         else:
             instruct = self.prompt_no_input.format_map(sample)
         target = sample['output']
+        if instruct is None or target is None:
+            return None
         return ' Human: ' + instruct + ' Assistant: ' + target
 
     def get_prompt_and_rejected(self, sample):
