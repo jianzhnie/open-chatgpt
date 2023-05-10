@@ -643,7 +643,8 @@ class InstructWildDataset(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'InstructionWild', dataset_name + '.json')
+        path = os.path.join(data_dir, 'InstructionWild',
+                            dataset_name + '.json')
         assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
@@ -1145,8 +1146,7 @@ class AlpacaChinese(object):
     ) -> None:
 
         assert data_dir is not None, 'data_dir must be specified.'
-        path = os.path.join(data_dir, 'alpaca_chinese',
-                            dataset_name + '.json')
+        path = os.path.join(data_dir, 'alpaca_chinese', dataset_name + '.json')
         assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
                                          data_files=path,
