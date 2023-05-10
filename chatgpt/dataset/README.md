@@ -6,36 +6,43 @@
 I have collected a few datasets of prompts to train chatllm model. Follwing are the datasets:
 
 
-|       |              dataset name               |               Dataset Class                |                                  Links                                  | Description |
-| :---: | :-------------------------------------: | :----------------------------------------: | :---------------------------------------------------------------------: | :---------: |
-|   1   |      lvwerra/stack-exchange-paired      |            StackExchangeParied             |      https://huggingface.co/datasets/lvwerra/stack-exchange-paired      |             |
-|   2   |            Anthropic/hh-rlhf            |              AnthropicHHRLHF               |            https://huggingface.co/datasets/anthropic/hh-rlhf            |             |
-|   3   |     databricks/databricks-dolly-15k     |             DatabricksDolly15k             |     https://huggingface.co/datasets/databricks/databricks-dolly-15k     |             |
-|   4   |          mosaicml/dolly_hhrlhf          |            MosaicMLDollyHhrlhf             |          https://huggingface.co/datasets/mosaicml/dolly_hhrlhf          |             |
-|   5   |      JosephusCheung/GuanacoDataset      |               GuanacoDataset               |      https://huggingface.co/datasets/josephuscheung/guanacodataset      |             |
-|   6   |       YeungNLP/firefly-train-1.1M       |              YeungNLP_Firefly              |       https://huggingface.co/datasets/yeungnlp/firefly-train-1.1M       |             |
-|   7   |               Local/下载                |              HuatuoMedDataset              |   https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data    |             |
-|   8   |                laion/OIG                |                  LaionOIG                  |                https://huggingface.co/datasets/laion/oig                |             |
-|   9   |          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           |             |
-|  10   |         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          |             |
-|  11   |        BelleGroup/train_0.5M_CN         |            BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
-|  12   |            tatsu-lab/alpaca             |                   Alpaca                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
-|  13   |          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
-|  14   |           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
-|  15   |            Dahoas/rm-static             |       RmStaDahoasRmstaticDatasettic        |            https://huggingface.co/datasets/dahoas/rm-static             |       8w      |
-|  16   |           Dahoas/full-hh-rlhf           |          DahoasFullhhrlhfDataset           |           https://huggingface.co/datasets/dahoas/full-hh-rlhf           |         12w    |
-|  17   | Dahoas/synthetic-instruct-gptj-pairwise | DahoasSyntheticinstructgptjpairwiseDataset | https://huggingface.co/datasets/dahoas/synthetic-instruct-gptj-pairwise |        3w     |
-|  18   |     yitingxie/rlhf-reward-datasets      |     YitingxieRlhfrewarddatasetsDataset     |     https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets      |       8w      |
-|  19   |        openai/webgpt_comparisons        |       OpenaiWebgptcomparisonsDataset       |        https://huggingface.co/datasets/openai/webgpt_comparisons        |         2w   |
-|  20   |             stanfordnlp/SHP             |           StanfordnlpSHPDataset            |             https://huggingface.co/datasets/stanfordnlp/SHP             |       5w      |
-|  21   |           wangrui6/Zhihu-KOL            |          Wangrui6ZhihuKOLDataset           |           https://huggingface.co/datasets/wangrui6/Zhihu-KOL            |        100w     |
-|  22   |     Cohere/miracl-zh-queries-22-12      |      CohereMiraclzhqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-zh-queries-22-12      |        1w     |
-|  23   |       Hello-SimpleAI/HC3-Chinese        |       HelloSimpleAIHC3ChineseDataset       |       https://huggingface.co/datasets/hello-simpleai/HC3-Chinese        |             |
-|  24   |              mkqa-Chinese               |             MkqaChineseDataset             |              https://huggingface.co/datasets/mkqa/Chinese               |             |
-|  25   |              mkqa-Japanese              |            MkqaJapaneseDataset             |              https://huggingface.co/datasets/mkqa/Japanese              |             |
-|  26   |     Cohere/miracl-ja-queries-22-12      |      CohereMiracljaqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-ja-queries-22-12      |        1w     |
-|  27   |             lmqg/qg_jaquad              |            LmqgQgJaquadDataset             |             https://huggingface.co/datasets/lmqg/qg_jaquad              |        3w     |
-|  28   |             lmqg/qag_jaquad             |            LmqgQagJaquadDataset            |             https://huggingface.co/datasets/lmqg/qag_jaquad             |        1w     |
+|              dataset name               |               Dataset Class                |                                  Links                                  | Description |
+| :-------------------------------------: | :----------------------------------------: | :---------------------------------------------------------------------: | :---------: |
+|      lvwerra/stack-exchange-paired      |            StackExchangeParied             |      https://huggingface.co/datasets/lvwerra/stack-exchange-paired      |             |
+|            Anthropic/hh-rlhf            |              AnthropicHHRLHF               |            https://huggingface.co/datasets/anthropic/hh-rlhf            |             |
+|     databricks/databricks-dolly-15k     |             DatabricksDolly15k             |     https://huggingface.co/datasets/databricks/databricks-dolly-15k     |             |
+|          mosaicml/dolly_hhrlhf          |            MosaicMLDollyHhrlhf             |          https://huggingface.co/datasets/mosaicml/dolly_hhrlhf          |             |
+|      JosephusCheung/GuanacoDataset      |               GuanacoDataset               |      https://huggingface.co/datasets/josephuscheung/guanacodataset      |             |
+|       YeungNLP/firefly-train-1.1M       |              YeungNLP_Firefly              |       https://huggingface.co/datasets/yeungnlp/firefly-train-1.1M       |             |
+| instinwild_ch | InstructWildDataset | https://github.com/XueFuzhao/InstructionWild/tree/main/data | |
+| instinwild_en | InstructWildDataset | https://github.com/XueFuzhao/InstructionWild/tree/main/data | |
+|               llama_data      |              HuatuoMedDataset              |   https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data    |             |
+| live_cancer | HuatuoMedDataset |  | |
+|                laion/OIG                |                  LaionOIG                  |                https://huggingface.co/datasets/laion/oig                |             |
+|          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           |             |
+|         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          |             |
+|        BelleGroup/train_0.5M_CN         |            BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
+|            tatsu-lab/alpaca             |                   AlpacaDataset                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
+|          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
+|           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
+| trans_chinese_alpaca_data | AlpacaChinese | https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data | |
+| trans_chinese_alpaca_data | AlpacaChinese | https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data | |
+| fnlp/moss-002-sft-data | FudanMossDataset | https://huggingface.co/datasets/fnlp/moss-002-sft-data | |
+| nomic-ai/gpt4all-j-prompt-generations | Gpt4allPromptGeneration | https://huggingface.co/datasets/nomic-ai/gpt4all-j-prompt-generations | |
+|            Dahoas/rm-static             |       RmStaDahoasRmstaticDatasettic        |            https://huggingface.co/datasets/dahoas/rm-static             |       8w      |
+|           Dahoas/full-hh-rlhf           |          DahoasFullhhrlhfDataset           |           https://huggingface.co/datasets/dahoas/full-hh-rlhf           |         12w    |
+| Dahoas/synthetic-instruct-gptj-pairwise | DahoasSyntheticinstructgptjpairwiseDataset | https://huggingface.co/datasets/dahoas/synthetic-instruct-gptj-pairwise |        3w     |
+|     yitingxie/rlhf-reward-datasets      |     YitingxieRlhfrewarddatasetsDataset     |     https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets      |       8w      |
+|        openai/webgpt_comparisons        |       OpenaiWebgptcomparisonsDataset       |        https://huggingface.co/datasets/openai/webgpt_comparisons        |         2w   |
+|             stanfordnlp/SHP             |           StanfordnlpSHPDataset            |             https://huggingface.co/datasets/stanfordnlp/SHP             |       5w      |
+|           wangrui6/Zhihu-KOL            |          Wangrui6ZhihuKOLDataset           |           https://huggingface.co/datasets/wangrui6/Zhihu-KOL            |        100w     |
+|     Cohere/miracl-zh-queries-22-12      |      CohereMiraclzhqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-zh-queries-22-12      |        1w     |
+|       Hello-SimpleAI/HC3-Chinese        |       HelloSimpleAIHC3ChineseDataset       |       https://huggingface.co/datasets/hello-simpleai/HC3-Chinese        |             |
+|              mkqa-Chinese               |             MkqaChineseDataset             |              https://huggingface.co/datasets/mkqa/Chinese               |             |
+|              mkqa-Japanese              |            MkqaJapaneseDataset             |              https://huggingface.co/datasets/mkqa/Japanese              |             |
+|     Cohere/miracl-ja-queries-22-12      |      CohereMiracljaqueries2212Dataset      |     https://huggingface.co/datasets/cohere/miracl-ja-queries-22-12      |        1w     |
+|             lmqg/qg_jaquad              |            LmqgQgJaquadDataset             |             https://huggingface.co/datasets/lmqg/qg_jaquad              |        3w     |
+|             lmqg/qag_jaquad             |            LmqgQagJaquadDataset            |             https://huggingface.co/datasets/lmqg/qag_jaquad             |        1w     |
 
 
 
@@ -43,50 +50,63 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 
 
 ```python
-dataset_list =
-[
-    'Dahoas/rm-static',
-    'Dahoas/full-hh-rlhf',
-    'Dahoas/synthetic-instruct-gptj-pairwise',
-    'yitingxie/rlhf-reward-datasets',
-    'openai/webgpt_comparisons',
-    'stanfordnlp/SHP',
-    'wangrui6/Zhihu-KOL',
-    'Cohere/miracl-zh-queries-22-12',
-    'Hello-SimpleAI/HC3-Chinese',
-    'mkqa-Chinese',
-    'mkqa-Japanese',
-    'Cohere/miracl-ja-queries-22-12',
-    'lmqg/qg_jaquad',
-    'lmqg/qag_jaquad',
-    'lvwerra/stack-exchange-paired',
-    'Anthropic/hh-rlhf',
-    'databricks/databricks-dolly-15k',
-    'mosaicml/dolly_hhrlhf',
-    'JosephusCheung/GuanacoDataset',
-    'YeungNLP/firefly-train-1.1M',
-    'laion/OIG',
-    'OpenAssistant/oasst1',
-    'BelleGroup/train-1MCN',
-    'BelleGroup/train-05MCN',
-    'tatsu-lab/alpaca',
-    'AlpacaDataCleaned',
-    'AlpacaCoT',
-    './prompt_data/huatuo_llama_med/llama_data.json',
-]
-
-
+HuggingFaceDataClass: Dict[str, Type] = {
+    'Dahoas/rm-static': DahoasRmstaticDataset,
+    'Dahoas/full-hh-rlhf': DahoasFullhhrlhfDataset,
+    'Dahoas/synthetic-instruct-gptj-pairwise':
+    DahoasSyntheticinstructgptjpairwiseDataset,
+    'yitingxie/rlhf-reward-datasets': YitingxieRlhfrewarddatasetsDataset,
+    'openai/webgpt_comparisons': OpenaiWebgptcomparisonsDataset,
+    'stanfordnlp/SHP': StanfordnlpSHPDataset,
+    'wangrui6/Zhihu-KOL': Wangrui6ZhihuKOLDataset,
+    'Cohere/miracl-zh-queries-22-12': CohereMiraclzhqueries2212Dataset,
+    'Hello-SimpleAI/HC3-Chinese': HelloSimpleAIHC3ChineseDataset,
+    'mkqa-Chinese': MkqaChineseDataset,
+    'mkqa-Japanese': MkqaJapaneseDataset,
+    'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
+    'lmqg/qg_jaquad': LmqgQgjaquadDataset,
+    'lmqg/qag_jaquad': LmqgQagjaquadDataset,
+    'Anthropic/hh-rlhf': AnthropicHHRLHF,
+    'databricks/databricks-dolly-15k': DatabricksDolly15k,
+    'mosaicml/dolly_hhrlhf': MosaicmlDollyHHRLHF,
+    'JosephusCheung/GuanacoDataset': GuanacoDataset,
+    'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
+    'OpenAssistant/oasst1': OpenAssistantOasst1,
+    'tatsu-lab/alpaca': AlpacaDataset,
+    'yahma/alpaca-cleaned': AlpacaDataCleaned,
+    'QingyiSi/Alpaca-CoT': AlpacaCoT,
+    'fnlp/moss-002-sft-data': FudanMossDataset,
+    'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
 ```
+
+本地文件
+
+```python
+LocalDataClass：Dict[str, Type]  = {
+    'stack-exchange-paired': StackExchangeParied,
+    'OIG': LaionOIG,
+    'train_1M_CN': BelleGroupTrain1MCN,
+    'train_0.5M_CN': BelleGroupTrain05MCN,
+    'llama_med': HuatuoMedDataset,
+    'liver_cancer': HuatuoMedDataset,
+    'instinwild_en': InstructWildDataset,
+    'instinwild_ch': InstructWildDataset,
+    'alpaca_data_zh_51k': AlpacaChinese,
+    'trans_chinese_alpaca_data': AlpacaChinese,
+}
+```
+
 
 
 ##  Using for training RM model
 
 
-"""python
 
 
-dataset_list = [
 
+## Reference
 
-]
-```
+- https://github.com/yaodongC/awesome-instruction-dataset
+- https://github.com/zhilizju/Awesome-instruction-tuning
+- https://github.com/zhengzangw/awesome-instruction-tunning-datasets
+- https://github.com/andy-yangz/Awesome-Chinese-Instruction-Datasets

@@ -13,21 +13,21 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    AlpacaCoT, AlpacaDataCleaned, AlpacaDataset, AnthropicHHRLHF,
-    BelleGroupTrain1MCN, BelleGroupTrain05MCN,
+    AlpacaChinese, AlpacaCoT, AlpacaDataCleaned, AlpacaDataset,
+    AnthropicHHRLHF, BelleGroupTrain1MCN, BelleGroupTrain05MCN,
     CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
     DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
     DahoasSyntheticinstructgptjpairwiseDataset, DatabricksDolly15k,
-    GuanacoDataset, HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset,
-    InstructWildDataset, LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
-    MkqaChineseDataset, MkqaJapaneseDataset, MosaicmlDollyHHRLHF,
-    OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1, PromptDataset,
-    PromptRawDataset, StackExchangeParied, StanfordnlpSHPDataset,
-    Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
+    FudanMossDataset, Gpt4allPromptGeneration, GuanacoDataset,
+    HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset, InstructWildDataset,
+    LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
+    MkqaJapaneseDataset, MosaicmlDollyHHRLHF, OpenaiWebgptcomparisonsDataset,
+    OpenAssistantOasst1, PromptDataset, PromptRawDataset, StackExchangeParied,
+    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
-name2Method: Dict[str, Type] = {
+HuggingFaceDataClass: Dict[str, Type] = {
     'Dahoas/rm-static': DahoasRmstaticDataset,
     'Dahoas/full-hh-rlhf': DahoasFullhhrlhfDataset,
     'Dahoas/synthetic-instruct-gptj-pairwise':
@@ -43,25 +43,27 @@ name2Method: Dict[str, Type] = {
     'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
     'lmqg/qg_jaquad': LmqgQgjaquadDataset,
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
-    'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
     'databricks/databricks-dolly-15k': DatabricksDolly15k,
     'mosaicml/dolly_hhrlhf': MosaicmlDollyHHRLHF,
     'JosephusCheung/GuanacoDataset': GuanacoDataset,
     'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
-    'laion/OIG': LaionOIG,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
-    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
-    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
     'tatsu-lab/alpaca': AlpacaDataset,
     'yahma/alpaca-cleaned': AlpacaDataCleaned,
     'QingyiSi/Alpaca-CoT': AlpacaCoT,
-}
-
-localdata2Method = {
-    'huatuo_med_data': HuatuoMedDataset,
-    'InstructionWild-en': InstructWildDataset,
-    'InstructionWild-zh': InstructWildDataset,
+    'fnlp/moss-002-sft-data': FudanMossDataset,
+    'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
+    'lvwerra/stack-exchange-paired': StackExchangeParied,
+    'laion/OIG': LaionOIG,
+    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
+    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
+    'huatuo_med_data/llama_med': HuatuoMedDataset,
+    'huatuo_med_data/liver_cancer': HuatuoMedDataset,
+    'InstructionWild/instinwild_en': InstructWildDataset,
+    'InstructionWild/instinwild_ch': InstructWildDataset,
+    'alpaca_chinese/alpaca_data_zh_51k': AlpacaChinese,
+    'alpaca_chinesetrans_chinese_alpaca_data': AlpacaChinese,
 }
 
 
@@ -87,49 +89,17 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
     Raises:
         RuntimeError: If no Dataset class is defined for the given dataset_name.
     """
-    if dataset_name in name2Method:
+    if dataset_name in HuggingFaceDataClass:
         # Create an instance of the corresponding Dataset class with the provided parameters
-        return name2Method[dataset_name](dataset_name=dataset_name,
-                                         data_dir=data_dir,
-                                         test_data_ratio=test_data_ratio,
-                                         seed=seed)
-    elif dataset_name == 'huatuo_med_data':
-        dataset_name = os.path.join(data_dir, dataset_name, 'llama_data.json')
-
-        return HuatuoMedDataset(dataset_name=dataset_name,
-                                data_dir=data_dir,
-                                test_data_ratio=test_data_ratio,
-                                seed=seed)
-
-    elif dataset_name == 'huatuo_med_cancer':
-        dataset_name = os.path.join(data_dir, 'huatuo_med_data',
-                                    'liver_cancer.json')
-
-        return HuatuoMedDataset(dataset_name=dataset_name,
-                                data_dir=data_dir,
-                                test_data_ratio=test_data_ratio,
-                                seed=seed)
-
-    elif dataset_name == 'InstructionWild_en':
-        dataset_name = os.path.join(data_dir, 'InstructionWild',
-                                    'instinwild_en.json')
-
-        return InstructWildDataset(dataset_name=dataset_name,
-                                   data_dir=data_dir,
-                                   test_data_ratio=test_data_ratio,
-                                   seed=seed)
-    elif dataset_name == 'InstructionWild_ch':
-        dataset_name = os.path.join(data_dir, 'InstructionWild',
-                                    'instinwild_ch.json')
-
-        return InstructWildDataset(dataset_name=dataset_name,
-                                   data_dir=data_dir,
-                                   test_data_ratio=test_data_ratio,
-                                   seed=seed)
-
+        return HuggingFaceDataClass[dataset_name](
+            dataset_name=dataset_name,
+            data_dir=data_dir,
+            test_data_ratio=test_data_ratio,
+            seed=seed,
+        )
     else:
         raise RuntimeError(
-            f'We do not have define dataset {dataset_name}, but you can add it by yourself in py.'
+            f'We do not have define dataset {dataset_name}, but you can add it by yourself in raw_dataset.py.'
         )
 
 

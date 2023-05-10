@@ -1,3 +1,4 @@
+import os
 import random
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -177,7 +178,7 @@ class PromptRawDataset(object):
     """
     def __init__(self,
                  dataset_name: str,
-                 data_dir: Optional[str] = None,
+                 data_dir: str = None,
                  num_proc: Optional[int] = 8,
                  test_data_ratio: Optional[float] = 0.1,
                  seed: Optional[int] = None):
@@ -186,18 +187,26 @@ class PromptRawDataset(object):
 
         Args:
             dataset_name (str): The name of the dataset to load.
-            data_dir (str, optional): The path to load the dataset from. Defaults to None.
             num_proc (int, optional): The number of processes to use for parallel loading. Defaults to 8.
             test_data_ratio (float, optional): The ratio of data to split as test data. Defaults to 0.1.
             seed (int, optional): The random seed to use for data splitting. Defaults to None.
         """
         self.dataset_name = dataset_name
         self.dataset_name_clean = dataset_name.replace('/', '_')
+        self.num_proc = num_proc
         self.test_data_ratio = test_data_ratio
         self.seed = seed
-        self.raw_datasets = load_dataset(dataset_name,
-                                         data_dir=data_dir,
-                                         num_proc=num_proc)
+
+        if data_dir is not None:
+            path = os.path.join(data_dir, dataset_name)
+            if os.path.exists(path) and os.listdir(path):
+                print(f'load {dataset_name}  from {path}')
+                self.raw_datasets = load_dataset(path, num_proc=num_proc)
+            else:
+                self.raw_datasets = load_dataset(dataset_name,
+                                                 num_proc=num_proc)
+        else:
+            self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
     def get_train_data(self):
         """
@@ -303,17 +312,8 @@ class StackExchangeParied(PromptRawDataset):
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
-
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
-
-        self.raw_datasets = load_dataset(
-            dataset_name,
-            data_dir=data_dir,
-            split='train',
-            num_proc=num_proc,
-            use_auth_token=True,
-        )
 
     def get_train_data(self):
         return self.raw_datasets['train']
@@ -653,16 +653,18 @@ class InstructWildDataset(object):
     """
     def __init__(
         self,
-        dataset_name='instinwild_ch.json',
+        dataset_name='InstructionWild/instinwild_ch',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
-                                         data_files=dataset_name,
-                                         data_dir=data_dir,
+                                         data_files=path,
                                          num_proc=num_proc)
 
         self.dataset = self.raw_datasets['train']
@@ -719,15 +721,18 @@ class HuatuoMedDataset(object):
     """
     def __init__(
         self,
-        dataset_name='llama_data.json',
+        dataset_name='huatuo_med_data/llama_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
         self.raw_datasets = load_dataset('json',
-                                         data_files=dataset_name,
+                                         data_files=path,
                                          num_proc=num_proc)
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -786,7 +791,6 @@ class LaionOIG(PromptRawDataset):
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
-
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
@@ -893,7 +897,6 @@ class BelleGroupTrain1MCN(PromptRawDataset):
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
-
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
@@ -1153,15 +1156,19 @@ class AlpacaChinese(object):
     """
     def __init__(
         self,
-        dataset_name='trans_chinese_alpaca_data.json',
+        dataset_name='alpaca_chinese/trans_chinese_alpaca_data',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
         seed=None,
     ) -> None:
 
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
+        assert data_dir is not None, 'data_dir must be specified.'
+        path = os.path.join(data_dir, dataset_name + '.json')
+        assert os.path.exists(path), f'{path} does not exist.'
+        self.raw_datasets = load_dataset('json',
+                                         data_files=path,
+                                         num_proc=num_proc)
 
         self.dataset = self.raw_datasets['train']
         self.raw_datasets = self.dataset.train_test_split(
@@ -1198,7 +1205,58 @@ class AlpacaChinese(object):
         else:
             instruct = self.prompt_no_input.format_map(sample)
         target = sample['output']
+        if instruct is None or target is None:
+            return None
         return ' Human: ' + instruct + ' Assistant: ' + target
+
+    def get_prompt_and_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+
+# TODO
+class FudanMossDataset(PromptRawDataset):
+    """https://huggingface.co/datasets/fnlp/moss-002-sft-data
+    """
+    def __init__(
+        self,
+        dataset_name='fnlp/moss-002-sft-data',
+        data_dir: str = None,
+        num_proc: int = 8,
+        test_data_ratio: float = 0.1,
+        seed=None,
+    ) -> None:
+
+        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
+                         seed)
+
+        self.dataset = self.raw_datasets['train']
+        self.raw_datasets = self.dataset.train_test_split(
+            test_size=test_data_ratio, seed=seed)
+
+    def get_train_data(self):
+        return self.raw_datasets['train']
+
+    def get_eval_data(self):
+        return self.raw_datasets['test']
+
+    def get_prompt(self, sample):
+
+        return sample['plain_text']
+
+    def get_chosen(self, sample):
+        return sample['plain_text']
+
+    def get_rejected(self, sample):
+        print(
+            f'Warning: dataset {self.dataset_name} does not include rejected response.'
+        )
+        return None
+
+    def get_prompt_and_chosen(self, sample):
+        return sample['plain_text']
 
     def get_prompt_and_rejected(self, sample):
         print(
@@ -1209,7 +1267,7 @@ class AlpacaChinese(object):
 
 # English dataset
 class Gpt4allPromptGeneration(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/rm-static
+    """https://huggingface.co/datasets/nomic-ai/gpt4all-j-prompt-generations
     """
     def __init__(
         self,
@@ -1648,8 +1706,8 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
         super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
                          seed)
 
-        self.dataset = self.raw_datasets['train']
-        self.raw_datasets = self.dataset.train_test_split(
+        self.datasets = self.raw_datasets['train']
+        self.raw_datasets = self.datasets.train_test_split(
             test_size=test_data_ratio, seed=seed)
 
     def get_train_data(self):
