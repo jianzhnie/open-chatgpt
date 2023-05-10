@@ -43,13 +43,11 @@ name2Method: Dict[str, Type] = {
     'Cohere/miracl-ja-queries-22-12': CohereMiracljaqueries2212Dataset,
     'lmqg/qg_jaquad': LmqgQgjaquadDataset,
     'lmqg/qag_jaquad': LmqgQagjaquadDataset,
-    'lvwerra/stack-exchange-paired': StackExchangeParied,
     'Anthropic/hh-rlhf': AnthropicHHRLHF,
     'databricks/databricks-dolly-15k': DatabricksDolly15k,
     'mosaicml/dolly_hhrlhf': MosaicmlDollyHHRLHF,
     'JosephusCheung/GuanacoDataset': GuanacoDataset,
     'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
-    'laion/OIG': LaionOIG,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
     'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
     'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
@@ -61,6 +59,8 @@ name2Method: Dict[str, Type] = {
 }
 
 localdata2Method = {
+    'lvwerra/stack-exchange-paired': StackExchangeParied,
+    'laion/OIG': LaionOIG,
     'huatuo_med_data': HuatuoMedDataset,
     'huatuo_med_cancer': HuatuoMedDataset,
     'InstructionWild-en': InstructWildDataset,
