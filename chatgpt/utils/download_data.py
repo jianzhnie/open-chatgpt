@@ -38,31 +38,26 @@ data_path = [
 
 
 def clone_repo(repo, dir):
-    print(f'git clone https://huggingface.co/datasets/{repo} into {dir}/{repo}')
+    print(
+        f'git clone https://huggingface.co/datasets/{repo} into {dir}/{repo}')
     path = os.path.join(dir, repo)
     if not os.path.exists(path):
         os.makedirs(path)
     process = subprocess.run(
-        f'git clone https://huggingface.co/datasets/{repo} {dir}/{repo}/'
-    )
+        f'git clone https://huggingface.co/datasets/{repo} {dir}/{repo}/',
+        shell=True,
+        check=True)
     print(process.stdout)
-    for f in glob.glob(f'{dir}/{repo}/*.gz'):
-        out_path, _ = os.path.splitext(f)
-        with (
-            gzip.open(f, 'rb') as infile,
-            open(out_path, 'wb') as outfile
-        ):
-            shutil.copyfileobj(infile, outfile)
 
 
 if __name__ == '__main__':
     process = subprocess.run(
         'git lfs env | grep -q \'git config filter.lfs.smudge = "git-lfs smudge -- %f"\'',
-        shell=True
-    )
+        shell=True)
     if process.returncode != 0:
-        print('error: git lfs not installed. please install git-lfs and run `git lfs install`')
-
+        print(
+            'error: git lfs not installed. please install git-lfs and run `git lfs install`'
+        )
 
     dir = '/home/robin/work_dir/llm/open-chatgpt/prompt_data'
     for repo in data_path:
