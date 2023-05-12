@@ -1,7 +1,7 @@
 import random
 from abc import ABC
 from collections import namedtuple
-from typing import Deque, List, Tuple
+from typing import Deque, Tuple
 
 import torch
 import torch.nn as nn
