@@ -38,19 +38,41 @@ data_path = [
 
 
 def clone_repo(repo, dir):
-    print(
-        f'git clone https://huggingface.co/datasets/{repo} into {dir}/{repo}')
-    path = os.path.join(dir, repo)
-    if not os.path.exists(path):
-        os.makedirs(path)
+    repo_url = f'https://huggingface.co/datasets/{repo}'
+    dest_dir = os.path.join(dir, repo)
+
+    if os.path.exists(dest_dir):
+        print(f'Repository {repo} already exists at {dest_dir}')
+        return
+
     try:
-        process = subprocess.run(
-            f'git clone https://huggingface.co/datasets/{repo} {dir}/{repo}/',
-            shell=True,
-            check=True)
-        print(process.stdout)
-    except:
-        pass
+        subprocess.run(['git', 'clone', repo_url, dest_dir], check=True)
+        print(f'Successfully cloned repository {repo} into {dest_dir}')
+    except subprocess.CalledProcessError as e:
+        print(f'Error cloning repository {repo}: {e}')
+
+
+def extract_gz_files(repo, directory):
+    """
+    Extract all .gz files in the specified directory and save as uncompressed files.
+
+    Parameters:
+        - repo (str): the name of the repository to look for in the specified directory
+        - directory (str): the path to the directory where the .gz files are located
+    """
+    # Find all .gz files in the specified directory with the given repository name
+    file_list = glob.glob(os.path.join(directory, repo, '*.gz'))
+
+    # Loop through each .gz file and extract its contents to a new output file
+    for input_file_path in file_list:
+        output_file_path = os.path.splitext(input_file_path)[0]
+
+        with gzip.open(input_file_path, 'rb') as input_file, \
+             open(output_file_path, 'wb') as output_file:
+
+            shutil.copyfileobj(input_file, output_file)
+
+        print(f'Extracted {input_file_path} to {output_file_path}')
 
 
 if __name__ == '__main__':
