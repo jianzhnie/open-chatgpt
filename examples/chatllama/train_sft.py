@@ -277,7 +277,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = get_args()
-    # assert args.model_path != '', 'Please provide the llama model path'
+    assert args.model_path != '', 'Please provide the llama model path'
 
     set_seed(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)

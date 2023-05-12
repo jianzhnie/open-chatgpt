@@ -18,7 +18,6 @@ def gather_log_probs(logits, labels):
 
 
 class PPOTrainer():
-
     def __init__(
         self,
         prompt_dataset: Dataset = None,
@@ -300,7 +299,7 @@ class PPOTrainer():
         # if the checkpoint already exists remove it.
         actor_model_path = os.path.join(path, 'actor')
         actor_file_name = os.path.join(
-            actor_model_path, "episode_" + str(current_episode) + '.tar')
+            actor_model_path, 'episode_' + str(current_episode) + '.tar')
         if not os.path.exists(actor_model_path):
             os.makedirs(actor_model_path)
 
@@ -316,7 +315,7 @@ class PPOTrainer():
         # Deepspeed checkpoints are already directories and will be overwritten
         critic_model_path = os.path.join(path, 'critic')
         critic_file_name = os.path.join(
-            critic_model_path, "episode_" + str(current_episode) + '.tar')
+            critic_model_path, 'episode_' + str(current_episode) + '.tar')
         if not os.path.exists(critic_model_path):
             os.makedirs(critic_model_path)
 

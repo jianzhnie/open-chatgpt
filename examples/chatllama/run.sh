@@ -1,6 +1,10 @@
 #!/bin/bash
+# convert model to huggingface
+
 python convert_llama_weights_to_hf.py \
-    --input_dir /userhome/LLM_checkpoints --model_size 7B --output_dir /userhome/jianzhnie/llama-checkpoint/7B
+    --input_dir /userhome/LLM_checkpoints \
+    --model_size 7B \
+    --output_dir /userhome/jianzhnie/llama-checkpoint/7B
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nnodes 1  --nproc_per_node 4 train_supervised_finetune.py \
          --model_path=/userhome/jianzhnie/llama-checkpoint/7B  \
@@ -30,7 +34,7 @@ accelerate launch --multi_gpu --num_machines 1  --num_processes 8 \
 
 
 python train_supervised_finetune.py \
-         --model_path=/userhome/jianzhnie/llama-checkpoint/7B \
+         --model_path=facebook/opt-125m \
          --streaming --no_gradient_checkpointing \
         --learning_rate 1e-5  \
         --no_fp16 \

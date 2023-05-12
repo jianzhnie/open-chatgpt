@@ -1,4 +1,3 @@
-import json
 import random
 from abc import ABC
 from collections import namedtuple
@@ -48,7 +47,6 @@ DsMemory = namedtuple(
 
 class DsExperienceDataset(Dataset):
     """Dataset to train the actor-critic models."""
-
     def __init__(self, memories: Deque[Memory]) -> None:
         super().__init__()
         self.data = list(memories)
@@ -72,7 +70,6 @@ class DsExperienceDataset(Dataset):
 
 class ExperienceDataset(Dataset):
     """Dataset to train the actor-critic models."""
-
     def __init__(self, memories: Deque[Memory]) -> None:
         super().__init__()
         self.data = list(memories)
@@ -99,7 +96,6 @@ class ExperienceDataset(Dataset):
 
 
 class ExperienceMaker(ABC):
-
     def __init__(self,
                  actor: ActorModel,
                  critic: nn.Module,
@@ -152,7 +148,6 @@ class ExperienceMaker(ABC):
 
 
 class ReplayBuffer(ABC):
-
     def __init__(self,
                  max_len: int = 10000,
                  sample_batch_size: int = 8,
