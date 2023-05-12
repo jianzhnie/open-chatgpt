@@ -11,7 +11,7 @@ import sys
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
-
+from transformers import AutoTokenizer
 from transformers import (
     AutoModelForCausalLM,
     SchedulerType,
@@ -21,11 +21,12 @@ from transformers import (
 
 import deepspeed
 from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
-
+import sys
+sys.path.append("../../")
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from chatgpt.dataset.data_utils import create_prompt_dataset
-from chatgpt.utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model, load_hf_tokenizer
+from chatgpt.utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model
 from chatgpt.utils.ds_utils import get_train_ds_config
 from chatgpt.models.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters
 from chatgpt.utils.model_utils import create_hf_model
@@ -42,9 +43,16 @@ def parse_args():
                         '1) a single data path, 2) multiple datasets in the'
                         'form: dataset1-path dataset2-path ...')
     parser.add_argument(
+        '--data_dir',
+        type=str,
+        default=None,
+        help=
+        'Where to store the data-related files such as shuffle index. This needs to be on a local storage of a node (not on a shared storage)'
+    )
+    parser.add_argument(
         '--data_output_path',
         type=str,
-        default='/tmp/data_files/',
+        default='work_dirs/',
         help=
         'Where to store the data-related files such as shuffle index. This needs to be on a local storage of a node (not on a shared storage)'
     )
@@ -190,7 +198,11 @@ def main():
 
     torch.distributed.barrier()
 
-    tokenizer = load_hf_tokenizer(args.model_name_or_path, fast_tokenizer=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name_or_path,
+        padding_side="right",
+        use_fast=True,
+    )
     tokenizer.pad_token = tokenizer.eos_token
 
     model = create_hf_model(AutoModelForCausalLM,
@@ -209,7 +221,7 @@ def main():
     train_phase = 1
     train_dataset, eval_dataset = create_prompt_dataset(
         dataset_names=args.data_path,
-        dataset_dir=args.data_dir,
+        data_dir=args.data_dir,
         train_phase=train_phase,
         test_data_ratio=0.1,
         tokenizer=tokenizer,
