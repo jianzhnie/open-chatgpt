@@ -1,135 +1,125 @@
 #!/usr/bin/env python
-# Copyright (c) Microsoft Corporation.
-# SPDX-License-Identifier: Apache-2.0
-
-# DeepSpeed Team
 import argparse
-import os
 import math
 import sys
 
+import deepspeed
 import torch
+from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoTokenizer
-from transformers import (
-    AutoModelForCausalLM,
-    SchedulerType,
-    default_data_collator,
-    get_scheduler,
-)
+from transformers import (AutoModelForCausalLM, AutoTokenizer, SchedulerType,
+                          default_data_collator, get_scheduler)
 
-import deepspeed
-from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
-import sys
-sys.path.append("../../")
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+sys.path.append('../../')
 from chatgpt.dataset.data_utils import create_prompt_dataset
-from chatgpt.utils.utils import print_rank_0, to_device, save_hf_format, set_random_seed, get_all_reduce_mean, get_optimizer_grouped_parameters, save_zero_three_model
+from chatgpt.models.lora import (convert_linear_layer_to_lora,
+                                 convert_lora_to_linear_layer,
+                                 only_optimize_lora_parameters)
 from chatgpt.utils.ds_utils import get_train_ds_config
-from chatgpt.models.lora import convert_linear_layer_to_lora, convert_lora_to_linear_layer, only_optimize_lora_parameters
 from chatgpt.utils.model_utils import create_hf_model
+from chatgpt.utils.utils import (get_all_reduce_mean,
+                                 get_optimizer_grouped_parameters,
+                                 print_rank_0, save_hf_format,
+                                 save_zero_three_model, set_random_seed,
+                                 to_device)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description=
-        "Finetune a transformers model on a causal language modeling task")
+        'Finetune a transformers model on a causal language modeling task')
     parser.add_argument('--data_path',
                         nargs='*',
                         default=['Dahoas/rm-static'],
                         help='Path to the training dataset. Accepted format:'
                         '1) a single data path, 2) multiple datasets in the'
                         'form: dataset1-path dataset2-path ...')
-    parser.add_argument(
-        '--data_dir',
-        type=str,
-        default=None,
-        help=
-        'Where to store the data-related files such as shuffle index. This needs to be on a local storage of a node (not on a shared storage)'
-    )
+    parser.add_argument('--data_dir',
+                        type=str,
+                        default=None,
+                        help='Where to store the datasets ')
     parser.add_argument(
         '--data_output_path',
         type=str,
         default='work_dirs/',
         help=
-        'Where to store the data-related files such as shuffle index. This needs to be on a local storage of a node (not on a shared storage)'
+        'Where to store the data-related files. This needs to be on a local storage of a node (not on a shared storage)'
     )
     parser.add_argument(
-        "--model_name_or_path",
+        '--model_name_or_path',
         type=str,
         help=
-        "Path to pretrained model or model identifier from huggingface.co/models.",
+        'Path to pretrained model or model identifier from huggingface.co/models.',
         required=True,
     )
     parser.add_argument(
-        "--per_device_train_batch_size",
+        '--per_device_train_batch_size',
         type=int,
         default=16,
-        help="Batch size (per device) for the training dataloader.",
+        help='Batch size (per device) for the training dataloader.',
     )
     parser.add_argument(
-        "--per_device_eval_batch_size",
+        '--per_device_eval_batch_size',
         type=int,
         default=16,
-        help="Batch size (per device) for the evaluation dataloader.",
+        help='Batch size (per device) for the evaluation dataloader.',
     )
     parser.add_argument(
-        "--max_seq_len",
+        '--max_seq_len',
         type=int,
         default=512,
-        help="The maximum sequence length.",
+        help='The maximum sequence length.',
     )
     parser.add_argument(
-        "--learning_rate",
+        '--learning_rate',
         type=float,
         default=1e-3,
         help=
-        "Initial learning rate (after the potential warmup period) to use.",
+        'Initial learning rate (after the potential warmup period) to use.',
     )
-    parser.add_argument("--weight_decay",
+    parser.add_argument('--weight_decay',
                         type=float,
                         default=0.,
-                        help="Weight decay to use.")
-    parser.add_argument("--num_train_epochs",
+                        help='Weight decay to use.')
+    parser.add_argument('--num_train_epochs',
                         type=int,
                         default=1,
-                        help="Total number of training epochs to perform.")
+                        help='Total number of training epochs to perform.')
     parser.add_argument(
-        "--gradient_accumulation_steps",
+        '--gradient_accumulation_steps',
         type=int,
         default=1,
         help=
-        "Number of updates steps to accumulate before performing a backward/update pass.",
+        'Number of updates steps to accumulate before performing a backward/update pass.',
     )
     parser.add_argument(
-        "--lr_scheduler_type",
+        '--lr_scheduler_type',
         type=SchedulerType,
-        default="cosine",
-        help="The scheduler type to use.",
+        default='cosine',
+        help='The scheduler type to use.',
         choices=[
-            "linear", "cosine", "cosine_with_restarts", "polynomial",
-            "constant", "constant_with_warmup"
+            'linear', 'cosine', 'cosine_with_restarts', 'polynomial',
+            'constant', 'constant_with_warmup'
         ],
     )
     parser.add_argument(
-        "--num_warmup_steps",
+        '--num_warmup_steps',
         type=int,
         default=0,
-        help="Number of steps for the warmup in the lr scheduler.")
-    parser.add_argument("--output_dir",
+        help='Number of steps for the warmup in the lr scheduler.')
+    parser.add_argument('--output_dir',
                         type=str,
                         default=None,
-                        help="Where to store the model.")
-    parser.add_argument("--seed",
+                        help='Where to store the model.')
+    parser.add_argument('--seed',
                         type=int,
                         default=1234,
-                        help="A seed for reproducible training.")
-    parser.add_argument("--local_rank",
+                        help='A seed for reproducible training.')
+    parser.add_argument('--local_rank',
                         type=int,
                         default=-1,
-                        help="local_rank for distributed training on gpus")
+                        help='local_rank for distributed training on gpus')
     parser.add_argument('--gradient_checkpointing',
                         action='store_true',
                         help='Enable HF gradient checkpointing for model.')
@@ -146,14 +136,14 @@ def parse_args():
         default=0,
         help='ZeRO optimization stage for Actor model (and clones).')
     ## LoRA for efficient training setting
-    parser.add_argument("--lora_dim",
+    parser.add_argument('--lora_dim',
                         type=int,
                         default=0,
-                        help="If > 0, use LoRA for efficient training.")
-    parser.add_argument("--lora_module_name",
+                        help='If > 0, use LoRA for efficient training.')
+    parser.add_argument('--lora_module_name',
                         type=str,
-                        default="decoder.layers.",
-                        help="The scope of LoRA.")
+                        default='decoder.layers.',
+                        help='The scope of LoRA.')
     parser.add_argument('--only_optimize_lora',
                         action='store_true',
                         help='Only optimize the LoRA parameters.')
@@ -164,7 +154,7 @@ def parse_args():
     if args.gradient_checkpointing and args.lora_dim > 0:
         assert (
             not args.only_optimize_lora
-        ), "--gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time."
+        ), '--gradient_checkpointing and --only_optimize_lora cannot be enabled at the same time.'
 
     return args
 
@@ -173,10 +163,10 @@ def main():
     args = parse_args()
 
     if args.local_rank == -1:
-        device = torch.device("cuda")
+        device = torch.device('cuda')
     else:
         torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
+        device = torch.device('cuda', args.local_rank)
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         # torch.distributed.init_process_group(backend='nccl')
         deepspeed.init_distributed()
@@ -194,13 +184,13 @@ def main():
     # If passed along, set the training seed now.
     set_random_seed(args.seed)
 
-    assert not args.offload, "zero-offload is not currently supported but coming soon!"
+    assert not args.offload, 'zero-offload is not currently supported but coming soon!'
 
     torch.distributed.barrier()
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
-        padding_side="right",
+        padding_side='right',
         use_fast=True,
     )
     tokenizer.pad_token = tokenizer.eos_token
@@ -260,7 +250,7 @@ def main():
         try:
             perplexity = torch.exp(losses)
         except OverflowError:
-            perplexity = float("inf")
+            perplexity = float('inf')
         try:
             perplexity = get_all_reduce_mean(perplexity).item()
         except:
@@ -297,16 +287,16 @@ def main():
         model.gradient_checkpointing_enable()
 
     # Train!
-    print_rank_0("***** Running training *****", args.global_rank)
+    print_rank_0('***** Running training *****', args.global_rank)
     print_rank_0(
-        f"***** Evaluating perplexity, Epoch {0}/{args.num_train_epochs} *****",
+        f'***** Evaluating perplexity, Epoch {0}/{args.num_train_epochs} *****',
         args.global_rank)
     perplexity = evaluation(model, eval_dataloader)
-    print_rank_0(f"ppl: {perplexity}", args.global_rank)
+    print_rank_0(f'ppl: {perplexity}', args.global_rank)
 
     for epoch in range(args.num_train_epochs):
         print_rank_0(
-            f"Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Micro Batches {len(train_dataloader)}",
+            f'Beginning of Epoch {epoch+1}/{args.num_train_epochs}, Total Micro Batches {len(train_dataloader)}',
             args.global_rank)
         model.train()
         for step, batch in enumerate(train_dataloader):
@@ -318,10 +308,10 @@ def main():
 
         # Evaluate perplexity on the validation set.
         print_rank_0(
-            f"***** Evaluating perplexity, Epoch {epoch+1}/{args.num_train_epochs} *****",
+            f'***** Evaluating perplexity, Epoch {epoch+1}/{args.num_train_epochs} *****',
             args.global_rank)
         perplexity = evaluation(model, eval_dataloader)
-        print_rank_0(f"ppl: {perplexity}", args.global_rank)
+        print_rank_0(f'ppl: {perplexity}', args.global_rank)
         model.tput_timer.update_epoch_count()
 
     if args.output_dir is not None:
@@ -339,5 +329,5 @@ def main():
                                   zero_stage=args.zero_stage)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
