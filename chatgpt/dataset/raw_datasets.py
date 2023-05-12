@@ -869,7 +869,7 @@ class OpenAssistantOasst1(PromptRawDataset):
 
 # TODO
 # [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
-class BelleGroupTrain1MCN(PromptRawDataset):
+class BelleGroupDataset(PromptRawDataset):
     """https://huggingface.co/datasets/BelleGroup/train_1M_CN
 
     - 内容
@@ -944,39 +944,6 @@ class BelleGroupTrain1MCN(PromptRawDataset):
         return None
 
 
-class BelleGroupTrain05MCN(BelleGroupTrain1MCN):
-    """https://huggingface.co/datasets/BelleGroup/train_1M_CN
-
-    - 内容
-        包含约200万条由BELLE项目生成的中文指令数据。
-
-    - 样例
-        {
-        "instruction": "给定一个文字输入，将其中的所有数字加1。\n“明天的会议在9点开始，记得准时到达。”\n",
-        "input": "",
-        "output": "“明天的会议在10点开始，记得准时到达。”"
-        }
-
-    - 字段：
-        instruction: 指令
-        input: 输入（本数据集均为空）
-        output: 输出
-
-
-    """
-    def __init__(
-        self,
-        dataset_name='BelleGroup/train_0.5M_CN',
-        data_dir: str = None,
-        num_proc: int = 8,
-        test_data_ratio: float = 0.1,
-        seed=None,
-    ) -> None:
-
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
-
-
 # TODO
 # [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
 class AlpacaDataset(PromptRawDataset):
@@ -985,65 +952,6 @@ class AlpacaDataset(PromptRawDataset):
     def __init__(
         self,
         dataset_name='tatsu-lab/alpaca',
-        data_dir: str = None,
-        num_proc: int = 8,
-        test_data_ratio: float = 0.1,
-        seed=None,
-    ) -> None:
-
-        super().__init__(dataset_name, data_dir, num_proc, test_data_ratio,
-                         seed)
-
-        self.dataset = self.raw_datasets['train']
-        self.raw_datasets = self.dataset.train_test_split(
-            test_size=test_data_ratio, seed=seed)
-
-        self.prompt_input, self.prompt_no_input = PROMPT_DICT[
-            'prompt_input'], PROMPT_DICT['prompt_no_input']
-
-    def get_train_data(self):
-        return self.raw_datasets['train']
-
-    def get_eval_data(self):
-        return self.raw_datasets['test']
-
-    def get_prompt(self, sample):
-        if sample.get('input', '') != '':
-            instruct = self.prompt_input.format_map(sample)
-        else:
-            instruct = self.prompt_no_input.format_map(sample)
-        return ' Human: ' + instruct + ' Assistant:'
-
-    def get_chosen(self, sample):
-        return ' ' + sample['output']
-
-    def get_rejected(self, sample):
-        print(
-            f'Warning: dataset {self.dataset_name} does not include rejected response.'
-        )
-        return None
-
-    def get_prompt_and_chosen(self, sample):
-        if sample.get('input', '') != '':
-            instruct = self.prompt_input.format_map(sample)
-        else:
-            instruct = self.prompt_no_input.format_map(sample)
-        target = sample['output']
-        return ' Human: ' + instruct + ' Assistant: ' + target
-
-    def get_prompt_and_rejected(self, sample):
-        print(
-            f'Warning: dataset {self.dataset_name} does not include rejected response.'
-        )
-        return None
-
-
-class AlpacaDataCleaned(PromptRawDataset):
-    """https://huggingface.co/datasets/yahma/alpaca-cleaned
-    """
-    def __init__(
-        self,
-        dataset_name='yahma/alpaca-cleaned',
         data_dir: str = None,
         num_proc: int = 8,
         test_data_ratio: float = 0.1,
