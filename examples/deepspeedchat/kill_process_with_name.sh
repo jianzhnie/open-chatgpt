@@ -24,5 +24,4 @@ if [ $pressed_key == "y" ]; then
         ps aux | grep $1 | grep -v $2 | awk '{print $2}' | xargs kill -9
     fi
 fi
-echo 
-
+echo
