@@ -19,11 +19,11 @@ I have collected a few datasets of prompts to train chatllm model. Follwing are 
 |               llama_data      |              HuatuoMedDataset              |   https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data    |             |
 | live_cancer | HuatuoMedDataset |  | |
 |                laion/OIG                |                  LaionOIG                  |                https://huggingface.co/datasets/laion/oig                |             |
-|          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           |             |
-|         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          |             |
-|        BelleGroup/train_0.5M_CN         |            BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         |             |
-|            tatsu-lab/alpaca             |                   AlpacaDataset                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             |             |
-|          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           |             |
+|          OpenAssistant/oasst1           |            OpenAssistantOasst1             |          https://huggingface.co/datasets/openassistant/oasst1           | 8w |
+|         BelleGroup/train_1M_CN          |            BelleGroupTrain1MCN             |         https://huggingface.co/datasets/bellegroup/train_1M_CN          | 100w |
+|        BelleGroup/train_0.5M_CN         |            BelleGroupTrain05MCN            |        https://huggingface.co/datasets/bellegroup/train_0.5M_CN         | 50w |
+|            tatsu-lab/alpaca             |                   AlpacaDataset                   |            https://huggingface.co/datasets/tatsu-lab/alpaca             | 52k |
+|          yahma/alpaca-cleaned           |               AlpacaCleaned                |          https://huggingface.co/datasets/yahma/alpaca-cleaned           | 52k |
 |           QingyiSi/Alpaca-CoT           |                 AlpacaCoT                  |           https://huggingface.co/datasets/qingyisi/alpaca-cot           |             |
 | trans_chinese_alpaca_data | AlpacaChinese | https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data | |
 | trans_chinese_alpaca_data | AlpacaChinese | https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data | |

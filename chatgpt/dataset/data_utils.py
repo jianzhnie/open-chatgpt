@@ -13,17 +13,17 @@ from torch.utils.data import ConcatDataset, Dataset
 from transformers import PreTrainedTokenizer
 
 from chatgpt.dataset.raw_datasets import (
-    AlpacaChinese, AlpacaCoT, AlpacaDataCleaned, AlpacaDataset,
-    AnthropicHHRLHF, BelleGroupTrain1MCN, BelleGroupTrain05MCN,
-    CohereMiracljaqueries2212Dataset, CohereMiraclzhqueries2212Dataset,
-    DahoasFullhhrlhfDataset, DahoasRmstaticDataset,
-    DahoasSyntheticinstructgptjpairwiseDataset, DatabricksDolly15k,
-    FudanMossDataset, Gpt4allPromptGeneration, GuanacoDataset,
-    HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset, InstructWildDataset,
-    LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset, MkqaChineseDataset,
-    MkqaJapaneseDataset, MosaicmlDollyHHRLHF, OpenaiWebgptcomparisonsDataset,
-    OpenAssistantOasst1, PromptDataset, PromptRawDataset, StackExchangeParied,
-    StanfordnlpSHPDataset, Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
+    AlpacaChinese, AlpacaCoT, AlpacaDataset, AnthropicHHRLHF,
+    BelleGroupDataset, CohereMiracljaqueries2212Dataset,
+    CohereMiraclzhqueries2212Dataset, DahoasFullhhrlhfDataset,
+    DahoasRmstaticDataset, DahoasSyntheticinstructgptjpairwiseDataset,
+    DatabricksDolly15k, FudanMossDataset, Gpt4allPromptGeneration,
+    GuanacoDataset, HelloSimpleAIHC3ChineseDataset, HuatuoMedDataset,
+    InstructWildDataset, LaionOIG, LmqgQagjaquadDataset, LmqgQgjaquadDataset,
+    MkqaChineseDataset, MkqaJapaneseDataset, MosaicmlDollyHHRLHF,
+    OpenaiWebgptcomparisonsDataset, OpenAssistantOasst1, PromptDataset,
+    PromptRawDataset, StackExchangeParied, StanfordnlpSHPDataset,
+    Wangrui6ZhihuKOLDataset, YeungNLPFirefly,
     YitingxieRlhfrewarddatasetsDataset)
 
 # Create a dictionary mapping dataset names to their corresponding Dataset classes
@@ -50,20 +50,20 @@ HuggingFaceDataClass: Dict[str, Type] = {
     'YeungNLP/firefly-train-1.1M': YeungNLPFirefly,
     'OpenAssistant/oasst1': OpenAssistantOasst1,
     'tatsu-lab/alpaca': AlpacaDataset,
-    'yahma/alpaca-cleaned': AlpacaDataCleaned,
+    'yahma/alpaca-cleaned': AlpacaDataset,
     'QingyiSi/Alpaca-CoT': AlpacaCoT,
     'fnlp/moss-002-sft-data': FudanMossDataset,
     'nomic-ai/gpt4all-j-prompt-generations': Gpt4allPromptGeneration,
     'lvwerra/stack-exchange-paired': StackExchangeParied,
     'laion/OIG': LaionOIG,
-    'BelleGroup/train_1M_CN': BelleGroupTrain1MCN,
-    'BelleGroup/train_0.5M_CN': BelleGroupTrain05MCN,
+    'BelleGroup/train_1M_CN': BelleGroupDataset,
+    'BelleGroup/train_0.5M_CN': BelleGroupDataset,
     'huatuo_med_data/llama_med': HuatuoMedDataset,
     'huatuo_med_data/liver_cancer': HuatuoMedDataset,
     'InstructionWild/instinwild_en': InstructWildDataset,
     'InstructionWild/instinwild_ch': InstructWildDataset,
     'alpaca_chinese/alpaca_data_zh_51k': AlpacaChinese,
-    'alpaca_chinesetrans_chinese_alpaca_data': AlpacaChinese,
+    'alpaca_chinese/trans_chinese_alpaca_data': AlpacaChinese,
 }
 
 
