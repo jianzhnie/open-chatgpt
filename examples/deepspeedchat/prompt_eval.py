@@ -4,12 +4,11 @@
 # DeepSpeed Team
 import argparse
 import logging
-import torch
-import sys
 import os
+import sys
 
-from transformers import (
-    AutoModelForCausalLM, )
+import torch
+from transformers import AutoModelForCausalLM
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
@@ -20,59 +19,59 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Eval the finetued SFT model")
+    parser = argparse.ArgumentParser(description='Eval the finetued SFT model')
     parser.add_argument(
-        "--model_name_or_path_baseline",
+        '--model_name_or_path_baseline',
         type=str,
-        help="Path to baseline model",
+        help='Path to baseline model',
         required=True,
     )
     parser.add_argument(
-        "--model_name_or_path_finetune",
+        '--model_name_or_path_finetune',
         type=str,
-        help="Path to pretrained model",
+        help='Path to pretrained model',
         required=True,
     )
     parser.add_argument(
-        "--num_beams",
+        '--num_beams',
         type=int,
         default=1,
         help='Specify num of beams',
     )
     parser.add_argument(
-        "--num_beam_groups",
+        '--num_beam_groups',
         type=int,
         default=1,
         help='Specify num of beams',
     )
     parser.add_argument(
-        "--top_k",
+        '--top_k',
         type=int,
         default=4,
         help='Specify num of beams',
     )
     parser.add_argument(
-        "--penalty_alpha",
+        '--penalty_alpha',
         type=float,
         default=0.6,
         help='Specify num of beams',
     )
     parser.add_argument(
-        "--num_return_sequences",
+        '--num_return_sequences',
         type=int,
         default=1,
         help='Specify num of return sequences',
     )
     parser.add_argument(
-        "--max_new_tokens",
+        '--max_new_tokens',
         type=int,
         default=100,
         help='Specify num of return sequences',
     )
-    parser.add_argument("--language",
+    parser.add_argument('--language',
                         type=str,
-                        default="English",
-                        choices=["English", "Chinese", "Japanese"])
+                        default='English',
+                        choices=['English', 'Chinese', 'Japanese'])
 
     args = parser.parse_args()
 
@@ -131,8 +130,8 @@ def print_utils(gen_output):
 def prompt_eval(args, model_baseline, model_fintuned, tokenizer, device,
                 prompts):
     for prompt in prompts:
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
-        print("==========Baseline: Greedy=========")
+        inputs = tokenizer(prompt, return_tensors='pt').to(device)
+        print('==========Baseline: Greedy=========')
         r_base = generate(model_baseline,
                           tokenizer,
                           inputs,
@@ -140,7 +139,7 @@ def prompt_eval(args, model_baseline, model_fintuned, tokenizer, device,
                           num_return_sequences=args.num_return_sequences,
                           max_new_tokens=args.max_new_tokens)
         print_utils(r_base)
-        print("==========finetune: Greedy=========")
+        print('==========finetune: Greedy=========')
         r_finetune_g = generate(model_fintuned,
                                 tokenizer,
                                 inputs,
@@ -186,7 +185,7 @@ def prompt_eval(args, model_baseline, model_fintuned, tokenizer, device,
         #                                             num_return_sequences=args.num_return_sequences,
         #                                             max_new_tokens=args.max_new_tokens)
         # print_utils(r_finetune_c)
-        print("====================prompt end=============================")
+        print('====================prompt end=============================')
         print()
         print()
 
@@ -194,7 +193,7 @@ def prompt_eval(args, model_baseline, model_fintuned, tokenizer, device,
 def main():
     args = parse_args()
 
-    device = torch.device("cuda:0")
+    device = torch.device('cuda:0')
 
     tokenizer = load_hf_tokenizer(args.model_name_or_path_baseline,
                                   fast_tokenizer=True)
@@ -213,36 +212,36 @@ def main():
     # the original model (without finetuning) will stuck and produce no response.
     # Finetuned models have less such issue. Thus following prompts all end with ":"
     # to make it a more meaningful comparison.
-    if args.language == "English":
+    if args.language == 'English':
         prompts = [
-            "Human: Please tell me about Microsoft in a few sentence? Assistant:",
-            "Human: Explain the moon landing to a 6 year old in a few sentences. Assistant:",
-            "Human: Write a short poem about a wise frog. Assistant:",
-            "Human: Who was president of the United States in 1955? Assistant:",
-            "Human: How does a telescope work? Assistant:",
-            "Human: Why do birds migrate south for the winter? Assistant:"
+            'Human: Please tell me about Microsoft in a few sentence? Assistant:',
+            'Human: Explain the moon landing to a 6 year old in a few sentences. Assistant:',
+            'Human: Write a short poem about a wise frog. Assistant:',
+            'Human: Who was president of the United States in 1955? Assistant:',
+            'Human: How does a telescope work? Assistant:',
+            'Human: Why do birds migrate south for the winter? Assistant:'
         ]
-    elif args.language == "Chinese":
+    elif args.language == 'Chinese':
         prompts = [
-            "Human: 请用几句话介绍一下微软? Assistant:",
-            "Human: 用几句话向6岁的孩子解释登月。 Assistant:",
-            "Human: 写一首关于一只聪明的青蛙的短诗。 Assistant:",
-            "Human: 谁是1955年的美国总统? Assistant:", "Human: 望远镜是如何工作的? Assistant:",
-            "Human: 鸟类为什么要南迁过冬? Assistant:"
+            'Human: 请用几句话介绍一下微软? Assistant:',
+            'Human: 用几句话向6岁的孩子解释登月。 Assistant:',
+            'Human: 写一首关于一只聪明的青蛙的短诗。 Assistant:',
+            'Human: 谁是1955年的美国总统? Assistant:', 'Human: 望远镜是如何工作的? Assistant:',
+            'Human: 鸟类为什么要南迁过冬? Assistant:'
         ]
-    elif args.language == "Japanese":
+    elif args.language == 'Japanese':
         prompts = [
-            "Human: マイクロソフトについて簡単に教えてください。 Assistant:",
-            "Human: 6歳児に月面着陸を短い文で説明する。 Assistant:",
-            "Human: 賢いカエルについて短い詩を書いてください。 Assistant:",
-            "Human: 1955年のアメリカ合衆国大統領は誰? Assistant:",
-            "Human: 望遠鏡はどのように機能しますか? Assistant:",
-            "Human: 鳥が冬に南に移動するのはなぜですか? Assistant:"
+            'Human: マイクロソフトについて簡単に教えてください。 Assistant:',
+            'Human: 6歳児に月面着陸を短い文で説明する。 Assistant:',
+            'Human: 賢いカエルについて短い詩を書いてください。 Assistant:',
+            'Human: 1955年のアメリカ合衆国大統領は誰? Assistant:',
+            'Human: 望遠鏡はどのように機能しますか? Assistant:',
+            'Human: 鳥が冬に南に移動するのはなぜですか? Assistant:'
         ]
 
     prompt_eval(args, model_baseline, model_fintuned, tokenizer, device,
                 prompts)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
