@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from datasets import load_dataset
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
@@ -106,7 +105,11 @@ class PromptDataset(Dataset):
                 key: torch.tensor(val)
                 for key, val in encoding_input.items()
             }
-            return encoding_input
+            return {
+                'input_ids': encoding_input['input_ids'],
+                'attention_mask': encoding_input['attention_mask'],
+                'labels': encoding_input['labels']
+            }
 
         elif self.train_phase == 2:
             chosen_sentence = self.chosen_dataset[idx]
