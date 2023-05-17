@@ -4,27 +4,13 @@ import json
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
-
+from datasets import load_dataset
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
-
-
-def _make_r_io_base(f, mode: str):
-    if not isinstance(f, io.IOBase):
-        f = open(f, mode=mode)
-    return f
-
-
-def jload(f, mode='r'):
-    """Load a .json file into a dictionary."""
-    f = _make_r_io_base(f, mode)
-    jdict = json.load(f)
-    f.close()
-    return jdict
 
 
 IGNORE_INDEX = -100
@@ -56,18 +42,6 @@ class TrainingArguments(TrainingArguments):
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
-
-
-def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
-    """Collects the state dict and dump to disk."""
-    state_dict = trainer.model.state_dict()
-    if trainer.args.should_save:
-        cpu_state_dict = {
-            key: value.cpu()
-            for key, value in state_dict.items()
-        }
-        del state_dict
-        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
 
 def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
@@ -112,7 +86,7 @@ class SupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        list_data_dict = jload(data_path)
+        list_data_dict = load_dataset(data_path)
 
         logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
@@ -215,8 +189,6 @@ def train():
     )
     trainer.train()
     trainer.save_state()
-    safe_save_model_for_hf_trainer(trainer=trainer,
-                                   output_dir=training_args.output_dir)
 
 
 if __name__ == '__main__':
