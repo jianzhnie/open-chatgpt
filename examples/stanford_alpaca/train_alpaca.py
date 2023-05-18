@@ -2,14 +2,14 @@ import copy
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
-from datasets import load_dataset
+
 import torch
+from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           HfArgumentParser, PreTrainedModel,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
-
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
@@ -84,7 +84,7 @@ class SupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        list_data_dict = load_dataset(data_path)
+        list_data_dict = load_dataset(data_path)['train']
 
         logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
@@ -107,19 +107,39 @@ class SupervisedDataset(Dataset):
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
-        source_txt = self.examples[idx]
-        encoding_inputs = self.tokenizer(
-            source_txt,
-            return_tensors="pt",
+        example_txt = self.examples[idx]
+        source_txt = self.sources[idx]
+        example_tokenized = self.tokenizer(
+            example_txt,
+            return_tensors='pt',
             padding='longest',
             max_length=self.tokenizer.model_max_length,
-            truncation=True,)
+            truncation=True,
+        )
+        sources_tokenized = self.tokenizer(
+            source_txt,
+            return_tensors='pt',
+            padding='longest',
+            max_length=self.tokenizer.model_max_length,
+            truncation=True,
+        )
 
-        input_ids = encoding_inputs['input_ids']
+        input_ids = example_tokenized['input_ids'][0]
+        input_len = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
+
+        source_input_ids = sources_tokenized['input_ids'][0]
+        source_len = source_input_ids.ne(
+            self.tokenizer.pad_token_id).sum().item()
+
         labels = copy.deepcopy(input_ids)
-        input_ids_lens = labels_lens = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
+        labels[:source_len] = IGNORE_INDEX
+        encoding_input = dict(input_ids=input_ids, labels=labels)
+        encoding_input = {
+            key: torch.tensor(val)
+            for key, val in encoding_input.items()
+        }
 
-        return dict(input_ids=input_ids, labels=labels, input_ids_lens=input_ids_lens, labels_lens=labels_lens)
+        return encoding_input
 
 
 @dataclass
@@ -167,15 +187,26 @@ def train():
             tokenizer=tokenizer,
             model=model,
         )
-    if 'llama' in model_args.model_name_or_path:
-        tokenizer.add_special_tokens({
-            'eos_token': DEFAULT_EOS_TOKEN,
-            'bos_token': DEFAULT_BOS_TOKEN,
-            'unk_token': DEFAULT_UNK_TOKEN,
-        })
+    special_tokens_dict = dict()
+    if tokenizer.pad_token is None:
+        special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
+    if tokenizer.eos_token is None:
+        special_tokens_dict['eos_token'] = DEFAULT_EOS_TOKEN
+    if tokenizer.bos_token is None:
+        special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
+    if tokenizer.unk_token is None:
+        special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
 
-    train_dataset = SupervisedDataset(tokenizer=tokenizer,
-                                      data_path=data_args.data_path)
+    smart_tokenizer_and_embedding_resize(
+        special_tokens_dict=special_tokens_dict,
+        tokenizer=tokenizer,
+        model=model,
+    )
+
+    train_dataset = SupervisedDataset(
+        data_path=data_args.data_path,
+        tokenizer=tokenizer,
+    )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
 
     trainer = Trainer(
