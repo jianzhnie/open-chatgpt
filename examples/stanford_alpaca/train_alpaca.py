@@ -14,8 +14,8 @@ from transformers import (AutoModelForCausalLM, AutoTokenizer,
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
 DEFAULT_EOS_TOKEN = '</s>'
-DEFAULT_BOS_TOKEN = '</s>'
-DEFAULT_UNK_TOKEN = '</s>'
+DEFAULT_BOS_TOKEN = '<s>'
+DEFAULT_UNK_TOKEN = '<unk>'
 
 
 @dataclass
@@ -158,7 +158,7 @@ class SupervisedDataset(Dataset):
             max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
-        sources_tokenized = self.tokenizer(
+        source_tokenized = self.tokenizer(
             source_txt,
             return_tensors='pt',
             padding='longest',
@@ -171,14 +171,13 @@ class SupervisedDataset(Dataset):
         input_len = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
 
         # Extract the source_input_ids tensor
-        source_input_ids = sources_tokenized['input_ids'][0]
+        source_input_ids = source_tokenized['input_ids'][0]
         source_len = source_input_ids.ne(
             self.tokenizer.pad_token_id).sum().item()
 
         # Create the labels tensor
         labels = copy.deepcopy(input_ids)
-        labels[:source_len] = self.IGNORE_INDEX
-
+        
         # Create the encoding_input dictionary and convert its values to tensors
         encoding_input = dict(input_ids=input_ids, labels=labels)
         return encoding_input
