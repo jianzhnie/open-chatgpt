@@ -2,7 +2,7 @@ import copy
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
-
+import utils
 import torch
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
@@ -104,7 +104,10 @@ class SupervisedDataset(Dataset):
         """
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        list_data_dict = load_dataset(data_path)['train']
+        if "json" in data_path:
+            list_data_dict = utils.jload(data_path)
+        else:
+            list_data_dict = load_dataset(data_path)['train']
 
         logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
