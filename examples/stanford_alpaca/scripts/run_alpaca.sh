@@ -14,4 +14,4 @@ python train_alpaca.py \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1 
+    --logging_steps 1
