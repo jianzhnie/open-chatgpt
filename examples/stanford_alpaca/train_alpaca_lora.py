@@ -5,11 +5,15 @@ from typing import Dict, Optional, Sequence
 
 import torch
 from datasets import load_dataset
-from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          HfArgumentParser, PreTrainedModel,
-                          PreTrainedTokenizer, Trainer, TrainingArguments)
+                          DataCollatorForSeq2Seq, HfArgumentParser,
+                          PreTrainedModel, PreTrainedTokenizer, Trainer,
+                          TrainingArguments)
+
+from transformers import LlamaTokenizer
+
+
 
 from peft import (
     LoraConfig,
@@ -77,22 +81,25 @@ class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
     PROMPT_DICT = {
-        "description": "Template used by Alpaca-LoRA.",
-        "prompt_input":
-        "Below is an instruction that describes a task, paired with an input that provides further context. \
-            Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n\
-            ### Input:\n{input}\n\n### Response:\n",
-        "prompt_no_input":
-        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{instruction}\n\n### Response:\n",
-        "response_split": "### Response:"
+        'prompt_input':
+        ('Below is an instruction that describes a task, paired with an input that provides further context. '
+         'Write a response that appropriately completes the request.\n\n'
+         '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:'
+         ),
+        'prompt_no_input':
+        ('Below is an instruction that describes a task. '
+         'Write a response that appropriately completes the request.\n\n'
+         '### Instruction:\n{instruction}\n\n### Response:'),
     }
-
     IGNORE_INDEX = -100
 
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        list_data_dict = load_dataset(data_path)['train']
+        if data_path.endswith(".json") or data_path.endswith(".jsonl"):
+            list_data_dict = load_dataset("json", data_files=data_path)
+        else:
+            list_data_dict = load_dataset(data_path)['train']
 
         logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
@@ -116,31 +123,15 @@ class SupervisedDataset(Dataset):
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
         example_txt = self.examples[idx]
-        source_txt = self.sources[idx]
         example_tokenized = self.tokenizer(
             example_txt,
-            return_tensors='pt',
-            padding='longest',
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-        )
-        sources_tokenized = self.tokenizer(
-            source_txt,
-            return_tensors='pt',
             padding='longest',
             max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
 
-        input_ids = example_tokenized['input_ids'][0]
-        input_len = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
-
-        source_input_ids = sources_tokenized['input_ids'][0]
-        source_len = source_input_ids.ne(
-            self.tokenizer.pad_token_id).sum().item()
-
+        input_ids = example_tokenized['input_ids']
         labels = copy.deepcopy(input_ids)
-        labels[:source_len] = IGNORE_INDEX
         encoding_input = dict(input_ids=input_ids, labels=labels)
         encoding_input = {
             key: torch.tensor(val)
@@ -150,28 +141,6 @@ class SupervisedDataset(Dataset):
         return encoding_input
 
 
-@dataclass
-class DataCollatorForSupervisedDataset(object):
-    """Collate examples for supervised fine-tuning."""
-
-    tokenizer: PreTrainedTokenizer
-
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        input_ids, labels = tuple([instance[key] for instance in instances]
-                                  for key in ('input_ids', 'labels'))
-        input_ids = pad_sequence(input_ids,
-                                 batch_first=True,
-                                 padding_value=self.tokenizer.pad_token_id)
-        labels = pad_sequence(labels,
-                              batch_first=True,
-                              padding_value=IGNORE_INDEX)
-        return dict(
-            input_ids=input_ids,
-            labels=labels,
-            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
-        )
-
-
 def train():
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))
@@ -179,22 +148,32 @@ def train():
 
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
+        load_in_8bit=True,
+        torch_dtype=torch.float16,
         cache_dir=training_args.cache_dir,
     )
+    model = prepare_model_for_int8_training(model)
 
-    tokenizer = AutoTokenizer.from_pretrained(
+    config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        target_modules=["q_proj", "v_proj"],
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM",
+    )
+    model = get_peft_model(model, config)
+    model.print_trainable_parameters(
+    )  # Be more transparent about the % of trainable params.
+
+    tokenizer = LlamaTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side='right',
         use_fast=False,
     )
-    if tokenizer.pad_token is None:
-        smart_tokenizer_and_embedding_resize(
-            special_tokens_dict=dict(pad_token=DEFAULT_PAD_TOKEN),
-            tokenizer=tokenizer,
-            model=model,
-        )
+
     special_tokens_dict = dict()
     if tokenizer.pad_token is None:
         special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
@@ -215,8 +194,10 @@ def train():
         data_path=data_args.data_path,
         tokenizer=tokenizer,
     )
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-
+    data_collator = DataCollatorForSeq2Seq(tokenizer,
+                                           pad_to_multiple_of=8,
+                                           return_tensors="pt",
+                                           padding=True)
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -225,6 +206,10 @@ def train():
         eval_dataset=None,
         data_collator=data_collator,
     )
+    old_state_dict = model.state_dict
+    model.state_dict = (lambda self, *_, **__: get_peft_model_state_dict(
+        self, old_state_dict())).__get__(model, type(model))
+
     trainer.train()
     trainer.save_state()
 
