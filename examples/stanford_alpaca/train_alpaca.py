@@ -110,15 +110,16 @@ class SupervisedDataset(Dataset):
         source_txt = self.examples[idx]
         encoding_inputs = self.tokenizer(
             source_txt,
-            return_tensors='pt',
+            return_tensors="pt",
             padding='longest',
             max_length=self.tokenizer.model_max_length,
-            truncation=True)
+            truncation=True,)
 
         input_ids = encoding_inputs['input_ids']
         labels = copy.deepcopy(input_ids)
+        input_ids_lens = labels_lens = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
 
-        return dict(input_ids=input_ids, labels=labels)
+        return dict(input_ids=input_ids, labels=labels, input_ids_lens=input_ids_lens, labels_lens=labels_lens)
 
 
 @dataclass
