@@ -73,7 +73,8 @@ class SupervisedDataset(Dataset):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
         if data_path.endswith(".json") or data_path.endswith(".jsonl"):
-            list_data_dict = load_dataset("json", data_files=data_path)
+            list_data_dict = load_dataset("json",
+                                          data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
 
@@ -119,17 +120,16 @@ class SupervisedDataset(Dataset):
         )
 
         # The labels are the full prompt with response, but with the prompt masked out
-        input_ids = tokenized_prompt_and_response['input_ids']
-        labels = copy.deepcopy(input_ids)
+        input_ids = torch.tensor(tokenized_prompt_and_response['input_ids'])
+        attn_masks = torch.tensor(
+            tokenized_prompt_and_response["attention_mask"])
+        labels = input_ids.clone()
         labels[:len(tokenized_prompt['input_ids'])] = self.IGNORE_INDEX
-
-        encoding_input = dict(input_ids=input_ids, labels=labels)
-        encoding_input = {
-            key: torch.tensor(val)
-            for key, val in encoding_input.items()
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attn_masks,
+            "labels": labels,
         }
-
-        return encoding_input
 
 
 def train(model_args: ModelArguments, data_args: DataArguments,
@@ -170,13 +170,23 @@ def train(model_args: ModelArguments, data_args: DataArguments,
     model.print_trainable_parameters(
     )  # Be more transparent about the % of trainable params.
 
-    tokenizer = LlamaTokenizer.from_pretrained(
-        model_args.model_name_or_path,
-        cache_dir=training_args.cache_dir,
-        model_max_length=training_args.model_max_length,
-        padding_side='right',
-        use_fast=True,
-    )
+    if model.config.model_type == "llama":
+        # Due to the name of transformers' LlamaTokenizer, we have to do this
+        tokenizer = LlamaTokenizer.from_pretrained(
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            model_max_length=training_args.model_max_length,
+            padding_side='right',
+            use_fast=True,
+        )
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            model_max_length=training_args.model_max_length,
+            padding_side='right',
+            trust_remote_code=True,
+        )
 
     special_tokens_dict = dict()
     if tokenizer.pad_token is None:
