@@ -1,7 +1,7 @@
-python train_alpaca_lora.py \
-    --model_name_or_path  facebook/opt-125m  \
+CUDA_VISIBLE_DEVICES=8 python train_alpaca_lora.py \
+    --model_name_or_path  /userhome/jianzhnie/checkpoints/llama-checkpoint/7B/ \
     --data_path tatsu-lab/alpaca  \
-    --output_dir work_dir/ \
+    --output_dir work_dir_lora/ \
     --num_train_epochs 3 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
