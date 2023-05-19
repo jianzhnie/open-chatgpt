@@ -8,19 +8,15 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           DataCollatorForSeq2Seq, HfArgumentParser,
-                          PreTrainedModel, PreTrainedTokenizer, Trainer,
-                          TrainingArguments)
+                          PreTrainedTokenizer, Trainer, TrainingArguments)
 
 from transformers import LlamaTokenizer
-
-
 
 from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
     prepare_model_for_int8_training,
-    set_peft_model_state_dict,
 )
 
 IGNORE_INDEX = -100
@@ -54,29 +50,6 @@ class TrainingArguments(TrainingArguments):
     )
 
 
-def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
-                                         tokenizer: PreTrainedTokenizer,
-                                         model: PreTrainedModel):
-    """Resize tokenizer and embedding.
-
-    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
-    """
-    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
-    model.resize_token_embeddings(len(tokenizer))
-
-    if num_new_tokens > 0:
-        input_embeddings = model.get_input_embeddings().weight.data
-        output_embeddings = model.get_output_embeddings().weight.data
-
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True)
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True)
-
-        input_embeddings[-num_new_tokens:] = input_embeddings_avg
-        output_embeddings[-num_new_tokens:] = output_embeddings_avg
-
-
 class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
@@ -93,7 +66,10 @@ class SupervisedDataset(Dataset):
     }
     IGNORE_INDEX = -100
 
-    def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
+    def __init__(self,
+                 data_path: str,
+                 tokenizer: PreTrainedTokenizer,
+                 max_seq_length: int = 512):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
         if data_path.endswith(".json") or data_path.endswith(".jsonl"):
@@ -104,34 +80,49 @@ class SupervisedDataset(Dataset):
         logging.warning('Formatting inputs...')
         prompt_input, prompt_no_input = self.PROMPT_DICT[
             'prompt_input'], self.PROMPT_DICT['prompt_no_input']
-        self.sources = [
+
+        self.prompts = [
             prompt_input.format_map(example) if example.get('input', '') != ''
             else prompt_no_input.format_map(example)
             for example in list_data_dict
         ]
-        self.targets = [
+        self.responses = [
             f"{example['output']}{tokenizer.eos_token}"
             for example in list_data_dict
         ]
 
-        self.examples = [s + t for s, t in zip(self.sources, self.targets)]
+        self.prompt_and_responses = [
+            s + t for s, t in zip(self.prompts, self.responses)
+        ]
         self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
 
     def __len__(self):
-        return len(self.examples)
+        return len(self.prompt_and_responses)
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
 
-        example_txt = self.examples[idx]
-        example_tokenized = self.tokenizer(
-            example_txt,
-            padding='longest',
-            max_length=self.tokenizer.model_max_length,
+        prompt_and_response = self.prompt_and_responses[idx]
+        prompt = self.prompts[idx]
+
+        tokenized_prompt_and_response = self.tokenizer(
+            prompt_and_response,
+            padding="max_length",
+            max_length=self.max_seq_length,
+            truncation=True,
+        )
+        tokenized_prompt = self.tokenizer(
+            prompt,
+            padding="max_length",
+            max_length=self.max_seq_length,
             truncation=True,
         )
 
-        input_ids = example_tokenized['input_ids']
+        # The labels are the full prompt with response, but with the prompt masked out
+        input_ids = tokenized_prompt_and_response['input_ids']
         labels = copy.deepcopy(input_ids)
+        labels[:len(tokenized_prompt['input_ids'])] = self.IGNORE_INDEX
+
         encoding_input = dict(input_ids=input_ids, labels=labels)
         encoding_input = {
             key: torch.tensor(val)
@@ -141,17 +132,30 @@ class SupervisedDataset(Dataset):
         return encoding_input
 
 
-def train():
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+def train(model_args: ModelArguments, data_args: DataArguments,
+          training_args: TrainingArguments) -> None:
+    """
+    Trains a language model using Hugging Face's Transformers library.
 
+    Args:
+        model_args (ModelArguments): The arguments for the model configuration.
+        data_args (DataArguments): The arguments for the data configuration.
+        training_args (TrainingArguments): The arguments for the training configuration.
+
+    Returns:
+        None
+
+    """
+    device_map = "auto"
+    # Load the pre-trained model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         load_in_8bit=True,
         torch_dtype=torch.float16,
         cache_dir=training_args.cache_dir,
+        device_map=device_map,
     )
+
     model = prepare_model_for_int8_training(model)
 
     config = LoraConfig(
@@ -171,7 +175,7 @@ def train():
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side='right',
-        use_fast=False,
+        use_fast=True,
     )
 
     special_tokens_dict = dict()
@@ -184,11 +188,8 @@ def train():
     if tokenizer.unk_token is None:
         special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
 
-    smart_tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict,
-        tokenizer=tokenizer,
-        model=model,
-    )
+    if len(special_tokens_dict) > 0:
+        tokenizer.add_special_tokens(special_tokens_dict)
 
     train_dataset = SupervisedDataset(
         data_path=data_args.data_path,
@@ -196,7 +197,6 @@ def train():
     )
     data_collator = DataCollatorForSeq2Seq(tokenizer,
                                            pad_to_multiple_of=8,
-                                           return_tensors="pt",
                                            padding=True)
     trainer = Trainer(
         model=model,
@@ -212,7 +212,12 @@ def train():
 
     trainer.train()
     trainer.save_state()
+    # Save the trained model
+    trainer.save_model(training_args.output_dir)
 
 
 if __name__ == '__main__':
-    train()
+    parser = HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments))
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    train(model_args, data_args, training_args)
