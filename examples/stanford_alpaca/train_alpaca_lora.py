@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -7,10 +8,16 @@ import torch
 from datasets import load_dataset
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
-from peft import LoraConfig, get_peft_model
+from peft import (
+    LoraConfig,
+    get_peft_model,
+    get_peft_model_state_dict,
+    prepare_model_for_int8_training,
+    set_peft_model_state_dict,
+)
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          HfArgumentParser, LlamaTokenizer,
+                          LlamaForCausalLM, HfArgumentParser, LlamaTokenizer,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
 
 IGNORE_INDEX = -100
@@ -186,8 +193,13 @@ def train(model_args: ModelArguments, data_args: DataArguments,
 
     """
     device_map = 'auto'
+    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    ddp = world_size != 1
+    if ddp:
+        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+
     # Load the pre-trained model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(
+    model = LlamaForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         load_in_8bit=True,
         torch_dtype=torch.float16,
@@ -203,10 +215,6 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         bias=lora_args.bias,
         task_type='CAUSAL_LM',
     )
-    model = get_peft_model(model, lora_config)
-    # Be more transparent about the % of trainable params.
-    if training_args.deepspeed is not None and training_args.local_rank == 0:
-        model.print_trainable_parameters()
 
     if training_args.gradient_checkpointing:
         logging.warning(
@@ -246,6 +254,13 @@ def train(model_args: ModelArguments, data_args: DataArguments,
 
     if len(special_tokens_dict) > 0:
         tokenizer.add_special_tokens(special_tokens_dict)
+        model.resize_token_embeddings(len(tokenizer))
+
+    model = prepare_model_for_int8_training(model)
+    model = get_peft_model(model, lora_config)
+    # Be more transparent about the % of trainable params.
+    if training_args.deepspeed is not None and training_args.local_rank == 0:
+        model.print_trainable_parameters()
 
     train_dataset = SupervisedDataset(
         data_path=data_args.data_path,

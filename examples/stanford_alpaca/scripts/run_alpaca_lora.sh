@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=8 python train_alpaca_lora.py \
-    --model_name_or_path  /userhome/jianzhnie/checkpoints/llama-checkpoint/7B/ \
+python train_alpaca_lora.py \
+    --model_name_or_path  decapoda-research/llama-7b-hf  \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir_lora/ \
     --num_train_epochs 3 \
