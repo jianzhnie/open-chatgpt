@@ -2,8 +2,9 @@ import copy
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
-import utils
+
 import torch
+import utils
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
@@ -104,7 +105,7 @@ class SupervisedDataset(Dataset):
         """
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        if "json" in data_path:
+        if 'json' in data_path:
             list_data_dict = utils.jload(data_path)
         else:
             list_data_dict = load_dataset(data_path)['train']
@@ -177,7 +178,7 @@ class SupervisedDataset(Dataset):
 
         # Create the labels tensor
         labels = copy.deepcopy(input_ids)
-        
+
         # Create the encoding_input dictionary and convert its values to tensors
         encoding_input = dict(input_ids=input_ids, labels=labels)
         return encoding_input

@@ -1,5 +1,5 @@
 python train_alpaca_lora.py \
-    --model_name_or_path  decapoda-research/llama-7b-hf \
+    --model_name_or_path  facebook/opt-125m  \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir/ \
     --num_train_epochs 3 \

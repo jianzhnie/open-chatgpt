@@ -1,29 +1,23 @@
-import copy
 import logging
+import pathlib
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Sequence
+from typing import Dict, List, Optional
 
 import torch
 from datasets import load_dataset
+from deepspeed import zero
+from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
+from peft import LoraConfig, get_peft_model
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          DataCollatorForSeq2Seq, HfArgumentParser,
+                          HfArgumentParser, LlamaTokenizer,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
-
-from transformers import LlamaTokenizer
-
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    get_peft_model_state_dict,
-    prepare_model_for_int8_training,
-)
 
 IGNORE_INDEX = -100
 DEFAULT_PAD_TOKEN = '[PAD]'
 DEFAULT_EOS_TOKEN = '</s>'
-DEFAULT_BOS_TOKEN = '</s>'
-DEFAULT_UNK_TOKEN = '</s>'
+DEFAULT_BOS_TOKEN = '<s>'
+DEFAULT_UNK_TOKEN = '<unk>'
 
 
 @dataclass
@@ -50,6 +44,51 @@ class TrainingArguments(TrainingArguments):
     )
 
 
+@dataclass
+class LoraArguments:
+    lora_r: int = 8
+    lora_alpha: int = 16
+    lora_dropout: float = 0.05
+    lora_target_modules: List[str] = field(
+        default_factory=lambda: ['q_proj', 'v_proj'])
+    lora_weight_path: str = ''
+    bias: str = 'none'
+
+
+def maybe_zero_3(param):
+    if hasattr(param, 'ds_id'):
+        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE
+        with zero.GatheredParameters([param]):
+            param = param.data.cpu().clone().detach()
+    return param
+
+
+# Borrowed from peft.utils.get_peft_model_state_dict
+def get_peft_state_maybe_zero_3(state_dict, bias):
+    if bias == 'none':
+        to_return = {
+            k: state_dict[k].cpu().clone().detach()
+            for k in state_dict if 'lora_' in k
+        }
+    elif bias == 'all':
+        to_return = {
+            k: state_dict[k]
+            for k in state_dict if 'lora_' in k or 'bias' in k
+        }
+    elif bias == 'lora_only':
+        to_return = {}
+        for k in state_dict:
+            if 'lora_' in k:
+                to_return[k] = state_dict[k]
+                bias_name = k.split('lora_')[0] + 'bias'
+                if bias_name in state_dict:
+                    to_return[bias_name] = state_dict[bias_name]
+    else:
+        raise NotImplementedError
+    to_return = {k: maybe_zero_3(v) for k, v in to_return.items()}
+    return to_return
+
+
 class SupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
@@ -72,8 +111,8 @@ class SupervisedDataset(Dataset):
                  max_seq_length: int = 512):
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        if data_path.endswith(".json") or data_path.endswith(".jsonl"):
-            list_data_dict = load_dataset("json",
+        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
+            list_data_dict = load_dataset('json',
                                           data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
@@ -108,13 +147,13 @@ class SupervisedDataset(Dataset):
 
         tokenized_prompt_and_response = self.tokenizer(
             prompt_and_response,
-            padding="max_length",
+            padding='max_length',
             max_length=self.max_seq_length,
             truncation=True,
         )
         tokenized_prompt = self.tokenizer(
             prompt,
-            padding="max_length",
+            padding='max_length',
             max_length=self.max_seq_length,
             truncation=True,
         )
@@ -122,18 +161,18 @@ class SupervisedDataset(Dataset):
         # The labels are the full prompt with response, but with the prompt masked out
         input_ids = torch.tensor(tokenized_prompt_and_response['input_ids'])
         attn_masks = torch.tensor(
-            tokenized_prompt_and_response["attention_mask"])
+            tokenized_prompt_and_response['attention_mask'])
         labels = input_ids.clone()
         labels[:len(tokenized_prompt['input_ids'])] = self.IGNORE_INDEX
         return {
-            "input_ids": input_ids,
-            "attention_mask": attn_masks,
-            "labels": labels,
+            'input_ids': input_ids,
+            'attention_mask': attn_masks,
+            'labels': labels,
         }
 
 
 def train(model_args: ModelArguments, data_args: DataArguments,
-          training_args: TrainingArguments) -> None:
+          training_args: TrainingArguments, lora_args: LoraArguments) -> None:
     """
     Trains a language model using Hugging Face's Transformers library.
 
@@ -146,7 +185,7 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         None
 
     """
-    device_map = "auto"
+    device_map = 'auto'
     # Load the pre-trained model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -156,21 +195,28 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         device_map=device_map,
     )
 
-    model = prepare_model_for_int8_training(model)
-
-    config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        target_modules=["q_proj", "v_proj"],
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM",
+    lora_config = LoraConfig(
+        r=lora_args.lora_r,
+        lora_alpha=lora_args.lora_alpha,
+        target_modules=lora_args.lora_target_modules,
+        lora_dropout=lora_args.lora_dropout,
+        bias=lora_args.bias,
+        task_type='CAUSAL_LM',
     )
-    model = get_peft_model(model, config)
-    model.print_trainable_parameters(
-    )  # Be more transparent about the % of trainable params.
+    model = get_peft_model(model, lora_config)
+    # Be more transparent about the % of trainable params.
+    if training_args.deepspeed is not None and training_args.local_rank == 0:
+        model.print_trainable_parameters()
 
-    if model.config.model_type == "llama":
+    if training_args.gradient_checkpointing:
+        logging.warning(
+            'gradient checkpointing with lora makes requires_grad '
+            'incorrect and needs a monkey patch in Trainer or the '
+            "wrapped model's forward. ref: "
+            'https://github.com/lm-sys/FastChat/pull/138#issuecomment-1509172198'
+        )
+
+    if model.config.model_type == 'llama':
         # Due to the name of transformers' LlamaTokenizer, we have to do this
         tokenizer = LlamaTokenizer.from_pretrained(
             model_args.model_name_or_path,
@@ -185,7 +231,7 @@ def train(model_args: ModelArguments, data_args: DataArguments,
             cache_dir=training_args.cache_dir,
             model_max_length=training_args.model_max_length,
             padding_side='right',
-            trust_remote_code=True,
+            use_fast=True,
         )
 
     special_tokens_dict = dict()
@@ -205,29 +251,34 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         data_path=data_args.data_path,
         tokenizer=tokenizer,
     )
-    data_collator = DataCollatorForSeq2Seq(tokenizer,
-                                           pad_to_multiple_of=8,
-                                           padding=True)
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=None,
-        data_collator=data_collator,
     )
-    old_state_dict = model.state_dict
-    model.state_dict = (lambda self, *_, **__: get_peft_model_state_dict(
-        self, old_state_dict())).__get__(model, type(model))
 
-    trainer.train()
+    if training_args.resume_from_checkpoint and list(
+            pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
+        trainer.train(resume_from_checkpoint=True)
+    else:
+        trainer.train()
     trainer.save_state()
     # Save the trained model
     trainer.save_model(training_args.output_dir)
 
+    # Save states. Weights might be a placeholder in zero3 and need a gather
+    state_dict = get_peft_state_maybe_zero_3(model.state_dict(),
+                                             lora_args.bias)
+    if training_args.local_rank == 0:
+        model.save_pretrained(training_args.output_dir, state_dict=state_dict)
+
 
 if __name__ == '__main__':
     parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    train(model_args, data_args, training_args)
+        (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
+    model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
+    )
+
+    train(model_args, data_args, training_args, lora_args)
