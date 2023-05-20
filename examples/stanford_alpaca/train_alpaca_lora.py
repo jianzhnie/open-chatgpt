@@ -2,7 +2,7 @@ import logging
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 from datasets import load_dataset
@@ -174,17 +174,16 @@ class SupervisedDataset(Dataset):
 
 def train(model_args: ModelArguments, data_args: DataArguments,
           training_args: TrainingArguments, lora_args: LoraArguments) -> None:
-    """
-    Trains a language model using Hugging Face's Transformers library.
+    """Trains a language model using Hugging Face's Transformers library.
 
     Args:
         model_args (ModelArguments): The arguments for the model configuration.
         data_args (DataArguments): The arguments for the data configuration.
         training_args (TrainingArguments): The arguments for the training configuration.
+        lora_args (LoraArguments): The arguments for low-rank factorization.
 
     Returns:
         None
-
     """
     device_map = 'auto'
     world_size = int(os.environ.get('WORLD_SIZE', 1))
@@ -201,6 +200,7 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         device_map=device_map,
     )
 
+    # Set up LORA
     lora_config = LoraConfig(
         r=lora_args.lora_r,
         lora_alpha=lora_args.lora_alpha,
@@ -210,16 +210,18 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         task_type='CAUSAL_LM',
     )
 
+    # Warn about potential issue with gradient checkpointing and LORA
     if training_args.gradient_checkpointing:
         logging.warning(
-            'gradient checkpointing with lora makes requires_grad '
+            'Gradient checkpointing with LORA makes requires_grad '
             'incorrect and needs a monkey patch in Trainer or the '
-            "wrapped model's forward. ref: "
+            "wrapped model's forward. Ref: "
             'https://github.com/lm-sys/FastChat/pull/138#issuecomment-1509172198'
         )
 
+    # Load the tokenizer
     if model.config.model_type == 'llama':
-        # Due to the name of transformers' LlamaTokenizer, we have to do this
+        # Due to the name of Transformers' LlamaTokenizer, we have to do this
         tokenizer = LlamaTokenizer.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
@@ -236,7 +238,8 @@ def train(model_args: ModelArguments, data_args: DataArguments,
             use_fast=True,
         )
 
-    special_tokens_dict = dict()
+    # Add special tokens to tokenizer if they are not already present
+    special_tokens_dict: Dict[str, Any] = {}
     if tokenizer.pad_token is None:
         special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
     if tokenizer.eos_token is None:
@@ -250,12 +253,15 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         tokenizer.add_special_tokens(special_tokens_dict)
         model.resize_token_embeddings(len(tokenizer))
 
+    # Prepare the model for int8 training and get the PEFT model
     model = prepare_model_for_int8_training(model)
     model = get_peft_model(model, lora_config)
-    # Be more transparent about the % of trainable params.
+
+    # Print the percentage of trainable parameters if using DeepSpeed and running on local rank 0
     if training_args.deepspeed is not None and training_args.local_rank == 0:
         model.print_trainable_parameters()
 
+    # Create a supervised dataset and Trainer, then train the model
     train_dataset = SupervisedDataset(
         data_path=data_args.data_path,
         tokenizer=tokenizer,
@@ -273,6 +279,7 @@ def train(model_args: ModelArguments, data_args: DataArguments,
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
+
     trainer.save_state()
     # Save the trained model
     trainer.save_model(training_args.output_dir)
