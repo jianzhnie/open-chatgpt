@@ -8,16 +8,10 @@ import torch
 from datasets import load_dataset
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    get_peft_model_state_dict,
-    prepare_model_for_int8_training,
-    set_peft_model_state_dict,
-)
+from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training
 from torch.utils.data import Dataset
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          LlamaForCausalLM, HfArgumentParser, LlamaTokenizer,
+                          HfArgumentParser, LlamaForCausalLM, LlamaTokenizer,
                           PreTrainedTokenizer, Trainer, TrainingArguments)
 
 IGNORE_INDEX = -100
@@ -193,10 +187,10 @@ def train(model_args: ModelArguments, data_args: DataArguments,
 
     """
     device_map = 'auto'
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    world_size = int(os.environ.get('WORLD_SIZE', 1))
     ddp = world_size != 1
     if ddp:
-        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+        device_map = {'': int(os.environ.get('LOCAL_RANK') or 0)}
 
     # Load the pre-trained model and tokenizer
     model = LlamaForCausalLM.from_pretrained(
