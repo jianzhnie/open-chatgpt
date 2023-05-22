@@ -1,13 +1,13 @@
 import argparse
 import sys
-from typing import Tuple, Union
+from typing import Union
 
 import torch
-from peft import PeftModel
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          GenerationConfig, LlamaTokenizer)
 
 sys.path.append('../../')
+from transformers import GenerationConfig
+
+from chatgpt.models.apply_lora import apply_lora
 
 
 class Prompter(object):
@@ -45,65 +45,6 @@ class Prompter(object):
 
     def get_response(self, output: str) -> str:
         return output.split(self.reponse_split)[1].strip()
-
-
-def apply_lora(
-    base_model_path: str,
-    lora_path: str,
-    load_8bit: bool = False,
-    target_model_path: str = None,
-    save_target_model: bool = False
-) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
-    """Applies the LoRA adapter to a base model and saves the resulting target model (optional).
-
-    Args:
-        base_model_path (str): The path to the base model to which the LoRA adapter will be applied.
-        lora_path (str): The path to the LoRA adapter.
-        target_model_path (str): The path where the target model will be saved (if `save_target_model=True`).
-        save_target_model (bool, optional): Whether to save the target model or not. Defaults to False.
-
-    Returns:
-        Tuple[AutoModelForCausalLM, AutoTokenizer]: A tuple containing the target model and its tokenizer.
-
-    """
-    # Load the base model and tokenizer
-    print(f'Loading the base model from {base_model_path}')
-    base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_path,
-        load_in_8bit=load_8bit,
-        torch_dtype=torch.float16,
-        device_map='auto',
-        low_cpu_mem_usage=True)
-
-    # Load the tokenizer
-    if base_model.config.model_type == 'llama':
-        # Due to the name of Transformers' LlamaTokenizer, we have to do this
-        base_tokenizer = LlamaTokenizer.from_pretrained(
-            base_model_path,
-            padding_side='right',
-            use_fast=True,
-        )
-    else:
-        base_tokenizer = AutoTokenizer.from_pretrained(
-            base_model_path,
-            padding_side='right',
-            use_fast=True,
-        )
-
-    # Load the LoRA adapter
-    print(f'Loading the LoRA adapter from {lora_path}')
-    model = PeftModel.from_pretrained(
-        base_model,
-        lora_path,
-        torch_dtype=torch.float16,
-    )
-
-    if save_target_model and target_model_path is not None:
-        print(f'Saving the target model to {target_model_path}')
-        model.save_pretrained(target_model_path)
-        base_tokenizer.save_pretrained(target_model_path)
-
-    return model, base_tokenizer
 
 
 def args_parser():
@@ -165,14 +106,12 @@ def args_parser():
     parser.add_argument(
         '--load_8bit',
         action='store_true',
-        help=
-        'Whether to use load_8bit  instead of 32-bit',
+        help='Whether to use load_8bit  instead of 32-bit',
     )
     args = parser.parse_args()
 
     args.device = torch.device(
         'cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
-
     return args
 
 
@@ -224,8 +163,6 @@ def main(args):
     # testing code for readme
     for instruction in instruction_list:
         prompt_text = prompter.generate_prompt(instruction, input=None)
-        print(prompt_text)
-        print(args)
         result = complete_prompts(model,
                                   tokenizer,
                                   generation_config,
