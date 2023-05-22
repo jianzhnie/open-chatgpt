@@ -1,40 +1,56 @@
 import argparse
 import sys
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          GenerationConfig, LlamaTokenizer)
 
 sys.path.append('../../')
 
-PROMPT_DICT = {
-    'prompt_input':
-    ('Below is an instruction that describes a task, paired with an input that provides further context. '
-     'Write a response that appropriately completes the request.\n\n'
-     '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:'
-     ),
-    'prompt_no_input':
-    ('Below is an instruction that describes a task. '
-     'Write a response that appropriately completes the request.\n\n'
-     '### Instruction:\n{instruction}\n\n### Response:'),
-}
 
+class Prompter(object):
+    def __init__(self) -> None:
+        self.PROMPT_DICT = {
+            'prompt_input':
+            ('Below is an instruction that describes a task, paired with an input that provides further context. '
+             'Write a response that appropriately completes the request.\n\n'
+             '### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:'
+             ),
+            'prompt_no_input':
+            ('Below is an instruction that describes a task. '
+             'Write a response that appropriately completes the request.\n\n'
+             '### Instruction:\n{instruction}\n\n### Response:'),
+        }
+        self.reponse_split = '### Response:'
 
-def generate_prompt(instruction, input=None):
-    prompt_input, prompt_no_input = PROMPT_DICT['prompt_input'], PROMPT_DICT[
-        'prompt_no_input']
-    if input is not None:
-        prompt_text = prompt_input.format_map((instruction, input))
-    else:
-        prompt_text = prompt_no_input.format_map(instruction)
+    def generate_prompt(
+        self,
+        instruction: str,
+        input: Union[None, str] = None,
+        response: Union[None, str] = None,
+    ):
+        prompt_input, prompt_no_input = self.PROMPT_DICT[
+            'prompt_input'], self.PROMPT_DICT['prompt_no_input']
+        if input is not None:
+            prompt_text = prompt_input.format(instruction=instruction,
+                                              input=input)
+        else:
+            prompt_text = prompt_no_input.format(instruction=instruction)
 
-    return prompt_text
+        if response:
+            prompt_text = f'{prompt_text}{response}'
+        return prompt_text
+
+    def get_response(self, output: str) -> str:
+        return output.split(self.reponse_split)[1].strip()
 
 
 def apply_lora(
     base_model_path: str,
     lora_path: str,
+    load_8bit: bool = False,
     target_model_path: str = None,
     save_target_model: bool = False
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -52,25 +68,37 @@ def apply_lora(
     """
     # Load the base model and tokenizer
     print(f'Loading the base model from {base_model_path}')
-    base = AutoModelForCausalLM.from_pretrained(base_model_path,
-                                                torch_dtype=torch.float16,
-                                                low_cpu_mem_usage=True)
-    base_tokenizer = AutoTokenizer.from_pretrained(base_model_path,
-                                                   use_fast=False)
+    base_model = AutoModelForCausalLM.from_pretrained(
+        base_model_path,
+        load_in_8bit=load_8bit,
+        torch_dtype=torch.float16,
+        device_map='auto',
+        low_cpu_mem_usage=True)
+
+    # Load the tokenizer
+    if base_model.config.model_type == 'llama':
+        # Due to the name of Transformers' LlamaTokenizer, we have to do this
+        base_tokenizer = LlamaTokenizer.from_pretrained(
+            base_model_path,
+            padding_side='right',
+            use_fast=True,
+        )
+    else:
+        base_tokenizer = AutoTokenizer.from_pretrained(
+            base_model_path,
+            padding_side='right',
+            use_fast=True,
+        )
 
     # Load the LoRA adapter
     print(f'Loading the LoRA adapter from {lora_path}')
-    lora_model = PeftModel.from_pretrained(
-        base,
+    model = PeftModel.from_pretrained(
+        base_model,
         lora_path,
         torch_dtype=torch.float16,
     )
 
-    # Apply the LoRA adapter and save the target model if required
-    model = lora_model.merge_and_unload()
     if save_target_model and target_model_path is not None:
-        print('Applying the LoRA')
-        model = lora_model.merge_and_unload()
         print(f'Saving the target model to {target_model_path}')
         model.save_pretrained(target_model_path)
         base_tokenizer.save_pretrained(target_model_path)
@@ -135,10 +163,10 @@ def args_parser():
                         default=1,
                         help='The number of samples to generate.')
     parser.add_argument(
-        '--fp16',
+        '--load_8bit',
         action='store_true',
         help=
-        'Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit',
+        'Whether to use load_8bit  instead of 32-bit',
     )
     args = parser.parse_args()
 
@@ -148,10 +176,9 @@ def args_parser():
     return args
 
 
-def complete_prompts(model, tokenizer, generation_config, instruction, input,
-                     device):
-    prompt = generate_prompt(instruction, input)
-    inputs = tokenizer(prompt, return_tensors='pt')
+def complete_prompts(model, tokenizer, generation_config, prompter,
+                     prompt_text, device):
+    inputs = tokenizer(prompt_text, return_tensors='pt')
     input_ids = inputs['input_ids'].to(device)
 
     with torch.no_grad():
@@ -160,11 +187,11 @@ def complete_prompts(model, tokenizer, generation_config, instruction, input,
             generation_config=generation_config,
             return_dict_in_generate=True,
             output_scores=True,
-            max_new_tokens=args.max_new_tokens,
+            max_new_tokens=128,
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    return output.split('### Response:')[1].strip()
+    return prompter.get_response(output)
 
 
 def main(args):
@@ -179,7 +206,9 @@ def main(args):
         num_return_sequences=args.num_return_sequences)
 
     model, tokenizer = apply_lora(args.model_name_or_path,
-                                  args.lora_model_name_or_path)
+                                  args.lora_model_name_or_path,
+                                  load_8bit=args.load_8bit)
+    prompter = Prompter()
 
     instruction_list = [
         'Tell me about alpacas.',
@@ -194,11 +223,14 @@ def main(args):
     ]
     # testing code for readme
     for instruction in instruction_list:
+        prompt_text = prompter.generate_prompt(instruction, input=None)
+        print(prompt_text)
+        print(args)
         result = complete_prompts(model,
                                   tokenizer,
                                   generation_config,
-                                  instruction,
-                                  input='',
+                                  prompter,
+                                  prompt_text,
                                   device=args.device)
         print(result)
 
