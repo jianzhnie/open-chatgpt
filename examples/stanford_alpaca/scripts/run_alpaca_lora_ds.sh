@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=8,9,10,11,12,13,14,15  torchrun --nproc_per_node=8 train_alpaca.py \
+CUDA_VISIBLE_DEVICES=8,9,10,11,12,13,14,15  torchrun --nproc_per_node=8 train_alpaca_lora.py \
     --model_name_or_path /userhome/jianzhnie/checkpoints/llama-checkpoint/7B/ \
     --data_path ./alpaca_data.json \
     --output_dir work_dir/  \
@@ -14,4 +14,3 @@ CUDA_VISIBLE_DEVICES=8,9,10,11,12,13,14,15  torchrun --nproc_per_node=8 train_al
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --deepspeed "scripts/ds_config_zero3_auto.json"
-    

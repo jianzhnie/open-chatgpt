@@ -1,9 +1,11 @@
 import copy
 import logging
+import pathlib
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
-import utils
+
 import torch
+import utils
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
@@ -104,7 +106,7 @@ class SupervisedDataset(Dataset):
         """
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        if "json" in data_path:
+        if 'json' in data_path:
             list_data_dict = utils.jload(data_path)
         else:
             list_data_dict = load_dataset(data_path)['train']
@@ -148,38 +150,24 @@ class SupervisedDataset(Dataset):
 
         """
         example_txt = self.examples[idx]
-        source_txt = self.sources[idx]
-
         # Tokenize the example and source text
         example_tokenized = self.tokenizer(
             example_txt,
-            return_tensors='pt',
-            padding='longest',
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-        )
-        source_tokenized = self.tokenizer(
-            source_txt,
-            return_tensors='pt',
             padding='longest',
             max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
 
         # Extract the input_ids tensor
-        input_ids = example_tokenized['input_ids'][0]
-        input_len = input_ids.ne(self.tokenizer.pad_token_id).sum().item()
-
-        # Extract the source_input_ids tensor
-        source_input_ids = source_tokenized['input_ids'][0]
-        source_len = source_input_ids.ne(
-            self.tokenizer.pad_token_id).sum().item()
-
+        input_ids = example_tokenized['input_ids']
         # Create the labels tensor
         labels = copy.deepcopy(input_ids)
-        
+
         # Create the encoding_input dictionary and convert its values to tensors
-        encoding_input = dict(input_ids=input_ids, labels=labels)
+        encoding_input = dict(
+            input_ids=torch.tensor(input_ids),
+            labels=torch.tensor(labels),
+        )
         return encoding_input
 
 
@@ -244,8 +232,8 @@ def train_model(model_args: ModelArguments, data_args: DataArguments,
         special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
 
     if len(special_tokens_dict) > 0:
-        tokenizer.add_special_tokens(special_tokens_dict)
-        model.resize_token_embeddings(len(tokenizer))
+        smart_tokenizer_and_embedding_resize(special_tokens_dict, tokenizer,
+                                             model)
 
     # Create the training dataset and data collator
     train_dataset = SupervisedDataset(
@@ -263,7 +251,13 @@ def train_model(model_args: ModelArguments, data_args: DataArguments,
         eval_dataset=None,
         data_collator=data_collator,
     )
-    trainer.train()
+
+    if training_args.resume_from_checkpoint and list(
+            pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
+        trainer.train(resume_from_checkpoint=True)
+    else:
+        trainer.train()
+
     trainer.save_state()
     # Save the trained model
     trainer.save_model(training_args.output_dir)
