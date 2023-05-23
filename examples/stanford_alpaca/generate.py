@@ -49,22 +49,16 @@ class Prompter(object):
 
 def args_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--model_name_or_path',
-        default=None,
-        type=str,
-        required=True,
-        help=
-        'Path to pre-trained model or shortcut name selected in the list: ',
-    )
-    parser.add_argument(
-        '--lora_model_name_or_path',
-        default=None,
-        type=str,
-        required=True,
-        help=
-        'Path to pre-trained model or shortcut name selected in the list: ',
-    )
+    parser.add_argument('--model_name_or_path',
+                        default=None,
+                        type=str,
+                        required=True,
+                        help='Path to pre-trained model or shortcut name')
+    parser.add_argument('--lora_model_name_or_path',
+                        default=None,
+                        type=str,
+                        required=True,
+                        help='Path to pre-trained model or shortcut name ')
     parser.add_argument('--stop_token',
                         type=str,
                         default=None,
@@ -73,9 +67,7 @@ def args_parser():
         '--temperature',
         type=float,
         default=1.0,
-        help=
-        'temperature of 1.0 has no effect, lower tend toward greedy sampling',
-    )
+        help='1.0 has no effect, lower tend toward greedy sampling')
     parser.add_argument(
         '--repetition_penalty',
         type=float,
@@ -155,7 +147,9 @@ def main(args):
         'Tell me about the king of France in 2019.',
         'List all Canadian provinces in alphabetical order.',
         'Write a Python program that prints the first 10 Fibonacci numbers.',
-        "Write a program that prints the numbers from 1 to 100. But for multiples of three print 'Fizz' instead of the number and for the multiples of five print 'Buzz'. For numbers which are multiples of both three and five print 'FizzBuzz'.",
+        "Write a program that prints the numbers from 1 to 100. But for multiples of three print 'Fizz' \
+            instead of the number and for the multiples of five print 'Buzz'. For numbers which are multiples \
+                  of both three and five print 'FizzBuzz'.",
         "Tell me five words that rhyme with 'shock'.",
         "Translate the sentence 'I have no mouth but I must scream' into Spanish.",
         'Count up from 1 to 500.',
