@@ -193,8 +193,7 @@ class DataCollatorForSupervisedDataset(object):
         )
 
 
-def train_model(model_args: ModelArguments, data_args: DataArguments,
-                training_args: TrainingArguments) -> None:
+def train() -> None:
     """
     Trains a language model using Hugging Face's Transformers library.
 
@@ -207,6 +206,10 @@ def train_model(model_args: ModelArguments, data_args: DataArguments,
         None
 
     """
+    parser = HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments))
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
     # Load the pre-trained model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -264,7 +267,4 @@ def train_model(model_args: ModelArguments, data_args: DataArguments,
 
 
 if __name__ == '__main__':
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    train_model(model_args, data_args, training_args)
+    train()

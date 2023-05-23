@@ -172,8 +172,7 @@ class SupervisedDataset(Dataset):
         }
 
 
-def train(model_args: ModelArguments, data_args: DataArguments,
-          training_args: TrainingArguments, lora_args: LoraArguments) -> None:
+def train() -> None:
     """Trains a language model using Hugging Face's Transformers library.
 
     Args:
@@ -185,6 +184,10 @@ def train(model_args: ModelArguments, data_args: DataArguments,
     Returns:
         None
     """
+    parser = HfArgumentParser(
+        (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
+    model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
+    )
     device_map = 'auto'
     world_size = int(os.environ.get('WORLD_SIZE', 1))
     ddp = world_size != 1
@@ -292,9 +295,4 @@ def train(model_args: ModelArguments, data_args: DataArguments,
 
 
 if __name__ == '__main__':
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments, LoraArguments))
-    model_args, data_args, training_args, lora_args = parser.parse_args_into_dataclasses(
-    )
-
-    train(model_args, data_args, training_args, lora_args)
+    train()
