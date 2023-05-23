@@ -8,63 +8,78 @@
 [中文](README_zh.md) | English
 </div>
 
-# Open-ChatGPT: A Chatbot Based on Llama Model
+# Open-ChatGPT: An open-source implementation of ChatGPT
 
-![GitHub Stars](https://img.shields.io/github/stars/jianzhnie/open-chatgpt.svg?label=Stars&style=social)
+
 [![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/jianzhnie/open-chatgpt/blob/main/LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+## Introduction
+
+`Open-ChatGPT` is a open-source library that allows you to train a hyper-personalized ChatGPT-like ai model using your own data and the least amount of compute possible.
+
+`Open-ChatGPT` is a general system framework for enabling an end-to-end training experience for ChatGPT-like models. It can automatically take your favorite pre-trained large language models though an OpenAI InstructGPT style three stages to produce your very own high-quality ChatGPT-style model.
+
+We have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by transformer library and DeepsSpeed. It supports distributed training and offloading, which can fit extremly large models.
+
+If you like the project, please show your support by [leaving a star ⭐](https://github.com/jianzhnie/open-chatgpt/stargazers).
+
+## News
+
+- [2023/05] 🔥 We implement **Stanford Alpaca Lora**.
+
+- [2023/05] 🔥 We implement **Stanford Alpaca**.
+- [2023/04] We released **RLHF(Reinforcement Learning with Human Feedback)  Pipeline** .
+- [2023/03] We released the code **OpenChatGPT An Open-Source libraray to train ChatBot like ChatGPT **.
 
 ## Table of Contents
-- [Open-ChatGPT: A Chatbot Based on Llama Model](#open-chatgpt-a-chatbot-based-on-llama-model)
-  - [Table of Contents](#table-of-contents)
+
+- [Open-ChatGPT: An open-source implementation of ChatGPT](#open-chatgpt-an-open-source-implementation-of-chatgpt)
   - [Introduction](#introduction)
-  - [☕ Quick Start ☕](#-quick-start-)
-  - [Fintune Alpaca](#fintune-alpaca)
-    - [Training (`finetune.py`)](#training-finetunepy)
+  - [News](#news)
+  - [Table of Contents](#table-of-contents)
+  - [Instruction Data](#instruction-data)
+  - [Install](#install)
+  - [Fintune](#fintune)
+    - [Fine-tuning Alpaca-7B](#fine-tuning-alpaca-7b)
     - [Using DeepSpeed](#using-deepspeed)
-  - [PEFT(Parermeter Efficient Fine-Tuning)](#peftparermeter-efficient-fine-tuning)
-    - [Inference (`generate.py`)](#inference-generatepy)
-  - [Server](#server)
+    - [Fine-tuning Alpaca-7B with Lora](#fine-tuning-alpaca-7b-with-lora)
+  - [Inference](#inference)
+    - [No Enough Memory](#no-enough-memory)
   - [Contributing](#contributing)
   - [License](#license)
+  - [Acknowledgements](#acknowledgements)
   - [Citation](#citation)
 
 
-## Introduction
-This repository contains code for reproducing the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) results using [low-rank adaptation (LoRA)](https://arxiv.org/pdf/2106.09685.pdf).
-We provide an Instruct model of similar quality to `text-davinci-003` that can run [on a Raspberry Pi](https://twitter.com/miolini/status/1634982361757790209) (for research),
-and the code is easily extended to the `13b`, `30b`, and `65b` models.
+## Instruction Data
 
-In addition to the training code, which runs within hours on a single RTX 4090,
-we publish a script for downloading and inference on the foundation model and LoRA,
-as well as the resulting [LoRA weights themselves](https://huggingface.co/tloen/alpaca-lora-7b/tree/main).
-To fine-tune cheaply and efficiently, we use Hugging Face's [PEFT](https://github.com/huggingface/peft)
-as well as Tim Dettmers' [bitsandbytes](https://github.com/TimDettmers/bitsandbytes).
-
-Without hyperparameter tuning, the LoRA model produces outputs comparable to the Stanford Alpaca model. (Please see the outputs included below.) Further tuning might be able to achieve better performance; I invite interested users to give it a try and report their results.
-
-
-## ☕ Quick Start ☕
+## Install
 
 ```bash
 git clone https://github.com/jianzhnie/open-chatgpt.git
 pip install -r requirements.txt
 ```
 
-## Fintune Alpaca
+## Fintune
 
+### Fine-tuning Alpaca-7B
 
-### Training (`finetune.py`)
+We fine-tune our models using standard Hugging Face training code. We fine-tune LLaMA-7B and LLaMA-13B with the following hyperparameters:
 
-This file contains a straightforward application of PEFT to the LLaMA model,
-as well as some code related to prompt construction and tokenization.
-PRs adapting this code to support larger models are always welcome.
+| Hyperparameter | LLaMA-7B | LLaMA-13B |
+| -------------- | -------- | --------- |
+| Batch size     | 128      | 128       |
+| Learning rate  | 2e-5     | 1e-5      |
+| Epochs         | 3        | 5         |
+| Max length     | 512      | 512       |
+| Weight decay   | 0        | 0         |
 
-Example usage:
+You can use the following command to train Alpaca-7B with 4 x A100 (40GB).
 
 ```bash
+cd examples/alpaca/
 python train_alpaca.py \
     --model_name_or_path  'decapoda-research/llama-7b-hf' \
     --data_path tatsu-lab/alpaca  \
@@ -84,8 +99,9 @@ python train_alpaca.py \
     --logging_steps 1
 ```
 
-
 ### Using DeepSpeed
+
+If you meet OOM error, consider this.
 
 Naively, fine-tuning a 7B model requires about 7 x 4 x 4 = 112 GB of VRAM. Commands given above enable parameter sharding, so no redundant model copy is stored on any GPU.
 If you'd like to further reduce the memory footprint, here are some options:
@@ -95,6 +111,7 @@ If you'd like to further reduce the memory footprint, here are some options:
 
 ```bash
 pip install deepspeed
+cd examples/alpaca/
 torchrun --nproc_per_node=8 train_alpaca.py \
     --model_name_or_path  'decapoda-research/llama-7b-hf' \
     --data_path tatsu-lab/alpaca  \
@@ -113,10 +130,18 @@ torchrun --nproc_per_node=8 train_alpaca.py \
     --deepspeed "scripts/ds_config_zero3_auto.json"
 ```
 
-- [LoRA](https://arxiv.org/abs/2106.09685) fine-tunes low-rank slices of the query, key, and value embedding heads. This can reduce the total memory footprint from 112GB to about 7x4=28GB. We may release our re-implemention of this in the future, but for now the [peft](https://github.com/huggingface/peft) codebase can be a useful resource.
+- [LoRA](https://arxiv.org/abs/2106.09685) fine-tunes low-rank slices of the query, key, and value embedding heads. This can reduce the total memory footprint from 112GB to about 7x4=28GB. 
+
+### Fine-tuning Alpaca-7B with Lora
+
+This part reproducing the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) results using [low-rank adaptation (LoRA)](https://arxiv.org/pdf/2106.09685.pdf).
 
 
-## PEFT(Parermeter Efficient Fine-Tuning)
+To fine-tune cheaply and efficiently, we use Hugging Face's [PEFT](https://github.com/huggingface/peft)
+as well as Tim Dettmers' [bitsandbytes](https://github.com/TimDettmers/bitsandbytes).
+
+This file contains a straightforward application of PEFT to the LLaMA model,
+as well as some code related to prompt construction and tokenization.
 
 
 ```bash
@@ -139,20 +164,21 @@ python train_alpaca_lora.py \
     --logging_steps 1
 ```
 
-### Inference (`generate.py`)
+## Inference
 
 This file reads the foundation model from the Hugging Face model hub and the LoRA weights from `tloen/alpaca-lora-7b`, and runs a Gradio interface for inference on a specified input. Users should treat this as example code for the use of the model, and modify it as needed.
 
 Example usage:
 
 ```bash
-python generate.py \
-    --load_8bit \
-    --base_model 'decapoda-research/llama-7b-hf' \
-    --lora_weights 'tloen/alpaca-lora-7b'
+python generate_server.py \
+    --model_name_or_path decapoda-research/llama-7b-hf \
+    --lora_model_name_or_path  tloen/alpaca-lora-7b 
 ```
 
-## Server
+### No Enough Memory
+
+If you do not have enough memory, you can enable 8-bit compression by adding `--load-8bit` to commands above. This can reduce memory usage by around half with slightly degraded model quality. It is compatible with the CPU, GPU, and Metal backend. Alpaca-7B with 8-bit compression can run on a single NVIDIA 3090/4080/T4/V100(16GB) GPU.
 
 ```bash
 python generate_server.py \
@@ -168,6 +194,17 @@ Our purpose is to make this repo even better. If you are interested in contribut
 ## License
 
 `Openn-ChatGPT` is released under the Apache 2.0 license.
+
+## Acknowledgements
+
+We appreciate the work by many open-source contributors, especially:
+
+- [Alpaca-LoRA](https://github.com/tloen/alpaca-lora/)
+- [LoRA](https://github.com/microsoft/LoRA/)
+- [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca/)
+- [Hugging Face](https://huggingface.co/)
+- [LLaMa](https://github.com/facebookresearch/llama/)
+- [Vicuna](https://github.com/lm-sys/FastChat/)
 
 ## Citation
 
