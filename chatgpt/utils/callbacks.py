@@ -20,12 +20,10 @@ class Stream(transformers.StoppingCriteria):
 
 
 class Iteratorize:
-
     """
     Transforms a function that takes a callback
     into a lazy iterator (generator).
     """
-
     def __init__(self, func, kwargs={}, callback=None):
         self.mfunc = func
         self.c_callback = callback
