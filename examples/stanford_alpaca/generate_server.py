@@ -1,14 +1,16 @@
 import argparse
 import sys
 from typing import Union
+
 import gradio as gr
 import torch
 import transformers
+
 sys.path.append('../../')
 from transformers import GenerationConfig
 
-from chatgpt.utils.callbacks import Iteratorize, Stream
 from chatgpt.models.apply_lora import apply_lora
+from chatgpt.utils.callbacks import Iteratorize, Stream
 
 
 class Prompter(object):
@@ -50,53 +52,27 @@ class Prompter(object):
 
 def args_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--model_name_or_path',
-        default=None,
-        type=str,
-        required=True,
-        help=
-        'Path to pre-trained model or shortcut name selected in the list: ',
-    )
-    parser.add_argument(
-        '--lora_model_name_or_path',
-        default=None,
-        type=str,
-        required=True,
-        help=
-        'Path to pre-trained model or shortcut name selected in the list: ',
-    )
+    parser.add_argument('--model_name_or_path',
+                        default=None,
+                        type=str,
+                        required=True,
+                        help='Path to pre-trained model')
+    parser.add_argument('--lora_model_name_or_path',
+                        default=None,
+                        type=str,
+                        required=True,
+                        help='Path to pre-trained model')
     parser.add_argument('--no_cuda',
                         action='store_true',
                         help='Avoid using CUDA when available')
-    parser.add_argument(
-        '--load_8bit',
-        action='store_true',
-        help='Whether to use load_8bit  instead of 32-bit',
-    )
+    parser.add_argument('--load_8bit',
+                        action='store_true',
+                        help='Whether to use load_8bit  instead of 32-bit')
     args = parser.parse_args()
 
     args.device = torch.device(
         'cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
     return args
-
-
-def complete_prompts(model, tokenizer, generation_config, prompter,
-                     prompt_text, device):
-    inputs = tokenizer(prompt_text, return_tensors='pt')
-    input_ids = inputs['input_ids'].to(device)
-
-    with torch.no_grad():
-        generation_output = model.generate(
-            input_ids=input_ids,
-            generation_config=generation_config,
-            return_dict_in_generate=True,
-            output_scores=True,
-            max_new_tokens=128,
-        )
-    s = generation_output.sequences[0]
-    output = tokenizer.decode(s)
-    return prompter.get_response(output)
 
 
 def main(args):
@@ -108,7 +84,6 @@ def main(args):
     model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
     model.config.bos_token_id = 1
     model.config.eos_token_id = 2
-
     prompter = Prompter()
 
     def evaluate(
@@ -130,6 +105,9 @@ def main(args):
             top_p=top_p,
             top_k=top_k,
             num_beams=num_beams,
+            do_sample=True,
+            no_repeat_ngram_size=6,
+            repetition_penalty=1.8,
             **kwargs,
         )
 
@@ -144,7 +122,6 @@ def main(args):
         if stream_output:
             # Stream the reply 1 token at a time.
             # This is based on the trick of using 'stopping_criteria' to create an iterator,
-            # from https://github.com/oobabooga/text-generation-webui/blob/ad37f396fc8bcbab90e11ecf17c56c97bfbd4a9c/modules/text_generation.py#L216-L243.
 
             def generate_with_callback(callback=None, **kwargs):
                 kwargs.setdefault('stopping_criteria',
@@ -183,49 +160,54 @@ def main(args):
         output = tokenizer.decode(s)
         yield prompter.get_response(output)
 
-    gr.Interface(
-        fn=evaluate,
-        inputs=[
-            gr.components.Textbox(
-                lines=2,
-                label='Instruction',
-                placeholder='Tell me about alpacas.',
-            ),
-            gr.components.Textbox(lines=2, label='Input', placeholder='none'),
-            gr.components.Slider(minimum=0,
-                                 maximum=1,
-                                 value=0.1,
-                                 label='Temperature'),
-            gr.components.Slider(minimum=0,
-                                 maximum=1,
-                                 value=0.75,
-                                 label='Top p'),
-            gr.components.Slider(minimum=0,
-                                 maximum=100,
-                                 step=1,
-                                 value=40,
-                                 label='Top k'),
-            gr.components.Slider(minimum=1,
-                                 maximum=4,
-                                 step=1,
-                                 value=4,
-                                 label='Beams'),
-            gr.components.Slider(minimum=1,
-                                 maximum=2000,
-                                 step=1,
-                                 value=128,
-                                 label='Max tokens'),
-            gr.components.Checkbox(label='Stream output'),
-        ],
-        outputs=[gr.inputs.Textbox(
-            lines=5,
-            label='Output',
-        )],
-        title='🦙🌲 Alpaca-LoRA',
-        description=
-        "Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset and makes use of the Huggingface LLaMA implementation. For more information, please visit [the project's website](https://github.com/tloen/alpaca-lora).",  # noqa: E501
-    ).queue().launch(server_name='0.0.0.0', share=False)
-    # Old testing code follows.
+        description = 'Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. '
+        'It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) '
+        'dataset and makes use of the Huggingface LLaMA implementation. For more information, '
+        "please visit [the project's website](https://github.com/tloen/alpaca-lora).",
+
+        server = gr.Interface(
+            fn=evaluate,
+            inputs=[
+                gr.components.Textbox(lines=2,
+                                      label='Instruction',
+                                      placeholder='Tell me about alpacas.'),
+                gr.components.Textbox(lines=2,
+                                      label='Input',
+                                      placeholder='none'),
+                gr.components.Slider(minimum=0,
+                                     maximum=1,
+                                     value=0.1,
+                                     label='Temperature'),
+                gr.components.Slider(minimum=0,
+                                     maximum=1,
+                                     value=0.75,
+                                     label='Top p'),
+                gr.components.Slider(minimum=0,
+                                     maximum=100,
+                                     step=1,
+                                     value=40,
+                                     label='Top k'),
+                gr.components.Slider(minimum=1,
+                                     maximum=4,
+                                     step=1,
+                                     value=4,
+                                     label='Beams'),
+                gr.components.Slider(minimum=1,
+                                     maximum=2000,
+                                     step=1,
+                                     value=128,
+                                     label='Max tokens'),
+                gr.components.Checkbox(label='Stream output'),
+            ],
+            outputs=[gr.inputs.Textbox(
+                lines=5,
+                label='Output',
+            )],
+            title='🦙🌲 Alpaca-LoRA',
+            description=description,
+        )
+
+        server.queue().launch(server_name='0.0.0.0', share=False)
 
 
 if __name__ == '__main__':
