@@ -8,106 +8,43 @@
 [中文](README_zh.md) | English
 </div>
 
+# Open-ChatGPT: A Chatbot Based on Llama Model
+
+![GitHub Stars](https://img.shields.io/github/stars/jianzhnie/open-chatgpt.svg?label=Stars&style=social)
+[![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/jianzhnie/open-chatgpt/blob/main/LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
 ## Table of Contents
-- [Table of Contents](#table-of-contents)
-- [Introduction](#introduction)
-- [Illustrating  RLHF](#illustrating--rlhf)
-  - [Step 1: Train Supervised Fine-Tuning (SFT)](#step-1-train-supervised-fine-tuning-sft)
-  - [Step 2: Train Reward Model (RM)](#step-2-train-reward-model-rm)
-  - [Step 3: Optimize the Policy Using Reinforcement Learning(RLHF)](#step-3-optimize-the-policy-using-reinforcement-learningrlhf)
-- [RLHF Dataset preparation](#rlhf-dataset-preparation)
-- [☕ Quick Start ☕](#-quick-start-)
-- [Examples](#examples)
-  - [Example1: Learning to summarize with human feedback](#example1-learning-to-summarize-with-human-feedback)
-    - [Step1: Supervised Fine-Tuning (SFT)](#step1-supervised-fine-tuning-sft)
-    - [Step2: Training the Reward Model](#step2-training-the-reward-model)
-    - [Step3: Fine-Tuning the Model using PPO](#step3-fine-tuning-the-model-using-ppo)
-  - [Example2: Learning to generate positive sentiment with human feedback](#example2-learning-to-generate-positive-sentiment-with-human-feedback)
-  - [Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange](#example3-stackllama-train-llama-with-rlhf-on-stackexchange)
-- [Support Model](#support-model)
-- [Contributing](#contributing)
-- [License](#license)
+- [Open-ChatGPT: A Chatbot Based on Llama Model](#open-chatgpt-a-chatbot-based-on-llama-model)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [☕ Quick Start ☕](#-quick-start-)
+  - [Fintune Alpaca](#fintune-alpaca)
+    - [Training (`finetune.py`)](#training-finetunepy)
+    - [Using DeepSpeed](#using-deepspeed)
+  - [PEFT(Parermeter Efficient Fine-Tuning)](#peftparermeter-efficient-fine-tuning)
+    - [Inference (`generate.py`)](#inference-generatepy)
+  - [Server](#server)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Citation](#citation)
 
 
 ## Introduction
+This repository contains code for reproducing the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) results using [low-rank adaptation (LoRA)](https://arxiv.org/pdf/2106.09685.pdf).
+We provide an Instruct model of similar quality to `text-davinci-003` that can run [on a Raspberry Pi](https://twitter.com/miolini/status/1634982361757790209) (for research),
+and the code is easily extended to the `13b`, `30b`, and `65b` models.
 
-`Open-ChatGPT`  is a open-source library that allows you to train a  hyper-personalized ChatGPT-like ai model using your own data and the least amount of compute possible.
+In addition to the training code, which runs within hours on a single RTX 4090,
+we publish a script for downloading and inference on the foundation model and LoRA,
+as well as the resulting [LoRA weights themselves](https://huggingface.co/tloen/alpaca-lora-7b/tree/main).
+To fine-tune cheaply and efficiently, we use Hugging Face's [PEFT](https://github.com/huggingface/peft)
+as well as Tim Dettmers' [bitsandbytes](https://github.com/TimDettmers/bitsandbytes).
 
-`Open-ChatGPT` is a general system framework for enabling an end-to-end training experience for ChatGPT-like models. It can automatically take your favorite pre-trained large language models though an OpenAI InstructGPT style three stages to produce your very own high-quality ChatGPT-style model.
+Without hyperparameter tuning, the LoRA model produces outputs comparable to the Stanford Alpaca model. (Please see the outputs included below.) Further tuning might be able to achieve better performance; I invite interested users to give it a try and report their results.
 
-We have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by transformer library and DeepsSpeed. It supports distributed training and offloading, which can fit extremly large models.
-
-If you like the project, please show your support by [leaving a star ⭐](https://github.com/jianzhnie/open-chatgpt/stargazers).
-
-
-## Illustrating  RLHF
-
-ChatGPT continues the technical path of [InstructGPT/GPT3.5](https://arxiv.org/abs/2203.02155) and adds RLHF (Reinforcement Learning from Human Feedback) which enhances the adjustment of the model output by humans and sorts the results with greater understanding.
-
-Reinforcement learning from human feedback (RLHF) is a challenging concept as it involves multiple model training processes and different deployment stages. We break down the training process into three core steps:
-
-<div align="center">
-<img src="./assets/ChatGPT_Diagram.svg" width="800px"></img>
-
-*<a href="https://openai.com/blog/chatgpt/">official chatgpt blogpost</a>*
-</div>
-
-### Step 1: Train Supervised Fine-Tuning (SFT)
-
-GPT 3.5 itself has difficulty in understanding the different intentions implied in various types of human instructions, and it is also difficult to judge whether the generated content is of high quality. To make [GPT 3.5](https://arxiv.org/abs/2203.02155) initially understand the intent of instructions, high-quality answers are given by human annotators for randomly selected questions in the dataset, and the GPT-3.5 model is fine-tuned with these manually labeled data to obtain the SFT model (Supervised Fine-Tuning).
-
-The SFT model at this point is already better than GPT-3 in following instructions/dialogues, but may not necessarily align with human preferences.
-
-<div align="center">
-  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/pretraining.png" width="500"/>
-</div>
-
-### Step 2: Train Reward Model (RM)
-
-The main objective of this stage is to train a reward model by manually labeled training data (about 33K data). Questions are randomly selected from the dataset, and multiple different answers are generated for each question using the model generated in the first stage. Human annotators consider these results comprehensively and provide a ranking order. This process is similar to a coach or teacher's guidance.
-
-Next, use this ranking result data to train the reward model. For multiple ranking results, pairwise combinations form multiple training data pairs. The RM model accepts an input and provides a score that evaluates the quality of the answer. Thus, for a pair of training data, the parameters are adjusted so that the score for a high-quality answer is higher than that for a low-quality answer.
-
-<div align="center">
-  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/reward-model.png" width="500"/>
-</div>
-
-### Step 3: Optimize the Policy Using Reinforcement Learning(RLHF)
-
-Finally, once we have the trained SFT model and reward model (RM), we can use reinforcement learning (RL) to fine-tune the SFT model based on feedback using RM. This step keeps our SFT model aligned with human preferences.
-
-This stage uses the reward model trained in the second stage and updates the pre-trained model parameters based on the reward score. Questions are randomly selected from the dataset, and the PPO model is used to generate answers, and the RM model trained in the previous stage is used to provide quality scores. The reward scores are passed in sequence, resulting in a policy gradient, and the PPO model parameters are updated through reinforcement learning.
-
-<div align="center">
-  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/rlhf.png" width="500"/>
-</div>
-
-
-If you want to learn more details about RLHF technology, I strongly recommend reading Huggingface's blog [Illustrating Reinforcement Learning from Human Feedback (RLHF)](https://huggingface.co/blog/rlhf) and the [中文翻译版](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/papers/RLHF).
-
-
-</p>
-</details>
-
-## RLHF Dataset preparation
-
-To successfully train a ChatGPT-like assistant, you need 3 different datasets: `actor_training_data`, `rlhf_training_data` and `reward_training_data`.
-
-Alternatively, training can be bootstrapped using a pre-existing dataset available on HuggingFace.  High quality candidates are namely the `Anthropic HH RLHF` and the `Stanford Human Preference datasets`, `Reddit TL;DR dataset` and  `Comparisons datasets`.
-
-|                                           Dataset                                            |                                                                            Description                                                                            |     |
-| :------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------: | --- |
-|            [Anthropic HH RLHF](https://huggingface.co/datasets/Anthropic/hh-rlhf)            |                    This dataset consists of structured question/response pairs with a LLM chatbot that include chosen and rejected responses.                     |     |
-| [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP)  | This dataset is curated from selected "ask" subreddits and contains questions spanning a wide array of question/answer pairs based on the most upvoted responses. |     |
-|    [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr)    |         The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human.         |     |
-| [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons) |    It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred.    |     |
-
-
-To find more datasets, please check out the following links:
-[jianzhnie/awesome-prompt-datasets](https://github.com/jianzhnie/awesome-prompt-datasets): A collection of open-source dataset to train instruction-following LLMs (ChatGPT,LLaMA,Alpaca)
-
-</p>
-</details>
 
 ## ☕ Quick Start ☕
 
@@ -116,123 +53,113 @@ git clone https://github.com/jianzhnie/open-chatgpt.git
 pip install -r requirements.txt
 ```
 
-## Examples
-
-### Example1: Learning to summarize with human feedback
-
-#### Step1: Supervised Fine-Tuning (SFT)
-
-Firstly, we will fine-tune the transformer model for text summarization on the [`TL;DR`](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr) dataset.
-
-This is relatively straightforward. Load the dataset, tokenize it, and then train the model. The entire pipeline is built using HuggingFace.
-
-- Training with huggingface transformers trainer api.
-
-First, modify the `training_args` in `train_fintune_summarize.py` file with your own param.
-
-```shell
-cd scripts/
-python train_reward_model.py
-```
-
-- Speedup training with deepspeed
-
-First, add the `deepspeed` param in  `train_fintune_summarize.py` file.
-
-```python
-# Prepare the trainer and start training
-training_args = TrainingArguments(
-    output_dir=output_dir,
-    num_train_epochs=5,
-    gradient_accumulation_steps=4,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    eval_steps=500,
-    save_steps=1000,
-    warmup_steps=100,
-    learning_rate=1e-5,
-    weight_decay=0.001,
-    half_precision_backend=True,
-    fp16=True,
-    adam_beta1=0.9,
-    adam_beta2=0.95,
-    fp16_opt_level='02',  # mixed precision mode
-    do_train=True,  # Perform training
-    do_eval=True,  # Perform evaluation
-    save_strategy='steps',
-    save_total_limit=5,
-    evaluation_strategy='steps',
-    eval_accumulation_steps=1,
-    load_best_model_at_end=True,
-    gradient_checkpointing=True,
-    logging_steps=50,
-    logging_dir='./logs',
-    deepspeed='./ds_config_opt.json',
-)
-```
-Then, run the following command to start training.
-
-```shell
-deepseed train_fintune_summarize.py
-```
-
-The model is evaluated using the ROUGE score. The best model is selected based on the average ROUGE score on the validation set. This model will be used to initialize the reward model, which will be further fine-tuned using PPO.
-
-#### Step2: Training the Reward Model
-
-Our reward model is trained on a collected human quality judgement dataset [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons), You can download the dataset from huggingface automatically.
-
-We will initialize the reward model from the SFT model and attach a randomly initialized linear head to output a scalar value on top.
-
-Next, we will delve into how the data is input to the model, the loss function, and other issues with the reward model.
-
-Use these code to train your reward model.
-
-```shell
-cd scripts/
-python train_reward_model.py
-```
-
-#### Step3: Fine-Tuning the Model using PPO
-
-We use [awesome-chatgpt-prompts](https://huggingface.co/datasets/fka/awesome-chatgpt-prompts) as example dataset. It is a small dataset with hundreds of prompts.
-
-```python
-python train_ppo_rlhf.py
-```
-
-</p>
-</details>
+## Fintune Alpaca
 
 
-### Example2: Learning to generate positive sentiment with human feedback
+### Training (`finetune.py`)
 
-```shell
-python gpt2-sentiment.py
+This file contains a straightforward application of PEFT to the LLaMA model,
+as well as some code related to prompt construction and tokenization.
+PRs adapting this code to support larger models are always welcome.
+
+Example usage:
+
+```bash
+python train_alpaca.py \
+    --model_name_or_path  'decapoda-research/llama-7b-hf' \
+    --data_path tatsu-lab/alpaca  \
+    --output_dir work_dir/ \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 16 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 2000 \
+    --save_total_limit 5 \
+    --learning_rate 2e-5 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1
 ```
 
 
-### Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange
+### Using DeepSpeed
 
+Naively, fine-tuning a 7B model requires about 7 x 4 x 4 = 112 GB of VRAM. Commands given above enable parameter sharding, so no redundant model copy is stored on any GPU.
+If you'd like to further reduce the memory footprint, here are some options:
 
-```shell
+- Turn on CPU offload for FSDP with `--fsdp "full_shard auto_wrap offload"`. This saves VRAM at the cost of longer runtime.
+- In our experience, DeepSpeed stage-3 (with offload) can at times be more memory efficient than FSDP with offload. Here's an example to use DeepSpeed stage-3 with 4 GPUs with both parameter and optimizer offload:
+
+```bash
+pip install deepspeed
+torchrun --nproc_per_node=8 train_alpaca.py \
+    --model_name_or_path  'decapoda-research/llama-7b-hf' \
+    --data_path tatsu-lab/alpaca  \
+    --output_dir work_dir/  \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 2 \
+    --per_device_eval_batch_size 2 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 2000 \
+    --save_total_limit 5 \
+    --learning_rate 2e-5 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --deepspeed "scripts/ds_config_zero3_auto.json"
 ```
 
-## Support Model
-
-<details><summary><b><i> LLM </i></b></summary>
-
-We support models that can be run efficiently with a limited amount of compute. These are the models with less than 20B parameters currently supported :
-
-- GPTJ: 6B
-- GPTNeoX: 1.3B, 20B
-- OPT: 125M, 359M, 1.3B, 2.7B, 6.7B, 13B
-- BLOOM: 560M, 1.1B, 1.7B, 3B, 7.1B
-- BLOOMZ: 560M, 1.1B, 1.7B, 3B, 7.1B
-
-</details>
+- [LoRA](https://arxiv.org/abs/2106.09685) fine-tunes low-rank slices of the query, key, and value embedding heads. This can reduce the total memory footprint from 112GB to about 7x4=28GB. We may release our re-implemention of this in the future, but for now the [peft](https://github.com/huggingface/peft) codebase can be a useful resource.
 
 
+## PEFT(Parermeter Efficient Fine-Tuning)
+
+
+```bash
+python train_alpaca_lora.py \
+    --model_name_or_path  decapoda-research/llama-7b-hf  \
+    --data_path tatsu-lab/alpaca  \
+    --output_dir work_dir_lora/ \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 2000 \
+    --save_total_limit 5 \
+    --learning_rate 2e-5 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1
+```
+
+### Inference (`generate.py`)
+
+This file reads the foundation model from the Hugging Face model hub and the LoRA weights from `tloen/alpaca-lora-7b`, and runs a Gradio interface for inference on a specified input. Users should treat this as example code for the use of the model, and modify it as needed.
+
+Example usage:
+
+```bash
+python generate.py \
+    --load_8bit \
+    --base_model 'decapoda-research/llama-7b-hf' \
+    --lora_weights 'tloen/alpaca-lora-7b'
+```
+
+## Server
+
+```bash
+python generate_server.py \
+    --model_name_or_path decapoda-research/llama-7b-hf \
+    --lora_model_name_or_path  tloen/alpaca-lora-7b \
+    --load_8bit
+```
 
 ## Contributing
 
@@ -241,3 +168,18 @@ Our purpose is to make this repo even better. If you are interested in contribut
 ## License
 
 `Openn-ChatGPT` is released under the Apache 2.0 license.
+
+## Citation
+
+Please cite the repo if you use the data or code in this repo.
+
+```
+@misc{open-chatgpt,
+  author = {jianzhnie},
+  title = {Open-ChatGPT, a chatbot based on Llama model},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/jianzhnie/open-chatgpt}},
+}
+```
