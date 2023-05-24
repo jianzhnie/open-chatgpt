@@ -1,11 +1,9 @@
-import copy
 import logging
 import pathlib
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
 
 import torch
-import utils
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
@@ -36,12 +34,24 @@ class TrainingArguments(TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default='adamw_torch')
     model_max_length: int = field(
-        default=512,
+        default=2048,
         metadata={
             'help':
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
         },
     )
+
+
+def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
+    """Collects the state dict and dump to disk."""
+    state_dict = trainer.model.state_dict()
+    if trainer.args.should_save:
+        cpu_state_dict = {
+            key: value.cpu()
+            for key, value in state_dict.items()
+        }
+        del state_dict
+        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
 
 def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
@@ -106,8 +116,9 @@ class SupervisedDataset(Dataset):
         """
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        if 'json' in data_path:
-            list_data_dict = utils.jload(data_path)
+        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
+            list_data_dict = load_dataset('json',
+                                          data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
 
@@ -157,18 +168,22 @@ class SupervisedDataset(Dataset):
             max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
-
-        # Extract the input_ids tensor
-        input_ids = example_tokenized['input_ids']
-        # Create the labels tensor
-        labels = copy.deepcopy(input_ids)
-
-        # Create the encoding_input dictionary and convert its values to tensors
-        encoding_input = dict(
-            input_ids=torch.tensor(input_ids),
-            labels=torch.tensor(labels),
+        source_txt = self.sources[idx]
+        source_tokenized = self.tokenizer(
+            source_txt,
+            padding='longest',
+            max_length=self.tokenizer.model_max_length,
+            truncation=True,
         )
-        return encoding_input
+        # Extract the input_ids tensor
+        input_ids = torch.tensor(example_tokenized['input_ids'])
+        # Create the labels tensor
+        labels = input_ids.clone()
+        labels[:len(source_tokenized['input_ids'])] = self.IGNORE_INDEX
+        return {
+            'input_ids': input_ids,
+            'labels': labels,
+        }
 
 
 @dataclass
@@ -245,6 +260,9 @@ def train() -> None:
     )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
 
+    model.is_parallelizable = True
+    model.model_parallel = True
+
     # Initialize the Trainer object and start training
     trainer = Trainer(
         model=model,
@@ -254,6 +272,7 @@ def train() -> None:
         eval_dataset=None,
         data_collator=data_collator,
     )
+    model.config.use_cache = False
 
     if training_args.resume_from_checkpoint and list(
             pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
@@ -263,7 +282,8 @@ def train() -> None:
 
     trainer.save_state()
     # Save the trained model
-    trainer.save_model(training_args.output_dir)
+    safe_save_model_for_hf_trainer(trainer=trainer,
+                                   output_dir=training_args.output_dir)
 
 
 if __name__ == '__main__':
