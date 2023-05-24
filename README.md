@@ -60,7 +60,7 @@ If you like the project, please show your support by [leaving a star ⭐](https:
 
 ### Instruction Datasets
 
-A collection of open-source instruction tuning datasets to train (text and multi-modal) chat-based LLMs (GPT-4, ChatGPT,LLaMA,Alpaca). 
+A collection of open-source instruction tuning datasets to train (text and multi-modal) chat-based LLMs (GPT-4, ChatGPT,LLaMA,Alpaca).
 
 Referring to [this](https://github.com/jianzhnie/awesome-instruction-datasets) ([@jianzhnie](https://github.com/jianzhnie)), we labeled each collected dataset according to the following rules:
 
@@ -102,7 +102,7 @@ Here, we only list a small part of the  instruction tuning dataset list, to find
 
 ### RLHF Datasets
 
-Instruction Tuning / Reinforcement Learning from Human Feedback (RLHF) Dataset is a key component of instruction-following LLMs such as ChatGPT. Follwing is a comprehensive list of datasets used for instruction tuning in various LLMs, making it easier for researchers and developers to access and utilize these resources. 
+Instruction Tuning / Reinforcement Learning from Human Feedback (RLHF) Dataset is a key component of instruction-following LLMs such as ChatGPT. Follwing is a comprehensive list of datasets used for instruction tuning in various LLMs, making it easier for researchers and developers to access and utilize these resources.
 
 |                           Project                            |              Org              | Nums   |  Lang   | Summary                                                      |
 | :----------------------------------------------------------: | :---------------------------: | ------ | :-----: | ------------------------------------------------------------ |
@@ -222,7 +222,7 @@ torchrun --nproc_per_node=8 train_alpaca.py \
     --deepspeed "scripts/ds_config_zero3_auto.json"
 ```
 
-- [LoRA](https://arxiv.org/abs/2106.09685) fine-tunes low-rank slices of the query, key, and value embedding heads. This can reduce the total memory footprint from 112GB to about 7x4=28GB. 
+- [LoRA](https://arxiv.org/abs/2106.09685) fine-tunes low-rank slices of the query, key, and value embedding heads. This can reduce the total memory footprint from 112GB to about 7x4=28GB.
 
 ### Fine-tuning Alpaca-7B with Lora
 
@@ -265,7 +265,7 @@ Example usage:
 ```bash
 python generate_server.py \
     --model_name_or_path decapoda-research/llama-7b-hf \
-    --lora_model_name_or_path  tloen/alpaca-lora-7b 
+    --lora_model_name_or_path  tloen/alpaca-lora-7b
 ```
 
 ### No Enough Memory
