@@ -1,11 +1,9 @@
-import copy
 import logging
 import pathlib
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
 
 import torch
-import utils
 from datasets import load_dataset
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
@@ -43,11 +41,15 @@ class TrainingArguments(TrainingArguments):
         },
     )
 
+
 def safe_save_model_for_hf_trainer(trainer: Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
     state_dict = trainer.model.state_dict()
     if trainer.args.should_save:
-        cpu_state_dict = {key: value.cpu() for key, value in state_dict.items()}
+        cpu_state_dict = {
+            key: value.cpu()
+            for key, value in state_dict.items()
+        }
         del state_dict
         trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
 
@@ -114,8 +116,9 @@ class SupervisedDataset(Dataset):
         """
         super(SupervisedDataset, self).__init__()
         logging.warning('Loading data...')
-        if 'json' in data_path:
-            list_data_dict = utils.jload(data_path)
+        if data_path.endswith('.json') or data_path.endswith('.jsonl'):
+            list_data_dict = load_dataset('json',
+                                          data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
 
@@ -161,32 +164,26 @@ class SupervisedDataset(Dataset):
         # Tokenize the example and source text
         example_tokenized = self.tokenizer(
             example_txt,
-            return_tensors="pt",
             padding='longest',
             max_length=self.tokenizer.model_max_length,
             truncation=True,
         )
-        source_tokenized = self.tokenizer(self.sources[idx],
-                                            return_tensors="pt",
-                                            padding='longest',
-                                            max_length=self.tokenizer.model_max_length,
-                                            truncation=True,
-                                            )
-        # Extract the input_ids tensor
-        input_ids = example_tokenized['input_ids']
-        # Create the labels tensor
-        labels = copy.deepcopy(input_ids)
-
-        source_input_ids = source_tokenized['input_ids']
-        source_len = source_input_ids.ne(self.tokenizer.pad_token_id).sum().item() 
-
-        labels[:source_len] = IGNORE_INDEX
-        # Create the encoding_input dictionary and convert its values to tensors
-        encoding_input = dict(
-            input_ids=torch.tensor(input_ids),
-            labels=torch.tensor(labels),
+        source_txt = self.sources[idx]
+        source_tokenized = self.tokenizer(
+            source_txt,
+            padding='longest',
+            max_length=self.tokenizer.model_max_length,
+            truncation=True,
         )
-        return encoding_input
+        # Extract the input_ids tensor
+        input_ids = torch.tensor(example_tokenized['input_ids'])
+        # Create the labels tensor
+        labels = input_ids.clone()
+        labels[:len(source_tokenized['input_ids'])] = self.IGNORE_INDEX
+        return {
+            'input_ids': input_ids,
+            'labels': labels,
+        }
 
 
 @dataclass
@@ -285,7 +282,8 @@ def train() -> None:
 
     trainer.save_state()
     # Save the trained model
-    safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
+    safe_save_model_for_hf_trainer(trainer=trainer,
+                                   output_dir=training_args.output_dir)
 
 
 if __name__ == '__main__':
