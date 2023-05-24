@@ -1,4 +1,4 @@
-python train_alpaca.py \
+python train_alpaca_mem.py \
     --model_name_or_path  facebook/opt-125m \
     --data_path tatsu-lab/alpaca  \
     --output_dir work_dir/ \
@@ -8,13 +8,10 @@ python train_alpaca.py \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 500 \
+    --save_steps 2000 \
     --save_total_limit 5 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
-    --warmup_steps 50 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --gradient_checkpointing True \
-    --fp16 True
+    --logging_steps 1
