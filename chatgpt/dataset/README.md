@@ -98,12 +98,6 @@ LocalDataClass：Dict[str, Type]  = {
 
 
 
-##  Using for training RM model
-
-
-
-
-
 ## Reference
 
 - https://github.com/yaodongC/awesome-instruction-dataset
