@@ -8,10 +8,12 @@ python train_alpaca_lora.py \
     --gradient_accumulation_steps 8 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 2000 \
+    --save_steps 500 \
     --save_total_limit 5 \
-    --learning_rate 2e-5 \
+    --learning_rate 1e-4 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1
+    --model_max_length 2048 \
+    --logging_steps 1 \
+    --fp16 True

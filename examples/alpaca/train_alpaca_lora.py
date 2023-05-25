@@ -335,4 +335,4 @@ def train(load_in_8bit=False) -> None:
 
 
 if __name__ == '__main__':
-    train()
+    train(load_in_8bit=True)
