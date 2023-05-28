@@ -38,7 +38,7 @@ class TrainingArguments(TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default='adamw_torch')
     model_max_length: int = field(
-        default=512,
+        default=2048,
         metadata={
             'help':
             'Maximum sequence length. Sequences will be right padded (and possibly truncated).'
@@ -115,7 +115,19 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
 
 
 class SupervisedDataset(Dataset):
-    """Dataset for supervised fine-tuning."""
+    """
+    Dataset for supervised fine-tuning.
+
+    Attributes:
+        PROMPT_DICT (dict): A dictionary containing prompts for the model to complete.
+        IGNORE_INDEX (int): A value to replace tokens corresponding to the source in the labels tensor.
+
+    Methods:
+        __init__(self, data_path: str, tokenizer: PreTrainedTokenizer): Initializes a SupervisedDataset object.
+        __len__(self) -> int: Returns the length of the dataset.
+        __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
+
+    """
 
     PROMPT_DICT = {
         'prompt_input':
@@ -130,19 +142,29 @@ class SupervisedDataset(Dataset):
     }
     IGNORE_INDEX = -100
 
-    def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer):
+    def __init__(self,
+                 data_path: str,
+                 tokenizer: PreTrainedTokenizer,
+                 max_length: int = 1024):
+        """
+        Initializes a SupervisedDataset object.
+
+        Args:
+            data_path (str): The path to the training data file.
+            tokenizer (PreTrainedTokenizer): The tokenizer object used to tokenize the input examples.
+
+        """
         super(SupervisedDataset, self).__init__()
-        logging.warning('Loading data...')
+        logging.warning(f'Loading dataset from {data_path}')
         if data_path.endswith('.json') or data_path.endswith('.jsonl'):
             list_data_dict = load_dataset('json',
                                           data_files=data_path)['train']
         else:
             list_data_dict = load_dataset(data_path)['train']
 
-        logging.warning('Formatting inputs...')
+        logging.warning('Found %d rows', list_data_dict.num_rows)
         prompt_input, prompt_no_input = self.PROMPT_DICT[
             'prompt_input'], self.PROMPT_DICT['prompt_no_input']
-
         self.sources = [
             prompt_input.format_map(example) if example.get('input', '') != ''
             else prompt_no_input.format_map(example)
@@ -155,29 +177,48 @@ class SupervisedDataset(Dataset):
 
         self.examples = [s + t for s, t in zip(self.sources, self.targets)]
         self.tokenizer = tokenizer
+        self.max_length = max_length
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        Returns the length of the dataset.
+
+        Returns:
+            int: The number of examples in the dataset.
+
+        """
         return len(self.examples)
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
+        """
+        Retrieves an example from the dataset at the specified index.
 
+        Args:
+            idx (int): The index of the example to retrieve.
+
+        Returns:
+            dict[str, torch.Tensor]: A dictionary containing the input_ids, labels, input_len, source_input_ids, and
+            source_len tensors.
+
+        """
         example_txt = self.examples[idx]
+        # Tokenize the example and source text
         example_tokenized = self.tokenizer(
             example_txt,
             padding='longest',
-            max_length=self.tokenizer.model_max_length,
+            max_length=self.max_length,
             truncation=True,
         )
         source_txt = self.sources[idx]
         source_tokenized = self.tokenizer(
             source_txt,
             padding='longest',
-            max_length=self.tokenizer.model_max_length,
+            max_length=self.max_length,
             truncation=True,
         )
-
-        # The labels are the full prompt with response, but with the prompt masked out
+        # Extract the input_ids tensor
         input_ids = torch.tensor(example_tokenized['input_ids'])
+        # Create the labels tensor
         labels = input_ids.clone()
         labels[:len(source_tokenized['input_ids'])] = self.IGNORE_INDEX
         return {
@@ -277,8 +318,9 @@ def train(load_in_8bit=False) -> None:
             use_fast=True,
         )
 
-    # Add special tokens to tokenizer if they are not already present
-    special_tokens_dict: Dict[str, Any] = {}
+    # Resize the tokenizer's vocabulary size to accommodate additional special tokens, if necessary
+    tokenizer.pad_token = tokenizer.eos_token
+    special_tokens_dict = {}
     if tokenizer.pad_token is None:
         special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
     if tokenizer.eos_token is None:
@@ -287,6 +329,12 @@ def train(load_in_8bit=False) -> None:
         special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
     if tokenizer.unk_token is None:
         special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
+
+    special_tokens_dict['additional_special_tokens'] = [
+        '### Instruction:',
+        '### Response:\n',
+        '### End',
+    ]
 
     if len(special_tokens_dict) > 0:
         smart_tokenizer_and_embedding_resize(special_tokens_dict, tokenizer,
@@ -301,10 +349,23 @@ def train(load_in_8bit=False) -> None:
     if training_args.deepspeed is not None and training_args.local_rank == 0:
         model.print_trainable_parameters()
 
+    max_length = None
+    for length_setting in [
+            'n_positions', 'max_position_embeddings', 'seq_length'
+    ]:
+        max_length = getattr(model.config, length_setting, None)
+        if max_length:
+            logging.warning(f'Found max lenth: {max_length}')
+            break
+    if not max_length:
+        max_length = 1024
+        logging.warning(f'Using default max length: {max_length}')
+
     # Create a supervised dataset and Trainer, then train the model
     train_dataset = SupervisedDataset(
         data_path=data_args.data_path,
         tokenizer=tokenizer,
+        max_length=max_length,
     )
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
 
