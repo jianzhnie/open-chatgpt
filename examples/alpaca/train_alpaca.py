@@ -242,7 +242,6 @@ def train() -> None:
     )
 
     # Resize the tokenizer's vocabulary size to accommodate additional special tokens, if necessary
-    tokenizer.pad_token = tokenizer.eos_token
     special_tokens_dict = {}
     if tokenizer.pad_token is None:
         special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
