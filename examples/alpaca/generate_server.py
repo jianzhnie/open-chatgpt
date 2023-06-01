@@ -80,6 +80,8 @@ def main(args):
                                   args.lora_model_name_or_path,
                                   load_8bit=args.load_8bit)
 
+    if not args.load_8bit:
+        model.half()  # seems to fix bugs for some users.
     # unwind broken decapoda-research config
     model.config.pad_token_id = tokenizer.pad_token_id = 0  # unk
     model.config.bos_token_id = 1
@@ -160,54 +162,52 @@ def main(args):
         output = tokenizer.decode(s)
         yield prompter.get_response(output)
 
-        description = 'Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. '
-        'It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) '
-        'dataset and makes use of the Huggingface LLaMA implementation. For more information, '
-        "please visit [the project's website](https://github.com/tloen/alpaca-lora).",
+    description = 'Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. '
+    'It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) '
+    'dataset and makes use of the Huggingface LLaMA implementation. For more information, '
+    "please visit [the project's website](https://github.com/tloen/alpaca-lora).",
 
-        server = gr.Interface(
-            fn=evaluate,
-            inputs=[
-                gr.components.Textbox(lines=2,
-                                      label='Instruction',
-                                      placeholder='Tell me about alpacas.'),
-                gr.components.Textbox(lines=2,
-                                      label='Input',
-                                      placeholder='none'),
-                gr.components.Slider(minimum=0,
-                                     maximum=1,
-                                     value=0.1,
-                                     label='Temperature'),
-                gr.components.Slider(minimum=0,
-                                     maximum=1,
-                                     value=0.75,
-                                     label='Top p'),
-                gr.components.Slider(minimum=0,
-                                     maximum=100,
-                                     step=1,
-                                     value=40,
-                                     label='Top k'),
-                gr.components.Slider(minimum=1,
-                                     maximum=4,
-                                     step=1,
-                                     value=4,
-                                     label='Beams'),
-                gr.components.Slider(minimum=1,
-                                     maximum=2000,
-                                     step=1,
-                                     value=128,
-                                     label='Max tokens'),
-                gr.components.Checkbox(label='Stream output'),
-            ],
-            outputs=[gr.inputs.Textbox(
-                lines=5,
-                label='Output',
-            )],
-            title='🦙🌲 Alpaca-LoRA',
-            description=description,
-        )
+    server = gr.Interface(
+        fn=evaluate,
+        inputs=[
+            gr.components.Textbox(lines=2,
+                                  label='Instruction',
+                                  placeholder='Tell me about alpacas.'),
+            gr.components.Textbox(lines=2, label='Input', placeholder='none'),
+            gr.components.Slider(minimum=0,
+                                 maximum=1,
+                                 value=0.1,
+                                 label='Temperature'),
+            gr.components.Slider(minimum=0,
+                                 maximum=1,
+                                 value=0.75,
+                                 label='Top p'),
+            gr.components.Slider(minimum=0,
+                                 maximum=100,
+                                 step=1,
+                                 value=40,
+                                 label='Top k'),
+            gr.components.Slider(minimum=1,
+                                 maximum=4,
+                                 step=1,
+                                 value=4,
+                                 label='Beams'),
+            gr.components.Slider(minimum=1,
+                                 maximum=2000,
+                                 step=1,
+                                 value=128,
+                                 label='Max tokens'),
+            gr.components.Checkbox(label='Stream output'),
+        ],
+        outputs=[gr.inputs.Textbox(
+            lines=5,
+            label='Output',
+        )],
+        title='🦙🌲 Alpaca-LoRA',
+        description=description,
+    )
 
-        server.queue().launch(server_name='0.0.0.0', share=False)
+    server.queue().launch(server_name='0.0.0.0', share=False)
 
 
 if __name__ == '__main__':
