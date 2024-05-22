@@ -18,6 +18,7 @@ def gather_log_probs(logits, labels):
 
 
 class PPOTrainer():
+
     def __init__(
         self,
         prompt_dataset: Dataset = None,

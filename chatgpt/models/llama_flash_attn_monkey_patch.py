@@ -18,7 +18,7 @@ def forward(
     use_cache: bool = False,
 ) -> Tuple[torch.Tensor, Optional[torch.Tensor],
            Optional[Tuple[torch.Tensor]]]:
-    """Input shape: Batch x Time x Channel
+    """Input shape: Batch x Time x Channel.
 
     attention_mask: [bsz, q_len]
     """

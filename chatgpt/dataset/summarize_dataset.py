@@ -17,6 +17,7 @@ class TLDRDataset(Dataset):
         split (str): The split to use from the training data.
         max_length (int): The maximum length of the input sequences (default: 550).
     """
+
     def __init__(self,
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
@@ -63,6 +64,7 @@ class TLDRDataset(Dataset):
 
 
 class HFSummaryQuality(Dataset):
+
     def __init__(
         self,
         data_path: str = 'openai/summarize_from_feedback',

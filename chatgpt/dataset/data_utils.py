@@ -71,9 +71,8 @@ def get_raw_dataset(dataset_name: Optional[str] = None,
                     data_dir: Optional[str] = None,
                     test_data_ratio: float = 0.1,
                     seed: Optional[int] = None):
-    """
-    Given a dataset_name, returns an instance of the corresponding Dataset class,
-    initialized with the given test_data_ratio and seed arguments.
+    """Given a dataset_name, returns an instance of the corresponding Dataset
+    class, initialized with the given test_data_ratio and seed arguments.
 
     Args:
         dataset_name (str, optional): Name of the dataset to return.
@@ -110,8 +109,7 @@ def data_preprocess(
         tokenizer: Optional[PreTrainedTokenizer] = None,
         max_seq_len: int = 512,
         end_of_conversation_token: Optional[str] = None) -> PromptDataset:
-    """
-    Create different splits of a dataset based on the training phase.
+    """Create different splits of a dataset based on the training phase.
 
     Args:
         current_dataset (Dataset): The current state of the dataset.
@@ -175,8 +173,8 @@ def create_dataset(
     end_of_conversation_token: Optional[str] = None,
     seed: Optional[int] = None,
 ) -> Tuple:
-    """
-    A function that creates a training and evaluation dataset by splitting a raw dataset.
+    """A function that creates a training and evaluation dataset by splitting a
+    raw dataset.
 
     Args:
     - dataset_name (str): The name of the dataset to load.
@@ -285,6 +283,7 @@ def create_prompt_dataset(
 
 
 class DataCollatorReward:
+
     def __call__(self, data):
         batch = {}
         batch['input_ids'] = torch.cat([f[0]
@@ -297,6 +296,7 @@ class DataCollatorReward:
 
 
 class DataCollatorRLHF:
+
     def __init__(self, max_token_len, inference_tp_size):
         self.max_token_len = max_token_len
         self.inference_tp_size = inference_tp_size

@@ -11,6 +11,7 @@ from transformers import AutoTokenizer, set_seed
 
 class LengthSampler:
     """Samples a length."""
+
     def __init__(self, min_value, max_value):
         self.values = list(range(min_value, max_value))
 
@@ -34,6 +35,7 @@ def to_device(batch, device):
 
 
 class MovingAverage:
+
     def __init__(self):
         self.count = 0
         self.total = 0

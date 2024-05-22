@@ -9,6 +9,7 @@ from .data_types import GeneralElement
 
 
 class BasePipeline(Dataset):
+
     def __init__(self, path: str = 'dataset'):
         super().__init__()
 
@@ -38,6 +39,7 @@ class BasePipeline(Dataset):
 class PromptPipeline(BasePipeline):
     """Tokenizes prompts, unless they are already tokenized, and truncates them
     to `max_prompt_length` from the right."""
+
     def __init__(self, prompts: List[str], max_prompt_length: int,
                  tokenizer: PreTrainedTokenizer):
         super().__init__()

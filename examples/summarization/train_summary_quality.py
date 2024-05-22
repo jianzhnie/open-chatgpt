@@ -20,6 +20,7 @@ def compute_metrics(eval_pred):
 
 
 class QualityTrainer(Trainer):
+
     def __init__(self, ):
         super().__init__()
         self.loss_fct = nn.L1Loss()

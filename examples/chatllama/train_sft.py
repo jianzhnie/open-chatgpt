@@ -4,7 +4,7 @@ import os
 import torch
 from accelerate import Accelerator
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model, prepare_model_for_int8_training
+from peft import LoraConfig, get_peft_model
 from torch.utils.data import IterableDataset
 from tqdm import tqdm
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
@@ -99,6 +99,7 @@ class ConstantLengthDataset(IterableDataset):
         num_of_sequences (int): Number of token sequences to keep in buffer.
         chars_per_token (int): Number of characters per token used to estimate number of tokens in text buffer.
     """
+
     def __init__(
         self,
         tokenizer,

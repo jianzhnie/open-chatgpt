@@ -40,6 +40,7 @@ class ActorModel(nn.Module):
         pretrained (str, optional): Pretrained model name or path.
         debug (bool, optional): Whether to print debug information. Defaults to False.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = False):
         super().__init__()
 
@@ -171,6 +172,7 @@ class CriticModel(nn.Module):
         pretrained (str): Pretrained model name or path.
         debug (bool): Whether to print debugging information or not.
     """
+
     def __init__(self, pretrained: Optional[str] = None, debug: bool = True):
         super().__init__()
 
@@ -290,7 +292,8 @@ class CriticModel(nn.Module):
                 value = values[i]
 
                 c_inds = (input_id[prompt_length:] == self.PAD_ID).nonzero()
-                # here we only use the answer part of the sequence so we do not need to care about the padding at the beginning
+                # here we only use the answer part of the sequence so we do
+                # not need to care about the padding at the beginning
                 c_ind = c_inds[0].item() + prompt_length if len(
                     c_inds) > 0 else seq_len
                 chosen_end_scores.append(value[c_ind - 1])
@@ -317,6 +320,7 @@ class ActorCritic(nn.Module):
             sequences and sequences masks (used to generate new sequences
             during acting phase)
     """
+
     def __init__(
         self,
         pretrained: Optional[str] = None,
@@ -337,8 +341,8 @@ class ActorCritic(nn.Module):
         action_len_critic: int,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Given the whole sequences, use the actor forward to get the logits
-            for each token in the sequence and the critic forward to get the
-            values for each generation step.
+        for each token in the sequence and the critic forward to get the values
+        for each generation step.
 
         Args:
             sequences_actor (torch.Tensor): Sequences composed of

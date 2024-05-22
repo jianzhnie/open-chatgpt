@@ -78,8 +78,7 @@ def smart_tokenizer_and_embedding_resize(special_tokens_dict: Dict,
 
 
 class SupervisedDataset(Dataset):
-    """
-    Dataset for supervised fine-tuning.
+    """Dataset for supervised fine-tuning.
 
     Attributes:
         PROMPT_DICT (dict): A dictionary containing prompts for the model to complete.
@@ -89,7 +88,6 @@ class SupervisedDataset(Dataset):
         __init__(self, data_path: str, tokenizer: PreTrainedTokenizer): Initializes a SupervisedDataset object.
         __len__(self) -> int: Returns the length of the dataset.
         __getitem__(self, idx) -> Dict[str, torch.Tensor]: Retrieves an example from the dataset at the specified index.
-
     """
 
     PROMPT_DICT = {
@@ -109,13 +107,11 @@ class SupervisedDataset(Dataset):
                  data_path: str,
                  tokenizer: PreTrainedTokenizer,
                  max_length: int = 1024):
-        """
-        Initializes a SupervisedDataset object.
+        """Initializes a SupervisedDataset object.
 
         Args:
             data_path (str): The path to the training data file.
             tokenizer (PreTrainedTokenizer): The tokenizer object used to tokenize the input examples.
-
         """
         super(SupervisedDataset, self).__init__()
         logging.warning(f'Loading dataset from {data_path}')
@@ -143,18 +139,15 @@ class SupervisedDataset(Dataset):
         self.max_length = max_length
 
     def __len__(self) -> int:
-        """
-        Returns the length of the dataset.
+        """Returns the length of the dataset.
 
         Returns:
             int: The number of examples in the dataset.
-
         """
         return len(self.examples)
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
-        """
-        Retrieves an example from the dataset at the specified index.
+        """Retrieves an example from the dataset at the specified index.
 
         Args:
             idx (int): The index of the example to retrieve.
@@ -162,7 +155,6 @@ class SupervisedDataset(Dataset):
         Returns:
             dict[str, torch.Tensor]: A dictionary containing the input_ids, labels, input_len, source_input_ids, and
             source_len tensors.
-
         """
         example_txt = self.examples[idx]
         # Tokenize the example and source text
@@ -213,8 +205,7 @@ class DataCollatorForSupervisedDataset(object):
 
 
 def train() -> None:
-    """
-    Trains a language model using Hugging Face's Transformers library.
+    """Trains a language model using Hugging Face's Transformers library.
 
     Args:
         model_args (ModelArguments): The arguments for the model configuration.
@@ -223,7 +214,6 @@ def train() -> None:
 
     Returns:
         None
-
     """
     parser = HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))

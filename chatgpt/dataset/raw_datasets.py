@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from datasets import load_dataset
+from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
@@ -32,9 +33,8 @@ PROMPT_DICT = {
 
 
 class PromptDataset(Dataset):
-    """
-    A PyTorch dataset class that prepares prompt sentences and their corresponding \
-        chosen/rejected sentences for training.
+    """A PyTorch dataset class that prepares prompt sentences and their
+    corresponding chosen/rejected sentences for training.
 
     Args:
         prompt_dataset (List): A list of prompt sentences.
@@ -53,8 +53,8 @@ class PromptDataset(Dataset):
         >>> reject_dataset = ['I don\'t have a favorite color.', 'Pizza is not my thing.']
         >>> tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
         >>> dataset = PromptDataset(prompt_dataset, chosen_dataset, reject_dataset, tokenizer, max_length=256)
-
     """
+
     def __init__(self,
                  prompt_dataset: List[str],
                  chosen_dataset: List[str],
@@ -72,8 +72,8 @@ class PromptDataset(Dataset):
         self.train_phase = train_phase
 
     def __len__(self) -> int:
-        """
-        Returns the length of chosen_dataset, or prompt_dataset if train_phase is 3.
+        """Returns the length of chosen_dataset, or prompt_dataset if
+        train_phase is 3.
 
         Returns:
             int: Length of dataset.
@@ -84,8 +84,8 @@ class PromptDataset(Dataset):
             return len(self.chosen_dataset)
 
     def __getitem__(self, idx: int) -> dict or Tuple[torch.Tensor]:
-        """
-        Returns a dictionary or tuple of tensors depending on the value of train_phase.
+        """Returns a dictionary or tuple of tensors depending on the value of
+        train_phase.
 
         Args:
             idx (int): Index of dataset item to retrieve.
@@ -156,8 +156,7 @@ class PromptDataset(Dataset):
 
 
 class PromptRawDataset(object):
-    """
-    A class to handle raw text data for prompt-based dialogue systems.
+    """A class to handle raw text data for prompt-based dialogue systems.
 
     Attributes:
         dataset_name (str): The name of the dataset to load.
@@ -179,14 +178,14 @@ class PromptRawDataset(object):
         get_prompt_and_rejected(sample: Dict[str, Any]) -> Tuple[str, Optional[str]]: Returns the formatted prompt \
             and rejected response for a given sample, if available.
     """
+
     def __init__(self,
                  dataset_name: str,
                  data_dir: str = None,
                  num_proc: Optional[int] = 8,
                  test_data_ratio: Optional[float] = 0.1,
                  seed: Optional[int] = None):
-        """
-        Initializes the PromptRawDataset object.
+        """Initializes the PromptRawDataset object.
 
         Args:
             dataset_name (str): The name of the dataset to load.
@@ -212,8 +211,7 @@ class PromptRawDataset(object):
             self.raw_datasets = load_dataset(dataset_name, num_proc=num_proc)
 
     def get_train_data(self):
-        """
-        Returns the training data.
+        """Returns the training data.
 
         Returns:
             datasets.Dataset: The training data.
@@ -221,8 +219,7 @@ class PromptRawDataset(object):
         return self.raw_datasets['train']
 
     def get_eval_data(self):
-        """
-        Returns the evaluation data.
+        """Returns the evaluation data.
 
         Returns:
             datasets.Dataset: The evaluation data.
@@ -230,8 +227,7 @@ class PromptRawDataset(object):
         return self.raw_datasets['validation']
 
     def get_prompt(self, sample: Dict[str, Any]) -> str:
-        """
-        Returns the formatted prompt for a given sample.
+        """Returns the formatted prompt for a given sample.
 
         Args:
             sample (Dict[str, Any]): The sample to generate a prompt for.
@@ -242,8 +238,7 @@ class PromptRawDataset(object):
         return f"Human: {sample['prompt']} Assistant:"
 
     def get_chosen(self, sample: Dict[str, Any]) -> Optional[str]:
-        """
-        Returns the chosen response for a given sample, if available.
+        """Returns the chosen response for a given sample, if available.
 
         Args:
             sample (Dict[str, Any]): The sample to retrieve the chosen response from.
@@ -257,8 +252,7 @@ class PromptRawDataset(object):
             return None
 
     def get_rejected(self, sample: Dict[str, Any]) -> Optional[str]:
-        """
-        Returns the rejected response for a given sample, if available.
+        """Returns the rejected response for a given sample, if available.
 
         Args:
             sample (Dict[str, Any]): The sample to retrieve the rejected response from.
@@ -274,8 +268,7 @@ class PromptRawDataset(object):
 
     def get_prompt_and_chosen(
             self, sample: Dict[str, Any]) -> Tuple[str, Optional[str]]:
-        """
-        Returns the formatted prompt and chosen response for a given sample.
+        """Returns the formatted prompt and chosen response for a given sample.
 
         Args:
             sample (Dict[str, Any]): The sample to generate the prompt and retrieve the chosen response from.
@@ -289,8 +282,8 @@ class PromptRawDataset(object):
 
     def get_prompt_and_rejected(
             self, sample: Dict[str, Any]) -> Tuple[str, Optional[str]]:
-        """
-        Returns the formatted prompt and rejected response for a given sample.
+        """Returns the formatted prompt and rejected response for a given
+        sample.
 
         Args:
             sample (Dict[str, Any]): The sample to generate the prompt and retrieve the rejected response from.
@@ -305,8 +298,8 @@ class PromptRawDataset(object):
 
 # checked
 class StackExchangeParied(PromptRawDataset):
-    """https://huggingface.co/datasets/lvwerra/stack-exchange-paired
-    """
+    """https://huggingface.co/datasets/lvwerra/stack-exchange-paired."""
+
     def __init__(
         self,
         dataset_name='lvwerra/stack-exchange-paired',
@@ -344,9 +337,8 @@ class StackExchangeParied(PromptRawDataset):
 
 # TODO
 class AnthropicHHRLHF(PromptRawDataset):
-    """
-    https://huggingface.co/datasets/Anthropic/hh-rlhf
-    """
+    """https://huggingface.co/datasets/Anthropic/hh-rlhf."""
+
     def __init__(
         self,
         dataset_name='Anthropic/hh-rlhf',
@@ -384,8 +376,8 @@ class AnthropicHHRLHF(PromptRawDataset):
 # TODO
 # [databricks/databricks-dolly-15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k)
 class DatabricksDolly15k(PromptRawDataset):
-    """https://huggingface.co/datasets/databricks/databricks-dolly-15k
-    """
+    """https://huggingface.co/datasets/databricks/databricks-dolly-15k."""
+
     def __init__(
         self,
         dataset_name='databricks/databricks-dolly-15k',
@@ -456,7 +448,7 @@ class DatabricksDolly15k(PromptRawDataset):
 
 # TODO
 class MosaicmlDollyHHRLHF(PromptRawDataset):
-    """https://huggingface.co/datasets/mosaicml/dolly_hhrlhf
+    """https://huggingface.co/datasets/mosaicml/dolly_hhrlhf.
 
     This dataset is a combination of Databrick's dolly-15k dataset and a filtered subset of Anthropic's HH-RLHF.
     It also includes a test split, which was missing in the original dolly set.
@@ -466,8 +458,8 @@ class MosaicmlDollyHHRLHF(PromptRawDataset):
 
     It is slightly larger than Alpaca, and in our experience of slightly higher quality, \
         but is usable for commercial purposes so long as you follow the terms of the license.
-
     """
+
     def __init__(
         self,
         dataset_name='mosaicml/dolly_hhrlhf',
@@ -508,7 +500,7 @@ class MosaicmlDollyHHRLHF(PromptRawDataset):
 
 
 class GuanacoDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/JosephusCheung/GuanacoDataset
+    """https://huggingface.co/datasets/JosephusCheung/GuanacoDataset.
 
     Guanaco 模型的数据集旨在增强多语言能力并解决各种语言任务。它以 Alpaca 模型的 175 个任务为基础，、
     提供了用不同语言重写的种子任务，并添加了专门为英语语法分析、自然语言理解、跨语言自我意识和显式内容识别设计的新任务。
@@ -526,8 +518,8 @@ class GuanacoDataset(PromptRawDataset):
     To test 0-shot tasks of Japanese & Deutsch on original 175 tasks with finetuning on chat only.
 
     Chat dialogues with System input: 16,087 entries (recent update) - in English zh-Hans zh-Hant-TW zh-Hant-HK
-
     """
+
     def __init__(
         self,
         dataset_name='JosephusCheung/GuanacoDataset',
@@ -584,7 +576,7 @@ class GuanacoDataset(PromptRawDataset):
 
 
 class YeungNLPFirefly(PromptRawDataset):
-    """https://huggingface.co/datasets/YeungNLP/firefly-train-1.1M
+    """https://huggingface.co/datasets/YeungNLP/firefly-train-1.1M.
 
     本数据应用于项目：Firefly（流萤）: 中文对话式大语言模型 ，训练后得到的模型firefly-1b4
 
@@ -599,8 +591,8 @@ class YeungNLPFirefly(PromptRawDataset):
     "input": "将下面句子翻译成现代文：\n石中央又生一树，高百余尺，条干偃阴为五色，翠叶如盘，花径尺余，色深碧，蕊深红，异香成烟，著物霏霏。",
     "target": "大石的中央长着一棵树，一百多尺高，枝干是彩色的，树叶有盘子那样大，花的直径有一尺宽，花瓣深蓝色，花中飘出奇异的香气笼罩着周围，如烟似雾。"
     }
-
     """
+
     def __init__(
         self,
         dataset_name='YeungNLP/firefly-train-1.1M',
@@ -652,8 +644,8 @@ class YeungNLPFirefly(PromptRawDataset):
 # TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
 class InstructWildDataset(object):
-    """https://github.com/XueFuzhao/InstructionWild/tree/main/data
-    """
+    """https://github.com/XueFuzhao/InstructionWild/tree/main/data."""
+
     def __init__(
         self,
         dataset_name='InstructionWild/instinwild_ch',
@@ -720,8 +712,8 @@ class InstructWildDataset(object):
 
 # TODO
 class HuatuoMedDataset(object):
-    """https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data
-    """
+    """https://github.com/SCIR-HI/Huatuo-Llama-Med-Chinese/tree/main/data."""
+
     def __init__(
         self,
         dataset_name='huatuo_med_data/llama_data',
@@ -784,8 +776,8 @@ class HuatuoMedDataset(object):
 # TODO
 # [laion/OIG](https://huggingface.co/datasets/laion/OIG)
 class LaionOIG(PromptRawDataset):
-    """https://huggingface.co/datasets/laion/OIG
-    """
+    """https://huggingface.co/datasets/laion/OIG."""
+
     def __init__(
         self,
         dataset_name='laion/OIG',
@@ -828,8 +820,8 @@ class LaionOIG(PromptRawDataset):
 # TODO
 # [OpenAssistant/oasst1](https://github.com/LAION-AI/Open-Assistant/blob/main/docs/docs/data/datasets.md)
 class OpenAssistantOasst1(PromptRawDataset):
-    """https://huggingface.co/datasets/OpenAssistant/oasst1
-    """
+    """https://huggingface.co/datasets/OpenAssistant/oasst1."""
+
     def __init__(
         self,
         dataset_name='OpenAssistant/oasst1',
@@ -873,7 +865,7 @@ class OpenAssistantOasst1(PromptRawDataset):
 # TODO
 # [1.5M中文数据集](https://github.com/LianjiaTech/BELLE/tree/main/data/1.5M)
 class BelleGroupDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/BelleGroup/train_1M_CN
+    """https://huggingface.co/datasets/BelleGroup/train_1M_CN.
 
     - 内容
         包含约200万条由BELLE项目生成的中文指令数据。
@@ -889,9 +881,8 @@ class BelleGroupDataset(PromptRawDataset):
         instruction: 指令
         input: 输入（本数据集均为空）
         output: 输出
-
-
     """
+
     def __init__(
         self,
         dataset_name='BelleGroup/train_1M_CN',
@@ -950,8 +941,8 @@ class BelleGroupDataset(PromptRawDataset):
 # TODO
 # [tatsu-lab/stanford_alpaca](https://github.com/tatsu-lab/stanford_alpaca)
 class AlpacaDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/tatsu-lab/alpaca
-    """
+    """https://huggingface.co/datasets/tatsu-lab/alpaca."""
+
     def __init__(
         self,
         dataset_name='tatsu-lab/alpaca',
@@ -1009,8 +1000,8 @@ class AlpacaDataset(PromptRawDataset):
 
 
 class AlpacaCoT(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/rm-static
-    """
+    """https://huggingface.co/datasets/Dahoas/rm-static."""
+
     def __init__(
         self,
         dataset_name='QingyiSi/Alpaca-CoT',
@@ -1063,8 +1054,8 @@ class AlpacaCoT(PromptRawDataset):
 
 class AlpacaChinese(object):
     """https://github.com/LC1332/Luotuo-Chinese-LLM/tree/main/data
-    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data
-    """
+    https://github.com/ymcui/Chinese-LLaMA-Alpaca/tree/main/data."""
+
     def __init__(
         self,
         dataset_name='alpaca_chinese/trans_chinese_alpaca_data',
@@ -1129,8 +1120,8 @@ class AlpacaChinese(object):
 
 # TODO
 class FudanMossDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/fnlp/moss-002-sft-data
-    """
+    """https://huggingface.co/datasets/fnlp/moss-002-sft-data."""
+
     def __init__(
         self,
         dataset_name='fnlp/moss-002-sft-data',
@@ -1178,8 +1169,9 @@ class FudanMossDataset(PromptRawDataset):
 
 # English dataset
 class Gpt4allPromptGeneration(PromptRawDataset):
-    """https://huggingface.co/datasets/nomic-ai/gpt4all-j-prompt-generations
-    """
+    """https://huggingface.co/datasets/nomic-ai/gpt4all-j-prompt-
+    generations."""
+
     def __init__(
         self,
         dataset_name='nomic-ai/gpt4all-j-prompt-generations',
@@ -1225,8 +1217,8 @@ class Gpt4allPromptGeneration(PromptRawDataset):
 
 # English dataset
 class DahoasRmstaticDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/rm-static
-    """
+    """https://huggingface.co/datasets/Dahoas/rm-static."""
+
     def __init__(
         self,
         dataset_name='Dahoas/rm-static',
@@ -1262,8 +1254,8 @@ class DahoasRmstaticDataset(PromptRawDataset):
 
 # English dataset
 class DahoasFullhhrlhfDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/full-hh-rlhf
-    """
+    """https://huggingface.co/datasets/Dahoas/full-hh-rlhf."""
+
     def __init__(
         self,
         dataset_name='Dahoas/full-hh-rlhf',
@@ -1299,8 +1291,9 @@ class DahoasFullhhrlhfDataset(PromptRawDataset):
 
 # English dataset
 class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/Dahoas/synthetic-instruct-gptj-pairwise
-    """
+    """https://huggingface.co/datasets/Dahoas/synthetic-instruct-gptj-
+    pairwise."""
+
     def __init__(
         self,
         dataset_name='Dahoas/synthetic-instruct-gptj-pairwise',
@@ -1344,8 +1337,8 @@ class DahoasSyntheticinstructgptjpairwiseDataset(PromptRawDataset):
 # English
 # todo: check
 class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets
-    """
+    """https://huggingface.co/datasets/yitingxie/rlhf-reward-datasets."""
+
     def __init__(
         self,
         dataset_name='yitingxie/rlhf-reward-datasets',
@@ -1381,9 +1374,8 @@ class YitingxieRlhfrewarddatasetsDataset(PromptRawDataset):
 
 # English dataset
 class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
-    """
-    https://huggingface.co/datasets/openai/webgpt_comparisons
-    """
+    """https://huggingface.co/datasets/openai/webgpt_comparisons."""
+
     def __init__(
         self,
         dataset_name='openai/webgpt_comparisons',
@@ -1454,9 +1446,8 @@ class OpenaiWebgptcomparisonsDataset(PromptRawDataset):
 
 # English dataset
 class StanfordnlpSHPDataset(PromptRawDataset):
-    """
-    https://huggingface.co/datasets/stanfordnlp/SHP
-    """
+    """https://huggingface.co/datasets/stanfordnlp/SHP."""
+
     def __init__(
         self,
         dataset_name='stanfordnlp/SHP',
@@ -1508,8 +1499,8 @@ class StanfordnlpSHPDataset(PromptRawDataset):
 
 # Chinese dataset
 class Wangrui6ZhihuKOLDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/wangrui6/Zhihu-KOL
-    """
+    """https://huggingface.co/datasets/wangrui6/Zhihu-KOL."""
+
     def __init__(
         self,
         dataset_name='wangrui6/Zhihu-KOL',
@@ -1564,8 +1555,8 @@ class Wangrui6ZhihuKOLDataset(PromptRawDataset):
 
 # Chinese dataset
 class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
-    """https://huggingface.co/datasets/Cohere/miracl-zh-queries-22-12
-    """
+    """https://huggingface.co/datasets/Cohere/miracl-zh-queries-22-12."""
+
     def __init__(
         self,
         dataset_name='Cohere/miracl-zh-queries-22-12',
@@ -1603,9 +1594,8 @@ class CohereMiraclzhqueries2212Dataset(PromptRawDataset):
 
 # Chinese dataset
 class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
-    """
-    https://huggingface.co/datasets/Hello-SimpleAI/HC3-Chinese
-    """
+    """https://huggingface.co/datasets/Hello-SimpleAI/HC3-Chinese."""
+
     def __init__(
         self,
         dataset_name='Hello-SimpleAI/HC3-Chinese',
@@ -1661,8 +1651,8 @@ class HelloSimpleAIHC3ChineseDataset(PromptRawDataset):
 
 # Chinese dataset
 class MkqaChineseDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/mkqa
-    """
+    """https://huggingface.co/datasets/mkqa."""
+
     def __init__(
         self,
         dataset_name='mkqa-Chinese',
@@ -1719,6 +1709,7 @@ class MkqaChineseDataset(PromptRawDataset):
 
 # Japanese dataset
 class MkqaJapaneseDataset(PromptRawDataset):
+
     def __init__(
         self,
         dataset_name='mkqa-Japanese',
@@ -1774,6 +1765,7 @@ class MkqaJapaneseDataset(PromptRawDataset):
 
 # Japanese dataset
 class CohereMiracljaqueries2212Dataset(PromptRawDataset):
+
     def __init__(
         self,
         dataset_name='Cohere/miracl-ja-queries-22-12',
@@ -1811,8 +1803,8 @@ class CohereMiracljaqueries2212Dataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQgjaquadDataset(PromptRawDataset):
-    """https://huggingface.co/datasets/lmqg/qg_jaquad
-    """
+    """https://huggingface.co/datasets/lmqg/qg_jaquad."""
+
     def __init__(
         self,
         dataset_name='lmqg/qg_jaquad',
@@ -1855,6 +1847,7 @@ class LmqgQgjaquadDataset(PromptRawDataset):
 
 # Japanese dataset
 class LmqgQagjaquadDataset(PromptRawDataset):
+
     def __init__(
         self,
         dataset_name='lmqg/qag_jaquad',
