@@ -9,9 +9,6 @@ from torch.utils.data import IterableDataset
 from tqdm import tqdm
 from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
                           Trainer, TrainingArguments, logging, set_seed)
-"""
-Fine-Tune Llama-7b on SE paired dataset
-"""
 
 
 def get_args():
@@ -204,7 +201,6 @@ def run_training(args, train_data, val_data):
         load_in_8bit=True,
         device_map={'': Accelerator().process_index},
     )
-    model = prepare_model_for_int8_training(model)
 
     lora_config = LoraConfig(
         r=16,
