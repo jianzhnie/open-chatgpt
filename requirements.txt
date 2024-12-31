@@ -3,13 +3,9 @@ accelerate
 bitsandbytes
 datasets
 deepspeed
-evaluate>=0.4.0
-gradio
-nltk>=3.8.1
-numpy
+evaluate
 peft
-rouge-score>=0.1.2
 sentencepiece
 tokenizers
 torch
-transformers>=4.28.0
+transformers
