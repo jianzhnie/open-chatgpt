@@ -89,6 +89,7 @@ class DataCollatorForPairRank:
 
 
 class WebGPT(Dataset):
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -129,6 +130,7 @@ class HFSummary(Dataset):
 
     labeling method : pair comparison, 0 or 1
     """
+
     def __init__(self,
                  split='train',
                  conf_threshold=-1,
@@ -196,6 +198,7 @@ class HFDataset(Dataset):
 
     we should do something like this for supervised datasets
     """
+
     def __init__(self,
                  dataset_name,
                  question_field,
@@ -232,6 +235,7 @@ class HFDataset(Dataset):
 
 
 class GPTJSynthetic(HFDataset):
+
     def __init__(self) -> None:
         super().__init__('Dahoas/synthetic-instruct-gptj-pairwise', 'prompt',
                          'chosen', 'rejected', None, 'train')
@@ -246,6 +250,7 @@ class AnthropicRLHF(Dataset):
         one "chosen" and one "rejected".
     valid train size : 160780
     """
+
     def preprocess_dialogue(self, text):
         """trim prefix text to last two pairs.
 

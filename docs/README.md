@@ -6,9 +6,11 @@
 <div align="center">
 
 [中文](README_zh.md) | English
+
 </div>
 
 ## Table of Contents
+
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Illustrating  RLHF](#illustrating--rlhf)
@@ -28,7 +30,6 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-
 ## Introduction
 
 `Open-ChatGPT`  is a open-source library that allows you to train a  hyper-personalized ChatGPT-like ai model using your own data and the least amount of compute possible.
@@ -38,7 +39,6 @@
 We have Impleamented RLHF (Reinforcement Learning with Human Feedback) powered by transformer library and DeepsSpeed. It supports distributed training and offloading, which can fit extremly large models.
 
 If you like the project, please show your support by [leaving a star ⭐](https://github.com/jianzhnie/open-chatgpt/stargazers).
-
 
 ## Illustrating  RLHF
 
@@ -50,6 +50,7 @@ Reinforcement learning from human feedback (RLHF) is a challenging concept as it
 <img src="./assets/ChatGPT_Diagram.svg" width="800px"></img>
 
 *<a href="https://openai.com/blog/chatgpt/">official chatgpt blogpost</a>*
+
 </div>
 
 ### Step 1: Train Supervised Fine-Tuning (SFT)
@@ -82,9 +83,7 @@ This stage uses the reward model trained in the second stage and updates the pre
   <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/rlhf/rlhf.png" width="500"/>
 </div>
 
-
 If you want to learn more details about RLHF technology, I strongly recommend reading Huggingface's blog [Illustrating Reinforcement Learning from Human Feedback (RLHF)](https://huggingface.co/blog/rlhf) and the [中文翻译版](https://jianzhnie.github.io/machine-learning-wiki/#/deep-rl/papers/RLHF).
-
 
 </p>
 </details>
@@ -101,7 +100,6 @@ Alternatively, training can be bootstrapped using a pre-existing dataset availab
 | [Stanford Human Preferences Dataset (SHP)](https://huggingface.co/datasets/stanfordnlp/SHP)  | This dataset is curated from selected "ask" subreddits and contains questions spanning a wide array of question/answer pairs based on the most upvoted responses. |     |
 |    [Reddit TL;DR dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_tldr)    |         The TL;DR Summary Dataset is a collection of carefully selected Reddit posts that contain both the main content and a summary created by a human.         |     |
 | [Comparisons dataset](https://huggingface.co/datasets/CarperAI/openai_summarize_comparisons) |    It includes Reddit posts and two summaries for each post, as well as a selection value indicating which of the two summaries the human annotator preferred.    |     |
-
 
 To find more datasets, please check out the following links:
 [jianzhnie/awesome-prompt-datasets](https://github.com/jianzhnie/awesome-prompt-datasets): A collection of open-source dataset to train instruction-following LLMs (ChatGPT,LLaMA,Alpaca)
@@ -170,6 +168,7 @@ training_args = TrainingArguments(
     deepspeed='./ds_config_opt.json',
 )
 ```
+
 Then, run the following command to start training.
 
 ```shell
@@ -204,16 +203,13 @@ python train_ppo_rlhf.py
 </p>
 </details>
 
-
 ### Example2: Learning to generate positive sentiment with human feedback
 
 ```shell
 python gpt2-sentiment.py
 ```
 
-
 ### Example3: StackLLaMA: Train LLaMA with RLHF on StackExchange
-
 
 ```shell
 ```
@@ -231,8 +227,6 @@ We support models that can be run efficiently with a limited amount of compute. 
 - BLOOMZ: 560M, 1.1B, 1.7B, 3B, 7.1B
 
 </details>
-
-
 
 ## Contributing
 

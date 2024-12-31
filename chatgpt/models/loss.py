@@ -8,6 +8,7 @@ from .utils import masked_mean
 
 class GPTLMLoss(nn.Module):
     """GPT Language Model Loss."""
+
     def __init__(self):
         super().__init__()
         self.loss = nn.CrossEntropyLoss()
@@ -23,6 +24,7 @@ class GPTLMLoss(nn.Module):
 
 class PolicyLoss(nn.Module):
     """Policy Loss for PPO."""
+
     def __init__(self, clip_eps: float = 0.2) -> None:
         super().__init__()
         self.clip_eps = clip_eps
@@ -44,6 +46,7 @@ class PolicyLoss(nn.Module):
 
 class ValueLoss(nn.Module):
     """Value Loss for PPO."""
+
     def __init__(self, clip_eps: float = 0.4) -> None:
         super().__init__()
         self.clip_eps = clip_eps
@@ -67,6 +70,7 @@ class PPOPtxActorLoss(nn.Module):
 
     PPO-ptx Actor Loss
     """
+
     def __init__(
         self,
         policy_clip_eps: float = 0.2,
@@ -97,6 +101,7 @@ class LogSigLoss(nn.Module):
     Pairwise Loss for Reward Model
     Details: https://arxiv.org/abs/2203.02155
     """
+
     def forward(self, chosen_reward: torch.Tensor,
                 reject_reward: torch.Tensor) -> torch.Tensor:
         probs = torch.sigmoid(chosen_reward - reject_reward)
@@ -110,6 +115,7 @@ class LogExpLoss(nn.Module):
     Pairwise Loss for Reward Model
     Details: https://arxiv.org/abs/2204.05862
     """
+
     def forward(self, chosen_reward: torch.Tensor,
                 reject_reward: torch.Tensor) -> torch.Tensor:
         loss = torch.log(1 + torch.exp(reject_reward - chosen_reward)).mean()

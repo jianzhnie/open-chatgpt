@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 
 class UltraChatProcessor(object):
+
     def __init__(self):
         super.__init__()
 

@@ -28,6 +28,7 @@ class RewardModelOutput(ModelOutput):
 
 
 class Pooler(nn.Module):
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -45,6 +46,7 @@ class Pooler(nn.Module):
 class MeanPooler(nn.Module):
     """Applies a mean pooling on the hidden states of the last layer of the
     transformer model."""
+
     def __init__(self, hidden_size):
         super().__init__()
         self.dense = nn.Linear(hidden_size, hidden_size)
@@ -68,6 +70,7 @@ class PairedRewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'openai-gpt'):
         super().__init__()
 
@@ -201,6 +204,7 @@ class RewardModel(nn.Module):
         model (str): Model name: 'opt', 'gpt2' or 'bloom'
         pretrained (str): Pretrained model name or path.
     """
+
     def __init__(self, pretrained: str = 'opt-125m'):
         super().__init__()
 

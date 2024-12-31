@@ -53,8 +53,8 @@ def clone_repo(repo, dir):
 
 
 def extract_gz_files(repo, directory):
-    """
-    Extract all .gz files in the specified directory and save as uncompressed files.
+    """Extract all .gz files in the specified directory and save as
+    uncompressed files.
 
     Parameters:
         - repo (str): the name of the repository to look for in the specified directory

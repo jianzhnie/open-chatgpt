@@ -13,6 +13,7 @@ class AdaptiveKLController:
     Reference: Section 2.2 https://arxiv.org/pdf/1909.08593.pdf#page=2
     Source: https://github.com/openai/lm-human-preferences/blob/master/lm_human_preferences/train_policy.py
     """
+
     def __init__(self, init_kl_coef: float, target: float, horizon: int):
         self.value = init_kl_coef
         self.target = target
@@ -32,6 +33,7 @@ class AdaptiveKLController:
 
 class FixedKLController:
     """Fixed KL controller."""
+
     def __init__(self, kl_coef):
         self.value = kl_coef
 

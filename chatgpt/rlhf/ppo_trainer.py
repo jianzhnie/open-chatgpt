@@ -48,6 +48,7 @@ train()
 
 
 class PPOTrainer:
+
     def __init__(
         self,
         prompt_data_path: str,

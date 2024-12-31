@@ -11,6 +11,7 @@ from .data_types import PPORLBatch, PPORLElement, RLElement
 
 
 class BaseRolloutStore(Dataset):
+
     def __init__(self, capacity=-1):
         self.history: Iterable[Any] = None
         self.capacity = capacity
@@ -42,6 +43,7 @@ class BaseRolloutStore(Dataset):
 
 class PPORolloutStorage(BaseRolloutStore):
     """Rollout storage for training PPO."""
+
     def __init__(self, pad_token_id):
         super().__init__()
 
@@ -73,6 +75,7 @@ class PPORolloutStorage(BaseRolloutStore):
         return len(self.history)
 
     def create_loader(self, batch_size: int, shuffle: bool) -> DataLoader:
+
         def collate_fn(elems: Iterable[PPORLElement]):
             return PPORLBatch(
                 # Left padding of already left-padded queries

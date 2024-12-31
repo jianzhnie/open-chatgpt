@@ -14,6 +14,7 @@ class PairwiseDataset(Dataset):
         tokenizer: The tokenizer used to encode the input text.
         max_length: Maximum sequence length for the encoded inputs.
     """
+
     def __init__(self, data_path: str, tokenizer: PreTrainedTokenizer,
                  split: str, max_length: int):
 

@@ -10,7 +10,7 @@ Stage 0 (DDP) > Stage 1 > Stage 2 > Stage 2 + offload > Stage 3 > Stage 3 + offl
 
 ### GPU Memory usage-wise (right is more GPU memory efficient than left)
 
-Stage 0 (DDP) < Stage 1 < Stage 2 < Stage 2 + offload < Stage 3 < Stage 3 + offloads
+Stage 0 (DDP) \< Stage 1 \< Stage 2 \< Stage 2 + offload \< Stage 3 \< Stage 3 + offloads
 
 So when you want to get the fastest execution while fitting into minimal number of GPUs, here is the process you could follow. We start with the fastest approach and if running into GPU OOM we then go to the next slower approach, but which will use less GPU memory. And so on and so forth.
 
@@ -25,7 +25,6 @@ First of all set batch size to 1 (you can always use gradient accumulation for a
 7. If you still can’t fit a batch size of 1 first check various default values and lower them if you can. For example, if you use generate and you don’t use a wide search beam make it narrower as it’d take a lot of memory.
 8. Definitely use mixed half-precision over fp32 - so bf16 on Ampere and higher GPUs and fp16 on older gpu architectures.
 9. If you still OOM you could add more hardware or enable ZeRO-Infinity - that is switch offloads offload_param and offload_optimizer to nvme. You need to make sure it’s a very fast nvme. As an anecdote I was able to infer BLOOM-176B on a tiny GPU using ZeRO-Infinity except it was extremely slow. But it worked!
-
 
 You can, of course, work through these steps in reverse by starting with the most GPU memory efficient config and then going backwards. Or try bi-secting it.
 
