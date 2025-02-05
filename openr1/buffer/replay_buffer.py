@@ -7,11 +7,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-from chatgpt.buffer.utils import (BufferItem, Experience,
-                                  make_experience_batch,
-                                  split_experience_batch)
-from chatgpt.rlhf.actor_critic import ActorModel
-from chatgpt.utils.modeling import compute_reward
+from openr1.buffer.utils import (BufferItem, Experience, make_experience_batch,
+                                 split_experience_batch)
+from openr1.rlhf.actor_critic import ActorModel
+from openr1.utils.modeling import compute_reward
 
 # structure to store the data for each experience
 Memory = namedtuple(

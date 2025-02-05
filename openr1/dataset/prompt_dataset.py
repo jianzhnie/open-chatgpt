@@ -5,7 +5,7 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
-from chatgpt.utils.utils import LengthSampler
+from openr1.utils.utils import LengthSampler
 
 
 class TokenizedPromptDataset(Dataset):
