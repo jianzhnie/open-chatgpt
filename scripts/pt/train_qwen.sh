@@ -1,9 +1,7 @@
 python openr1/train/pt/train.py \
     --model_name_or_path Qwen/Qwen2.5-0.5B  \
-    --data_path tatsu-lab/alpaca \
+    --data_path ./hf_hub/datasets/text_data/open-web-math/open-web-math \
     --train_data_split 'train[10:20]' \
-    --eval_data_path tatsu-lab/alpaca \
-    --eval_data_split 'train[20:25]' \
     --bf16 False \
     --output_dir work_dir/pt/open_web_math-qwen2.5 \
     --num_train_epochs 3 \

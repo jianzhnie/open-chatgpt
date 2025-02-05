@@ -64,6 +64,11 @@ class TrainingArguments(TrainingArguments):
 
 
 def trainer_save_model_safe(trainer: Trainer) -> None:
+    """Safely save model when using FSDP (Fully Sharded Data Parallel).
+
+    Args:
+        trainer: The Huggingface trainer instance
+    """
     from torch.distributed.fsdp import FullStateDictConfig
     from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
     from torch.distributed.fsdp import StateDictType
@@ -78,6 +83,15 @@ def load_model_tokenizer(
     model_args: ModelArguments,
     training_args: TrainingArguments,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+    """Load and configure the model and tokenizer.
+
+    Args:
+        model_args: Model configuration arguments
+        training_args: Training configuration arguments
+
+    Returns:
+        Tuple containing the loaded model and tokenizer
+    """
 
     config_kwargs = {
         'cache_dir': model_args.cache_dir,
@@ -121,17 +135,21 @@ def load_model_tokenizer(
 def make_pretrain_data_module(data_args: DataArguments,
                               training_args: TrainingArguments,
                               tokenizer: PreTrainedTokenizer):
+    """Create training and evaluation datasets.
 
+    Args:
+        data_args: Dataset configuration arguments
+        training_args: Training configuration arguments
+        tokenizer: The tokenizer to use for processing text
+
+    Returns:
+        Dictionary containing train and eval datasets
+    """
     train_dataset = PretrainDataset(data_path=data_args.data_path,
                                     split=data_args.train_data_split,
                                     cache_dir=data_args.data_cache_dir,
                                     tokenizer=tokenizer,
                                     max_length=training_args.model_max_length)
-    eval_dataset = PretrainDataset(data_path=data_args.eval_data_path,
-                                   split=data_args.eval_data_split,
-                                   cache_dir=data_args.data_cache_dir,
-                                   tokenizer=tokenizer,
-                                   max_length=training_args.model_max_length)
 
     if data_args.eval_data_path:
         eval_dataset = PretrainDataset(
@@ -147,6 +165,7 @@ def make_pretrain_data_module(data_args: DataArguments,
 
 
 def train() -> None:
+    """Main training function that orchestrates the entire training process."""
 
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))
@@ -159,7 +178,6 @@ def train() -> None:
 
     # Create a dataset and Trainer, then train the model
     logger.info('Creating a dataset and DataCollator...')
-
     dataset_module = make_pretrain_data_module(data_args,
                                                training_args,
                                                tokenizer=tokenizer)
@@ -167,7 +185,7 @@ def train() -> None:
     logger.info('Creating DataCollator...')
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer,
                                                     mlm=False)
-    # Start trainner
+    # Initialize trainer
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -197,6 +215,31 @@ def train() -> None:
 
         # Save model
         model.config.use_cache = True
+        trainer.save_state()
+        if trainer.is_deepspeed_enabled:
+            trainer.save_model()
+        else:
+            trainer_save_model_safe(trainer)
+
+    # Training
+    if training_args.do_train:
+        checkpoint_path = pathlib.Path(training_args.output_dir)
+        has_checkpoints = list(checkpoint_path.glob('checkpoint-*'))
+
+        if has_checkpoints and training_args.resume_from_checkpoint:
+            logger.info('Resuming training from checkpoint %s',
+                        training_args.resume_from_checkpoint)
+            train_result = trainer.train(
+                resume_from_checkpoint=training_args.resume_from_checkpoint)
+        else:
+            logger.info('Starting training from scratch...')
+            train_result = trainer.train()
+
+        trainer.log_metrics('train', train_result.metrics)
+        trainer.save_metrics('train', train_result.metrics)
+
+        # Save model
+        trainer.model.config.use_cache = True
         trainer.save_state()
         if trainer.is_deepspeed_enabled:
             trainer.save_model()

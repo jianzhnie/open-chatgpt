@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict
 
 import torch
 from datasets import load_dataset
@@ -19,8 +19,8 @@ class PretrainDataset(Dataset):
     def __init__(self,
                  data_path: str,
                  split: str,
-                 cache_dir: str,
-                 tokenizer: PreTrainedTokenizer,
+                 cache_dir: str = None,
+                 tokenizer: PreTrainedTokenizer = None,
                  max_length: int = 1024) -> None:
 
         self.dataset = load_dataset(data_path,
@@ -32,26 +32,30 @@ class PretrainDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
-        """Returns a dictionary containing the input_ids, attention_mask, and
-        labels for the given index.
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        """Retrieves and preprocesses a single data sample.
 
         Args:
-            idx (int): The index of the data sample to retrieve.
+            idx (int): Index of the sample to retrieve.
 
         Returns:
-            A dictionary containing the input_ids, attention_mask, and labels.
+            Dict[str, torch.Tensor]: A dictionary containing:
+                - input_ids: Tokenized and padded input sequence
+                - attention_mask: Mask indicating non-padded tokens
+                - token_type_ids: (if using BERT-like models)
         """
+        # Get text sample from dataset
         sample = self.dataset[idx]
-        text = sample['text']  # Extract the 'text' field from the dataset
+        text: str = sample['text']
 
-        encodings_input = self.tokenizer(text,
-                                         truncation=True,
-                                         max_length=self.max_length,
-                                         padding='max_length')
+        # Tokenize and pad the text
+        encodings_input = self.tokenizer(
+            text,
+            truncation=True,
+            max_length=self.max_length,
+            padding='max_length',
+            return_tensors='pt'  # Return PyTorch tensors directly
+        )
 
-        encodings_input = {
-            key: torch.tensor(val)
-            for key, val in encodings_input.items()
-        }
-        return encodings_input
+        # Remove the batch dimension added by return_tensors='pt'
+        return {key: val.squeeze(0) for key, val in encodings_input.items()}
