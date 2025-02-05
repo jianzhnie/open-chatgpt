@@ -1,5 +1,5 @@
 python openr1/train/pt/train.py \
-    --model_name_or_path ./hf_hub/models/Qwen/Qwen2.5-1.5B  \
+    --model_name_or_path Qwen/Qwen2.5-0.5B  \
     --data_path tatsu-lab/alpaca \
     --train_data_split 'train[10:20]' \
     --eval_data_path tatsu-lab/alpaca \
@@ -21,5 +21,5 @@ python openr1/train/pt/train.py \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --report_to tensorboard \
-    --model_max_length 128 \
+    --model_max_length 64 \
     --gradient_checkpointing True
