@@ -7,10 +7,10 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchtyping import TensorType
 
-from openr1.buffer.replay_buffer import ExperienceDataset, Memory
-from openr1.buffer.rollout import BaseRolloutStore
 from openr1.dataset.prompt_dataset import PromptDataset
 from openr1.rlhf.actor_critic import ActorCritic
+from openr1.rlhf.buffer.replay_buffer import ExperienceDataset, Memory
+from openr1.rlhf.buffer.rollout import BaseRolloutStore
 from openr1.rlhf.reward_model import RewardModel
 from openr1.utils.modeling import flatten_dict, get_tensor_stats, whiten
 

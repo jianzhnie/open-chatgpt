@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
-from openr1.buffer.replay_buffer import DsExperienceDataset, DsMemory
 from openr1.rlhf.actor_critic import ActorModel, CriticModel
+from openr1.rlhf.buffer.replay_buffer import DsExperienceDataset, DsMemory
 from openr1.rlhf.reward_model import RewardModel
 
 
