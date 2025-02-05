@@ -127,13 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-opt-supervised-summarize-checkpoint/
 wandb/
-logs/
-rm_checkpoint/
 assets/
 work_dir/
 work_dirs/
-prompt_data/
-prompt_data
-work_dir_lora/
+hf_hub/
+hf_hub

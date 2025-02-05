@@ -1,0 +1,23 @@
+python openr1/train/pt/train.py \
+    --model_name_or_path Qwen/Qwen2.5-0.5B  \
+    --data_path ./hf_hub/datasets/text_data/open-web-math/open-web-math \
+    --train_data_split 'train[10:20]' \
+    --bf16 False \
+    --output_dir work_dir/pt/open_web_math-qwen2.5 \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 1 \
+    --per_device_eval_batch_size 1 \
+    --gradient_accumulation_steps 1 \
+    --evaluation_strategy "steps" \
+    --eval_steps 2000 \
+    --save_strategy "steps" \
+    --save_steps 5000 \
+    --save_total_limit 8 \
+    --learning_rate 2e-5 \
+    --weight_decay 0. \
+    --warmup_ratio 0.04 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1 \
+    --report_to tensorboard \
+    --model_max_length 64 \
+    --gradient_checkpointing True
