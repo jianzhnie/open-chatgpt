@@ -6,9 +6,9 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
-from chatgpt.buffer.replay_buffer import DsExperienceDataset, DsMemory
-from chatgpt.rlhf.actor_critic import ActorModel, CriticModel
-from chatgpt.rlhf.reward_model import RewardModel
+from openr1.buffer.replay_buffer import DsExperienceDataset, DsMemory
+from openr1.rlhf.actor_critic import ActorModel, CriticModel
+from openr1.rlhf.reward_model import RewardModel
 
 
 def gather_log_probs(logits, labels):

@@ -637,11 +637,6 @@ class YeungNLPFirefly(PromptRawDataset):
 
 
 # TODO
-# baize-chatbot
-# https://github.com/project-baize/baize-chatbot/tree/main/data
-
-
-# TODO
 # [InstructWild Data](https://github.com/XueFuzhao/InstructionWild/tree/main/data)
 class InstructWildDataset(object):
     """https://github.com/XueFuzhao/InstructionWild/tree/main/data."""
@@ -704,10 +699,6 @@ class InstructWildDataset(object):
             f'Warning: dataset {self.dataset_name} does not include rejected response.'
         )
         return None
-
-
-# TODO
-# (alpaca_gpt4_zh)|52K
 
 
 # TODO
