@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer
 
 
-class OpenWebMathDataset(Dataset):
+class PretrainDataset(Dataset):
     """
 
     Args:
