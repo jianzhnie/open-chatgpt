@@ -1,13 +1,180 @@
-from typing import Dict
+import warnings
+from typing import Callable, Dict, Optional, Union
 
+import datasets
 import torch
 from datasets import load_dataset
+from datasets.arrow_writer import SchemaInferenceError
+from datasets.builder import DatasetGenerationError
 from torch.utils.data import Dataset
-from transformers import PreTrainedTokenizer
+from transformers import (BaseImageProcessor, FeatureExtractionMixin,
+                          PreTrainedTokenizer, ProcessorMixin)
+from trl.extras.dataset_formatting import ConstantLengthDataset
 
+from openr1.configs.data_args import DataArguments
 from openr1.utils.logger_utils import get_logger
 
 logger = get_logger('openr1')
+
+
+def prepare_dataset(
+    dataset: Optional[Dataset] = None,
+    processing_class: Optional[Union[PreTrainedTokenizer, BaseImageProcessor,
+                                     FeatureExtractionMixin,
+                                     ProcessorMixin]] = None,
+    formatting_func: Optional[Callable] = None,
+    data_args: DataArguments = None,
+):
+    if dataset is None:
+        raise ValueError('The dataset should not be None')
+
+    if data_args.skip_prepare_dataset:
+        return dataset
+
+    # If the dataset is already preprocessed (tokenized), return as-is. Only works if dataset is
+    # a datasets.Dataset or datasets.IterableDataset -- not for torch Dataset
+    column_names = (dataset.column_names if isinstance(
+        dataset, (datasets.Dataset, datasets.IterableDataset)) else None)
+    if column_names and 'input_ids' in column_names:
+        if formatting_func is not None:
+            warnings.warn(
+                'You passed a dataset that is already processed (contains an `input_ids` field) together with a '
+                'valid formatting function. Therefore `formatting_func` will be ignored. Either remove the '
+                '`formatting_func` or pass a dataset that is not already processed.',
+                UserWarning,
+            )
+
+        def formatting_func(x):
+            return x['input_ids']
+
+        if not data_args.packing:
+            return dataset
+
+    # check if torch dataset / dataloader and do nothing
+    # see https://github.com/huggingface/trl/pull/1468 for why datasets.IterableDataset needs a separate check
+    if isinstance(dataset,
+                  (torch.utils.data.IterableDataset, torch.utils.data.Dataset,
+                   ConstantLengthDataset)) and not isinstance(
+                       dataset, datasets.IterableDataset):
+        return dataset
+
+    if not data_args.packing:
+        return prepare_non_packed_dataloader(dataset, processing_class,
+                                             formatting_func, data_args)
+
+    else:
+        return prepare_packed_dataloader(dataset, processing_class,
+                                         formatting_func, data_args)
+
+
+def prepare_non_packed_dataloader(
+    dataset: Optional[Dataset] = None,
+    processing_class: Optional[Union[PreTrainedTokenizer, BaseImageProcessor,
+                                     FeatureExtractionMixin,
+                                     ProcessorMixin]] = None,
+    formatting_func: Optional[Callable] = None,
+    data_args: DataArguments = None,
+):
+    # Inspired from: https://huggingface.co/learn/nlp-course/chapter7/6?fw=pt
+    def tokenize(element):
+        outputs = processing_class(
+            element[data_args.dataset_text_field]
+            if formatting_func is None else formatting_func(element),
+            add_special_tokens=data_args.add_special_tokens,
+            truncation=True,
+            padding=False,
+            max_length=data_args.max_seq_length,
+            return_overflowing_tokens=False,
+            return_length=False,
+        )
+
+        if formatting_func is not None and not isinstance(
+                formatting_func(element), list):
+            raise ValueError(
+                'The `formatting_func` should return a list of processed strings since it can lead to silent bugs.'
+            )
+
+        return {
+            'input_ids': outputs['input_ids'],
+            'attention_mask': outputs['attention_mask']
+        }
+
+    signature_columns = ['input_ids', 'labels', 'attention_mask']
+
+    if dataset.column_names is not None:  # None for IterableDataset
+        extra_columns = list(
+            set(dataset.column_names) - set(signature_columns))
+    else:
+        extra_columns = []
+
+    if not data_args.remove_unused_columns and len(extra_columns) > 0:
+        warnings.warn(
+            'You passed `remove_unused_columns=False` on a non-packed dataset. This might create some issues with '
+            'the default collator and yield to errors. If you want to inspect dataset other columns (in this '
+            f'case {extra_columns}), you can subclass `DataCollatorForLanguageModeling` in case you used the '
+            'default collator and create your own data collator in order to inspect the unused dataset columns.',
+            UserWarning,
+        )
+
+    map_kwargs = {
+        'batched':
+        True,
+        'remove_columns':
+        dataset.column_names if data_args.remove_unused_columns else None,
+        'batch_size':
+        data_args.dataset_batch_size,
+    }
+    if isinstance(dataset, datasets.Dataset):
+        map_kwargs[
+            'num_proc'] = data_args.dataset_num_proc  # this arg is not available for IterableDataset
+    tokenized_dataset = dataset.map(tokenize, **map_kwargs)
+
+    return tokenized_dataset
+
+
+def prepare_packed_dataloader(
+    dataset: Optional[Dataset] = None,
+    processing_class: Optional[Union[PreTrainedTokenizer, BaseImageProcessor,
+                                     FeatureExtractionMixin,
+                                     ProcessorMixin]] = None,
+    formatting_func: Optional[Callable] = None,
+    data_args: DataArguments = None,
+):
+    if processing_class is None:
+        raise ValueError(
+            'You need to pass a processing_class with `SFTTrainer`.')
+
+    constant_length_iterator = ConstantLengthDataset(
+        processing_class,
+        dataset,
+        dataset_text_field=None
+        if formatting_func is not None else data_args.dataset_text_field,
+        formatting_func=formatting_func,
+        seq_length=data_args.max_seq_length,
+        infinite=False,
+        num_of_sequences=data_args.num_of_sequences,
+        chars_per_token=data_args.chars_per_token,
+        eos_token_id=processing_class.eos_token_id,
+        append_concat_token=data_args.append_concat_token,
+        add_special_tokens=data_args.add_special_tokens,
+    )
+
+    if isinstance(dataset, datasets.IterableDataset):
+        return constant_length_iterator
+
+    def data_generator(constant_length_iterator):
+        yield from constant_length_iterator
+
+    try:
+        packed_dataset = Dataset.from_generator(
+            data_generator,
+            gen_kwargs={'constant_length_iterator': constant_length_iterator})
+    except (DatasetGenerationError, SchemaInferenceError) as exc:
+        raise ValueError(
+            'Error occurred while packing the dataset. '
+            'Make sure that your dataset has enough samples to at least yield one packed sequence.'
+        ) from exc
+    return packed_dataset
 
 
 class SupervisedDataset(Dataset):

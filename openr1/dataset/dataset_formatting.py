@@ -25,8 +25,9 @@ def conversations_formatting_function(
     tools: Optional[list] = None,
 ):
     r"""
-    return a callable function that takes in a "messages" dataset and returns a formatted dataset, based on the tokenizer
-    apply chat template to the dataset along with the schema of the list of functions in the tools list.
+    return a callable function that takes in a "messages" dataset and returns a formatted dataset,
+    based on the tokenizer apply chat template to the dataset along with the schema of the list of
+    functions in the tools list.
     """
 
     def format_dataset(examples):  # -> list | Any:
@@ -48,8 +49,8 @@ def conversations_formatting_function(
 
 def instructions_formatting_function(tokenizer: PreTrainedTokenizer):
     r"""
-    return a callable function that takes in an "instructions" dataset and returns a formatted dataset, based on the tokenizer
-    apply chat template to the dataset
+    return a callable function that takes in an "instructions" dataset and returns a formatted dataset,
+    based on the tokenizer apply chat template to the dataset
     """
 
     def format_dataset(examples):
