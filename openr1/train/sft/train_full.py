@@ -1,27 +1,23 @@
 import logging
 import math
 import os
-import pathlib
 import sys
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Optional, Tuple
 
-import torch
 import transformers
 from datasets import load_dataset
-from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import Dataset
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          DataCollatorForLanguageModeling, HfArgumentParser,
-                          PreTrainedModel, PreTrainedTokenizer, Trainer,
-                          TrainingArguments)
+from transformers import (AutoTokenizer, HfArgumentParser, PreTrainedModel,
+                          PreTrainedTokenizer, TrainingArguments)
 from transformers.trainer_pt_utils import LabelSmoother
 
 sys.path.append(os.getcwd())
-from openr1.dataset.pretrain_dataset import PretrainDataset
+from openr1.dataset.supervised_dataset import sft_prepare_dataset
 from openr1.utils.logger_utils import get_logger
 
 IGNORE_TOKEN_ID = LabelSmoother.ignore_index
+
+logger = get_logger('openr1')
 
 
 @dataclass
@@ -140,6 +136,28 @@ def train() -> None:
         (ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
+    if processing_class is None:
+        processing_class = AutoTokenizer.from_pretrained(
+            model.config._name_or_path)
+        if processing_class.pad_token is None:
+            processing_class.pad_token = processing_class.eos_token  # required for padding when collating data
+
+    formatting_func = None
+
+    train_dataset = load_dataset('simplescaling/s1K')
+    train_dataset = sft_prepare_dataset(train_dataset, processing_class,
+                                        formatting_func, data_args)
+    if eval_dataset is not None:
+        if isinstance(eval_dataset, dict):
+            eval_dataset = {
+                key: sft_prepare_dataset(dataset, processing_class,
+                                         formatting_func, data_args)
+                for key, dataset in eval_dataset.items()
+            }
+        else:
+            eval_dataset = sft_prepare_dataset(eval_dataset, processing_class,
+                                               formatting_func, data_args)
+
     # Load model and tokenizer
     logger.info('Loading model and tokenizer...')
     model, tokenizer = load_model_tokenizer(model_args, training_args)
@@ -149,15 +167,6 @@ def train() -> None:
 
     # Initialize the Trainer object and start training
     logging.warning('Instantiating Trainer')
-    trainer = Trainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=None,
-        data_collator=data_collator,
-    )
-
     logging.warning('Done.')
 
 
