@@ -195,10 +195,6 @@ def train() -> None:
         data_collator=data_collator,
         **dataset_module,
     )
-    if list(pathlib.Path(training_args.output_dir).glob('checkpoint-*')):
-        trainer.train(resume_from_checkpoint=True)
-    else:
-        trainer.train()
 
     # Training
     if training_args.do_train:
