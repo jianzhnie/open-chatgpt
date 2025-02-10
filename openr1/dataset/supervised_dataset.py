@@ -3,18 +3,110 @@ from typing import Callable, Dict, Optional, Union
 
 import datasets
 import torch
-from datasets import load_dataset
+from accelerate import PartialState
+from datasets import Dataset, IterableDataset, load_dataset
 from datasets.arrow_writer import SchemaInferenceError
 from datasets.builder import DatasetGenerationError
-from torch.utils.data import Dataset
 from transformers import (BaseImageProcessor, FeatureExtractionMixin,
-                          PreTrainedTokenizer, ProcessorMixin)
+                          PreTrainedTokenizer, PreTrainedTokenizerBase,
+                          ProcessorMixin)
+from trl.data_utils import is_conversational, maybe_apply_chat_template
 from trl.extras.dataset_formatting import ConstantLengthDataset
 
 from openr1.configs.data_args import DataArguments
+from openr1.dataset.dataset_formatting import pack_examples
 from openr1.utils.logger_utils import get_logger
 
 logger = get_logger('openr1')
+
+
+def sft_prepare_dataset(
+    dataset: Union[Dataset, IterableDataset],
+    processing_class: Union[PreTrainedTokenizerBase, BaseImageProcessor,
+                            FeatureExtractionMixin, ProcessorMixin],
+    formatting_func: Optional[Callable[[dict], str]],
+    data_args: DataArguments = None,
+) -> Union[Dataset, IterableDataset]:
+    # Convert the dataset to an IterableDataset if it is a ConstantLengthDataset
+    if isinstance(dataset, ConstantLengthDataset):
+        return dataset
+
+    # Build the kwargs for the `map` function
+    map_kwargs = {}
+    if isinstance(dataset, Dataset):
+        # IterableDataset does not support num_proc
+        map_kwargs['num_proc'] = data_args.dataset_num_proc
+
+    with PartialState().local_main_process_first():
+        # Apply the formatting function if any
+        if formatting_func is not None:
+            if isinstance(dataset, Dataset):
+                # `IterableDataset.map` does not support `desc`
+                map_kwargs[
+                    'desc'] = f'Applying formatting function to {data_args.data_path} dataset'
+
+            batched = isinstance(formatting_func(next(iter(dataset))), list)
+
+            def _func(example):
+                return {'text': formatting_func(example)}
+
+            dataset = dataset.map(_func, batched=batched, **map_kwargs)
+
+        # If the dataset is prompt-completion, convert it to language modeling type
+        if 'prompt' in dataset.column_names and 'completion' in dataset.column_names:
+            key = 'messages' if is_conversational(dataset[0]) else 'text'
+
+            def concat_prompt_completion(example):
+                return {key: example['prompt'] + example['completion']}
+
+            dataset = dataset.map(concat_prompt_completion,
+                                  remove_columns=['prompt', 'completion'])
+
+        # Apply the chat template if needed
+        if isinstance(dataset, Dataset):
+            # `IterableDataset.map` does not support `desc`
+            map_kwargs[
+                'desc'] = f'Applying chat template to {data_args.data_path} dataset'
+        dataset = dataset.map(
+            maybe_apply_chat_template,
+            fn_kwargs={'tokenizer': processing_class},
+            remove_columns='messages'
+            if 'messages' in dataset.column_names else None,
+            **map_kwargs,
+        )
+
+        # Tokenize the dataset
+        if isinstance(dataset, Dataset):
+            # `IterableDataset.map` does not support `desc`
+            map_kwargs['desc'] = f'Tokenizing {data_args.data_path} dataset'
+        dataset = dataset.map(
+            lambda ex: processing_class(ex[data_args.dataset_text_field]),
+            **map_kwargs)
+
+        # Pack or truncate
+        if data_args.packing:
+            if data_args.max_seq_length is None:
+                raise ValueError(
+                    "When packing is enabled, `max_seq_length` can't be `None`."
+                )
+            if isinstance(dataset, Dataset):
+                # `IterableDataset.map` does not support `desc`
+                map_kwargs['desc'] = f'Packing {data_args.data_path} dataset'
+            dataset = dataset.select_columns('input_ids')
+            dataset = dataset.map(
+                pack_examples,
+                batched=True,
+                fn_kwargs={'seq_length': data_args.max_seq_length},
+                **map_kwargs)
+        elif data_args.max_seq_length is not None:
+            dataset = dataset.map(
+                lambda ex: {
+                    key: ex[key][:data_args.max_seq_length]
+                    for key in ['input_ids', 'attention_mask']
+                },
+                **map_kwargs,
+            )
+    return dataset
 
 
 def prepare_dataset(
